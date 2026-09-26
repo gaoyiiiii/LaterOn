@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LaterOn · 稍后阅读",
-  "version": "1.63.4",
+  "version": "1.63.5",
   "minimum_chrome_version": "121",
   "description": "一键收藏当前网页，在清爽的卡片界面中稍后阅读。",
   "permissions": [
