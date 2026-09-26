@@ -24,11 +24,7 @@ button, select { cursor: pointer; }
   backdrop-filter: blur(22px) saturate(160%);
 }
 .brand { display: flex; gap: 10px; align-items: center; color: var(--ink); font-size: 22px; font-weight: 850; letter-spacing: -.8px; text-decoration: none; }
-.brand span {
-  display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px;
-  background: linear-gradient(140deg, #ff7a52, #ff4f2e); color: #fff; font-size: 18px;
-  box-shadow: 0 6px 16px -6px rgba(255,80,50,.6);
-}
+.brand-icon { display: block; width: 40px; height: 40px; border-radius: 11px; box-shadow: 0 7px 16px -6px rgba(255,80,50,.6); }
 nav { display: flex; gap: 4px; padding: 4px; border-radius: 99px; background: var(--chip); border: 1px solid var(--hairline-2); box-shadow: var(--shadow-sm); }
 .nav-item { border: 0; border-radius: 99px; padding: 8px 18px; background: transparent; color: var(--chip-text); font-size: 13px; font-weight: 650; transition: color .15s, background .15s; }
 .nav-item:hover { color: var(--ink); }
