@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LaterOn · 稍后阅读",
-  "version": "1.57.1",
+  "version": "1.57.2",
   "minimum_chrome_version": "121",
   "description": "一键收藏当前网页，在清爽的卡片界面中稍后阅读。",
   "permissions": [
@@ -19,8 +19,7 @@
     "https://*/*"
   ],
   "action": {
-    "default_title": "LaterOn · 稍后阅读",
-    "default_popup": "popup.html",
+    "default_title": "打开 LaterOn 侧栏",
     "default_icon": {
       "16": "icon16.png",
       "32": "icon32.png",

@@ -8,6 +8,15 @@
 
 ---
 
+## 1.57.2 — 2026-09-26
+
+**Chrome / Edge 点击扩展图标统一直接打开侧栏**
+
+- 原因是 `manifest.json` 原先声明了 `action.default_popup`，Edge 会按标准扩展行为优先打开收藏缩略图弹窗。
+- 现在移除工具栏 popup 绑定，并通过 `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` 让浏览器原生处理图标点击。
+- service worker 启动、浏览器启动和扩展安装 / 更新时都会重新确认该行为，统一 Windows、macOS 上的 Chrome 与 Edge。
+- 保留右键“在侧栏中打开”入口；原 popup 文件暂时保留用于兼容与回归，但不再由工具栏图标触发。
+
 ## 1.57.1 — 2026-09-26
 
 **单篇收藏默认先选择项目**

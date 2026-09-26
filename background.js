@@ -64,9 +64,30 @@ function setupContextMenus() {
   });
 }
 
+// Chrome 与 Edge 共用 Side Panel API。manifest 里不再绑定 default_popup，
+// 再显式开启 openPanelOnActionClick，工具栏图标便会在两端直接切换 LaterOn 侧栏。
+// 该偏好由浏览器保存；service worker 冷启动、浏览器启动和扩展升级时都重新确认一次，
+// 避免 Edge 更新、扩展重新加载或浏览器同步后退回默认的“图标无动作”。
+async function setupSidePanelAction() {
+  if (typeof chrome.sidePanel?.setPanelBehavior !== "function") return false;
+  try {
+    await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 setupContextMenus();
-chrome.runtime.onInstalled.addListener(setupContextMenus);
-chrome.runtime.onStartup.addListener(setupContextMenus);
+setupSidePanelAction();
+chrome.runtime.onInstalled.addListener(() => {
+  setupContextMenus();
+  setupSidePanelAction();
+});
+chrome.runtime.onStartup.addListener(() => {
+  setupContextMenus();
+  setupSidePanelAction();
+});
 
 // ── 自动清除过期的「已读」收藏 ────────────────────────────────
 // 从「标为已读的那一天」起算，超过设定天数（默认 30 天，30–180 天可调）就自动删掉，
@@ -168,8 +189,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
-// 点工具栏图标 = 弹出 popup（见 manifest 的 action.default_popup）。
-// 侧边栏改由右键菜单的「显示侧边栏」打开，无需在此强制绑定左键。
+// 工具栏图标的左键行为由上面的 setPanelBehavior 交给浏览器原生处理：
+// 点击直接打开 / 聚焦 LaterOn 侧栏，不再经过缩略图 popup。
 
 // 一次性迁移（1.14.0）：清掉旧版本保存的网页正文字段。
 // 不依赖 onInstalled —— 因为「重新加载扩展」不会触发 onInstalled，
