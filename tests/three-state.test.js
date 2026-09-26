@@ -73,7 +73,8 @@ window.chrome = {
   sidePanel: { open: () => Promise.resolve() },
   runtime: {
     getURL: (path) => `chrome-extension://lateron/${path}`,
-    sendMessage: () => Promise.resolve({ ready: true })
+    sendMessage: () => Promise.resolve({ ready: true }),
+    onMessage: { addListener() {} }
   }
 };
 
@@ -99,6 +100,11 @@ window.eval(librarySource);
 
 (async () => {
   await tick(40);
+
+  check("首次打开默认高亮「未读」", document.querySelector(".nav-item.active")?.dataset.filter === "unread");
+  check("首次只显示未读与在读", ids().sort().join() === "a,b", `可见 ${ids()}`);
+  click(navOf("all"));
+  await tick(10);
 
   console.log("── 第 1 步：旧数据兼容 + 三档初始状态 ──");
   check("未读卡片：既不是已读也不是在读", !cardOf("a").classList.contains("is-read") && !cardOf("a").classList.contains("is-reading"));

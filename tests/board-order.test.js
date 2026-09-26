@@ -4,7 +4,7 @@
 //   ③ 重新打开还在那个顺序；取消（dragend 没 drop）什么都不改；
 //      从改简介的铅笔上按下不会触发拖拽
 // 注：图板上只有项目，「待整理」不占一块，所以顺序就是项目的顺序。
-// 运行：NODE_PATH=<jsdom 路径> node dev-tests/board-order.test.js
+// 运行：NODE_PATH=<jsdom 路径> node tests/board-order.test.js
 const fs = require("fs");
 const path = require("path");
 const { JSDOM } = require("jsdom");
@@ -70,7 +70,7 @@ async function boot(store) {
       onChanged: { addListener() {} }
     },
     tabs: { query: async () => [{ id: 7, windowId: 3 }], create: async () => ({}) },
-    runtime: { getURL: (file) => `chrome-extension://lateron/${file}`, sendMessage: async () => ({ ok: true }) },
+    runtime: { getURL: (file) => `chrome-extension://lateron/${file}`, sendMessage: async () => ({ ok: true }), onMessage: { addListener() {} } },
     windows: { getCurrent: async () => ({ id: 3 }) },
     sidePanel: { open: async () => ({}), close: async () => ({}) }
   };

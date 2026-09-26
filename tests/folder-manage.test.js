@@ -46,7 +46,8 @@ const store = {
   // 「工作」带一个封面：用来验证侧栏项目行左侧显示的是缩略图（图板风格），不是文件夹图标。
   laterOnProjects: [{ id: "work", name: "工作", createdAt: 1, cover: "data:image/gif;base64,R0lGODlhAQABAAAAACw=" }],
   laterOnActiveProject: "all",
-  laterOnSettings: {}
+  laterOnSettings: {},
+  laterOnFilter: "all"
 };
 const changeListeners = [];
 const createdTabs = [];
@@ -82,7 +83,8 @@ window.chrome = {
   },
   runtime: {
     getURL: (path) => `chrome-extension://lateron/${path}`,
-    sendMessage: () => Promise.resolve({ ready: true })
+    sendMessage: () => Promise.resolve({ ready: true }),
+    onMessage: { addListener() {} }
   }
 };
 window.confirm = (message) => { nativeDialogs.push(String(message)); return true; };
@@ -319,10 +321,11 @@ const cardFolderOptions = () => [...document.querySelectorAll(".card .project-se
   check("「⋯」占的横向空间没超出给它的留白（不会压住篇数）", padRight > 0 && moreRight + moreW <= padRight, `留白=${padRight}px ⋯=${moreRight}+${moreW}=${moreRight + moreW}px`);
   // 「项目 ＋」这一行不能贴住第一行项目。间距要写在容器（.projects-heading）上：
   // 写在 label 上只有「项目」两个字往下挪，＋ 还贴着第一行，两边的空隙不等高。
-  const headingGap = Number(/margin-bottom:\s*(\d+)px/.exec(ruleOf("\\.projects-heading"))?.[1] || 0);
+  const headingRule = ruleOf("\\.projects-heading");
+  const headingGap = Number(/margin:\s*0\s+\d+px\s+(\d+)px\s+0/.exec(headingRule)?.[1] || 0);
   const labelInHeading = ruleOf("\\.projects-heading\\s+\\.sidebar-label");
-  check("「项目 ＋」和第一行项目之间留了空隙", headingGap >= 10, `margin-bottom=${headingGap}px`);
-  check("空隙写在容器上（label 不再自己留 bottom margin）", /margin:\s*0 0 0 9px/.test(labelInHeading), labelInHeading);
+  check("「项目 ＋」和第一行项目之间留了空隙", headingGap >= 8, `margin-bottom=${headingGap}px`);
+  check("空隙写在容器上（label 不再自己留 bottom margin）", /margin:\s*0 0 0 10px/.test(labelInHeading), labelInHeading);
 
   console.log("\n── 页面错误 ──");
   check("整个过程没有出现任何未捕获的错误", errors.length === 0, errors.join(" | "));

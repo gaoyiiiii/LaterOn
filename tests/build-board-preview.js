@@ -2,7 +2,7 @@
 // 只把 chrome.storage 换成一份假数据（几个类目、带封面的收藏），打开就是图板视图。
 // 这样预览看到的就是当前那份实现，不会和代码脱节（改完重跑一次本脚本即可）。
 //
-// 用法：node dev-tests/build-board-preview.js
+// 用法：node tests/build-board-preview.js
 const fs = require("fs");
 const path = require("path");
 
@@ -80,7 +80,7 @@ const mock = () => {
 };
 
 const script = `<script>
-// ⚠️ 本文件由 dev-tests/build-board-preview.js 自动生成，请勿直接编辑。
+// ⚠️ 本文件由 tests/build-board-preview.js 自动生成，请勿直接编辑。
 // 下面是一份假数据（代替扩展的本地存储），页面本身用的是真实的 library.html + library.js。
 (${mock.toString()})();
 <\/script>`;

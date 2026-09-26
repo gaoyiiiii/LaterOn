@@ -101,7 +101,7 @@
         scripting: { insertCSS: async () => {}, executeScript: async () => [] }
       };
     </script>
-    <!-- ② 真实的浮层实现由 dev-tests/build-preview.js 从这个占位符处内联进来 -->
+    <!-- ② 真实的浮层实现由 tests/build-preview.js 从这个占位符处内联进来 -->
     <!--INLINE_OVERLAY_IMPLEMENTATION-->
     <script>
       const SAMPLE = {
@@ -127,7 +127,7 @@
         // 先把上一次的浮层清掉（去掉退场动画，直接移除），再按指定主题重新弹出。
         document.getElementById("lateron-folder-picker")?.remove();
         if (typeof window.showFolderPickerOverlay !== "function") {
-          document.querySelector(".preview-tip").textContent = "浮层实现没能加载：请重新运行 node dev-tests/build-preview.js 生成预览页。";
+          document.querySelector(".preview-tip").textContent = "浮层实现没能加载：请重新运行 node tests/build-preview.js 生成预览页。";
           return;
         }
         window.showFolderPickerOverlay({ theme, selected: "work", savedCount: SAMPLE.savedCount, folders: SAMPLE.folders, pages: SAMPLE.pages });

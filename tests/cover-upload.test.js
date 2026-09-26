@@ -2,7 +2,7 @@
 //   ① 弹窗里的封面区：预览、上传（自动压缩）、移除、返回的值
 //   ② 后台重复收藏时：用户自己定的封面不能被自动抓取的结果顶掉
 //   ③ 收藏库页面上的完整链路：点编辑 → 换封面 / 移封面 → 卡片立刻变样 → 写进库
-// 运行：NODE_PATH=<jsdom 路径> node dev-tests/cover-upload.test.js
+// 运行：NODE_PATH=<jsdom 路径> node tests/cover-upload.test.js
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
@@ -333,7 +333,7 @@ async function partLibrary() {
       create: async () => ({}),
       onCreated: { addListener() {} }
     },
-    runtime: { getURL: (file) => `chrome-extension://lateron/${file}`, sendMessage: async () => ({ ok: true }) },
+    runtime: { getURL: (file) => `chrome-extension://lateron/${file}`, sendMessage: async () => ({ ok: true }), onMessage: { addListener() {} } },
     windows: { getCurrent: async () => ({ id: 3 }) },
     sidePanel: { open: async () => ({}), close: async () => ({}) }
   };

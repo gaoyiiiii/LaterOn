@@ -5,7 +5,7 @@
 //   • content-folder-picker.js 的 showFolderPickerOverlay 入口（接上收藏流程的消息）
 // 这样预览看到的永远是当前那份实现，不会和代码脱节（改完实现重跑一次本脚本即可）。
 //
-// 用法：node dev-tests/build-preview.js
+// 用法：node tests/build-preview.js
 const fs = require("fs");
 const path = require("path");
 
@@ -22,7 +22,7 @@ const wrapperSource = fs.readFileSync(PICKER_WRAPPER, "utf8");
 const template = fs.readFileSync(TEMPLATE, "utf8");
 if (!template.includes(PLACEHOLDER)) throw new Error(`模板里缺占位符 ${PLACEHOLDER}`);
 
-const banner = `// ⚠️ 本文件由 dev-tests/build-preview.js 自动生成，请勿直接编辑。
+const banner = `// ⚠️ 本文件由 tests/build-preview.js 自动生成，请勿直接编辑。
 // 下面是真实的选项目面板实现（picker-ui.js + content-folder-picker.js），预览用的就是上线那份。`;
 
 const html = template.replace(

@@ -2,7 +2,7 @@
 // 重点盯两处用户能直接感知的坑：
 //   ① 点卡片左上角的圆点，要真的勾上（圆点是 label 包着隐藏勾选框，容易被处理两次而互相抵消）
 //   ② 多选时点卡片只是勾选，不能顺手把文章打开（标题和封面都是真链接）
-// 运行：NODE_PATH=<jsdom 路径> node dev-tests/select-mode.test.js
+// 运行：NODE_PATH=<jsdom 路径> node tests/select-mode.test.js
 const fs = require("fs");
 const path = require("path");
 const { JSDOM } = require("jsdom");

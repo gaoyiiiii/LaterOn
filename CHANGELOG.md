@@ -8,6 +8,15 @@
 
 ---
 
+## 1.57.0 — 2026-09-26
+
+**首次默认显示未读，并规范公开仓库测试目录**
+
+- 用户第一次打开收藏库或侧边栏、尚未形成筛选偏好时，默认展示“未读”（包含未读与在读）。
+- 用户手动选择“未读 / 已读 / 全部”后继续写入共享本地存储，之后打开任一界面都会恢复上次偏好。
+- 顶部按钮加载前的静态高亮也改为“未读”，避免首次打开短暂闪过“全部”。
+- 公开仓库中的 `dev-tests/` 更名为行业常见的 `tests/`；测试、夹具、截图和预览均保留，并同步修正全部路径说明。
+
 ## 1.56.9 — 2026-09-26
 
 **顶部状态筛选调整为“未读、已读、全部”**
@@ -353,12 +362,12 @@
 - 以前点卡片上的垃圾桶是「一点就没」，现在和「删除项目」「批量删除」一样先弹确认：
   标题写明删的是哪一篇（标题太长会截断成 26 字），说明删了无法恢复，确认按钮就是「删除」。
   点「取消」或按 Esc 都不删。侧栏（边栏面板）里点删除同样是这个确认。
-- 新增 `dev-tests/delete-item.test.js`（14 项断言）；侧栏的 `panel-fast-open.test.js` ④ 段
+- 新增 `tests/delete-item.test.js`（14 项断言）；侧栏的 `panel-fast-open.test.js` ④ 段
   补了「先弹确认 → 取消不删 → 确认才删」三步。
-- 新增 `dev-tests/board-view.test.js`（36 项断言：切换、分组、拼图张数、
+- 新增 `tests/board-view.test.js`（36 项断言：切换、分组、拼图张数、
   自动生成与手写简介、进类目、筛选、偏好写入）与预览页
-  `dev-tests/board-preview.html`（`node dev-tests/build-board-preview.js` 重新生成）。
-- 新增 `dev-tests/board-order.test.js`（21 项断言：让位位移、DOM 不动、
+  `tests/board-preview.html`（`node tests/build-board-preview.js` 重新生成）。
+- 新增 `tests/board-order.test.js`（21 项断言：让位位移、DOM 不动、
   顺序写回并与侧栏同步、「未分类」的位置、取消不改、铅笔上按下不触发拖拽）。
   这轮把卡片拖拽那套逻辑抽成了共用的 `enableReorder()`，卡片与图板走同一份代码。
 
@@ -379,7 +388,7 @@
 - 配套把缩略图里的封面与占位改成绝对定位：它们一旦参与「卡片该多高」的计算，占位里那张
   Logo 就会按自身比例反过来把卡片顶高（卡片会莫名变胖）。现在高度只由右边的文字决定，
   图片负责填满剩下的空间；封面给了 `z-index`，保证盖在占位上而不是被它挡住。
-- 封面预览页 `dev-tests/cover-preview.html` 增加一条「文字占满两行」的样本，
+- 封面预览页 `tests/cover-preview.html` 增加一条「文字占满两行」的样本，
   并在 `panel-fast-open.test.js` 里加了 4 条静态断言钉住这套写法（jsdom 没有排版，
   这类问题只能靠代码层面锁，或者去预览页用眼睛看）。
 
@@ -522,7 +531,7 @@
 - 已经在视野里就完全不滚，不会乱跳；
 - 正在读那篇被筛选条件挡在外面（比如筛「已读」但它还没读完）时安静放弃，不报错。
 
-新增 `dev-tests/panel-locate-current.test.js`（用假坐标 + 假滚动验证 5 种情形），
+新增 `tests/panel-locate-current.test.js`（用假坐标 + 假滚动验证 5 种情形），
 24 个测试文件全部通过。
 
 ---
@@ -569,7 +578,7 @@
   这样「慢在浏览器那一层」还是「慢在某个文件」，一眼分清。
 
 改动文件：`sidepanel.html`、`sidepanel.css`、`sidepanel.js`、`settings.js`；
-`dev-tests/panel-fast-open.test.js` 新增第 ⑥ 段验证（23 个测试文件全部通过）。
+`tests/panel-fast-open.test.js` 新增第 ⑥ 段验证（23 个测试文件全部通过）。
 
 ---
 
@@ -600,7 +609,7 @@
    - `详情` = 后台补封面摘要用了多久（这段再慢也不影响你点收藏）。
 
 改动文件：`popup.js`、`sidepanel.js`、`settings.js`、`settings.html`；
-新增测试 `dev-tests/popup-fast-open.test.js`（23 个测试文件全部通过）。
+新增测试 `tests/popup-fast-open.test.js`（23 个测试文件全部通过）。
 
 ---
 
@@ -932,7 +941,7 @@ CSS 动画在样式优先级里的层级**高于行内 style**，所以它把让
 
 ### 验证
 
-- `dev-tests/folder-overlay.test.js` 新增 6 项断言：输入框里打空格网页听不到、焦点不在输入框时空格也听不到、
+- `tests/folder-overlay.test.js` 新增 6 项断言：输入框里打空格网页听不到、焦点不在输入框时空格也听不到、
   输入时 `Esc` 能退出并发出取消请求、浮层关闭后按键恢复放行。
 - 另用真实 Chromium + puppeteer 实测（模拟视频网站在 window / document 上冒泡监听）：
   打「音乐 相关」网页收到 0 个按键、空格不漏、两种 `Esc` 都能退出、关闭后恢复 —— 全部通过。
@@ -959,11 +968,11 @@ CSS 动画在样式优先级里的层级**高于行内 style**，所以它把让
 **改动**：多选分支里先 `preventDefault()`（既拦住链接跳转，也顺带拦下 label 的连带翻转），圆点不再依赖浏览器的 label 行为，
 统一由 `toggleSelect` 翻一次。正常模式下的行为一字未动。
 
-**回归保护**：新增 `dev-tests/select-mode.test.js`（22 项断言）——圆点勾上/取消、勾选框状态与视觉一致、点标题和封面只勾选不跳转
+**回归保护**：新增 `tests/select-mode.test.js`（22 项断言）——圆点勾上/取消、勾选框状态与视觉一致、点标题和封面只勾选不跳转
 （记录 `chrome.tabs.update/create` 的调用次数确认没有导航发生）、全选与取消全选、退出多选后点标题能正常打开文章。
 其余 11 个模拟测试依旧全绿。
 
-**涉及文件**：`library.js` / `manifest.json` / `CHANGELOG.md` / `dev-tests/select-mode.test.js`
+**涉及文件**：`library.js` / `manifest.json` / `CHANGELOG.md` / `tests/select-mode.test.js`
 
 ---
 
@@ -982,9 +991,9 @@ CSS 动画在样式优先级里的层级**高于行内 style**，所以它把让
 3. **后台保护手写内容**（`background.js` 的 `mergeDuplicateMetadata`）：凡是用户改过的字段，重复收藏同一网址时一律不覆盖——**连 YouTube 也不例外**（YouTube 原本一律用最新信息刷新，如果留着那个例外，用户改好的标题下次就会被顶掉）。没改过的字段照旧：YouTube 仍会刷新、普通站点仍然只补缺失、封面修复不受影响。
 4. **顺手修掉一个「改了看不见」的隐患**：卡片 DOM 是复用的，而原来的重渲染只同步阅读状态和项目，标题/摘要从不变动。现在两者都会同步，并且保存后立刻重画一次，不等存储的变更广播（那个广播不保证回到发起它的页面）。
 
-**回归保护**：新增 `dev-tests/edit-item.test.js`（44 项断言，分四段：输入弹窗的各种交互、后台合并时的保护规则、在假浏览器里加载真实 `library.html` + `library.js` 走一遍「点铅笔 → 改 → 保存 → 卡片立刻变样 → 写进库」，以及两个入口的接线检查）。其余 10 个模拟测试（含弹窗主题、批量收藏、抖音兜底等）依旧全绿。
+**回归保护**：新增 `tests/edit-item.test.js`（44 项断言，分四段：输入弹窗的各种交互、后台合并时的保护规则、在假浏览器里加载真实 `library.html` + `library.js` 走一遍「点铅笔 → 改 → 保存 → 卡片立刻变样 → 写进库」，以及两个入口的接线检查）。其余 10 个模拟测试（含弹窗主题、批量收藏、抖音兜底等）依旧全绿。
 
-**涉及文件**：`dialog.js` / `dialog.css` / `library.js` / `library.html` / `library.css` / `sidepanel.js` / `sidepanel.html` / `sidepanel.css` / `background.js` / `manifest.json` / `README.md` / `CHANGELOG.md` / `dev-tests/edit-item.test.js`
+**涉及文件**：`dialog.js` / `dialog.css` / `library.js` / `library.html` / `library.css` / `sidepanel.js` / `sidepanel.html` / `sidepanel.css` / `background.js` / `manifest.json` / `README.md` / `CHANGELOG.md` / `tests/edit-item.test.js`
 
 ---
 
@@ -1003,9 +1012,9 @@ CSS 动画在样式优先级里的层级**高于行内 style**，所以它把让
 3. 后台把结果回传给按钮（`duplicated` / `refreshed` / `updated`），按钮上的「已收藏 / 已收藏过 / 已更新信息」字样照旧准确；网页无法收藏时按钮会显示具体原因，不再只说「收藏失败」。
 4. 设置页的自检里新增触发来源「面板按钮」，一眼能看出这一篇是从哪个入口存进来的。
 
-**回归保护**：`dev-tests/save-single-page.test.js` 补了第 7 步（9 项断言）——开关打开时点按钮会先弹浮层且此刻不写库、开关关闭时点按钮直接收进「全部文章」、结果正确回传、无法收藏的页面返回明确原因。全部 9 个模拟测试（含批量收藏 12 个标签页的完整流程）依旧全绿。
+**回归保护**：`tests/save-single-page.test.js` 补了第 7 步（9 项断言）——开关打开时点按钮会先弹浮层且此刻不写库、开关关闭时点按钮直接收进「全部文章」、结果正确回传、无法收藏的页面返回明确原因。全部 9 个模拟测试（含批量收藏 12 个标签页的完整流程）依旧全绿。
 
-**涉及文件**：`background.js` / `sidepanel.js` / `popup.js` / `settings.js` / `manifest.json` / `CHANGELOG.md` / `README.md` / `dev-tests/save-single-page.test.js`
+**涉及文件**：`background.js` / `sidepanel.js` / `popup.js` / `settings.js` / `manifest.json` / `CHANGELOG.md` / `README.md` / `tests/save-single-page.test.js`
 
 ---
 
@@ -1022,9 +1031,9 @@ CSS 动画在样式优先级里的层级**高于行内 style**，所以它把让
 1. **服务端兜底**：新增 `refetchMetaFromServer` / `applyServerMetaRescue`——当「封面缺失或是站点图标」或「标题是标签页兜底 / 混着站点名」时，background 重新请求当前网址，用服务器 HTML 里的 og 标签补齐标题、封面、摘要（8 秒超时，非 HTML 响应直接跳过）。信息本来就齐全的页面不会多发任何请求。
 2. **堵住绕行路径**：注入失败 / 标签页休眠时原来直接返回兜底值，现在也会过一遍服务端兜底。
 3. **自愈旧收藏**：重复收藏时，旧记录里存成「站点图标」的封面（`isIconLikeImage` 判定）允许被真封面替换。
-4. **回归测试**：新增 `dev-tests/topbook-modal.test.js`（20 项，夹具 `fixtures/topbook-modal.html` 为弹窗状态下的完整真实 DOM）；`douyin-spa` / `metadata-extract` 测试的函数清单同步补齐新函数。
+4. **回归测试**：新增 `tests/topbook-modal.test.js`（20 项，夹具 `fixtures/topbook-modal.html` 为弹窗状态下的完整真实 DOM）；`douyin-spa` / `metadata-extract` 测试的函数清单同步补齐新函数。
 
-**涉及文件**：`background.js` / `manifest.json` / `dev-tests/topbook-modal.test.js`（新增）/ `dev-tests/fixtures/topbook-modal.html`（新增）/ `dev-tests/douyin-spa.test.js` / `dev-tests/metadata-extract.test.js`
+**涉及文件**：`background.js` / `manifest.json` / `tests/topbook-modal.test.js`（新增）/ `tests/fixtures/topbook-modal.html`（新增）/ `tests/douyin-spa.test.js` / `tests/metadata-extract.test.js`
 
 ---
 
@@ -1039,9 +1048,9 @@ CSS 动画在样式优先级里的层级**高于行内 style**，所以它把让
 1. **侧栏缩略图**：没抓到封面（或封面加载失败）时，和完整界面一样铺满显示 LaterOn 的 Logo 砖，不再显示箭头。
 2. **顺手修了全屏库里的一个隐藏 bug**：封面「降级链」走完仍加载失败时，代码会调用一个根本不存在的函数（`coverPlaceholder()`）直接报错，导致卡片留下一块坏图。现在改成保留模板里自带的 Logo 占位，失败时放回去。
 3. **顶部「当前页面」预览**：没抓到封面时，深色底上居中显示一枚小 Logo；确认封面能加载后才盖上去（先试加载、成功才切换），加载失败则继续显示 Logo。
-4. `dev-tests/cover-preview.html` 预览页同步更新，并新增「当前页面预览」的对比区块。
+4. `tests/cover-preview.html` 预览页同步更新，并新增「当前页面预览」的对比区块。
 
-**涉及文件**：`sidepanel.html` / `sidepanel.css` / `sidepanel.js` / `library.js` / `dev-tests/cover-preview.html`
+**涉及文件**：`sidepanel.html` / `sidepanel.css` / `sidepanel.js` / `library.js` / `tests/cover-preview.html`
 
 ---
 
@@ -1072,8 +1081,8 @@ CSS 动画在样式优先级里的层级**高于行内 style**，所以它把让
 
 **回归保护**
 
-新增 `dev-tests/save-single-page.test.js`（26 项断言）：开关关 → 直接收藏进「全部文章」且不弹浮层；开关开 → 先弹浮层、此刻还没真正收藏 → 确认后带上所选项目、只弹一条提示；已收藏过的一篇 → 不重复插入、被搬进所选项目；取消 → 什么都没收；再关掉开关 → 回到直接收藏。
-`dev-tests/folder-overlay.test.js` 里补了单篇形态的文案与清单收起检查。原有的批量收藏测试（含 12 个标签页的完整流程）全部照旧通过。
+新增 `tests/save-single-page.test.js`（26 项断言）：开关关 → 直接收藏进「全部文章」且不弹浮层；开关开 → 先弹浮层、此刻还没真正收藏 → 确认后带上所选项目、只弹一条提示；已收藏过的一篇 → 不重复插入、被搬进所选项目；取消 → 什么都没收；再关掉开关 → 回到直接收藏。
+`tests/folder-overlay.test.js` 里补了单篇形态的文案与清单收起检查。原有的批量收藏测试（含 12 个标签页的完整流程）全部照旧通过。
 
 ---
 
@@ -1106,7 +1115,7 @@ CSS 动画在样式优先级里的层级**高于行内 style**，所以它把让
 
 **回归保护**
 
-新增 `dev-tests/douyin-spa.test.js`（11 个章节、56 项断言），用**假页面重现这个 bug 的机制**：面板先停留在上一条、几十毫秒后才切到新视频。覆盖：
+新增 `tests/douyin-spa.test.js`（11 个章节、56 项断言），用**假页面重现这个 bug 的机制**：面板先停留在上一条、几十毫秒后才切到新视频。覆盖：
 - 面板滞后时**确实会等**（探测 ≥4 次后才抓）→ 抓到的是新视频；
 - 面板始终不跟上 → **1.5 秒到点就放弃**，仍然返回结果、不抛错、不挂住；
 - 探测本身失效时，**靠事后复核也能救回来**（读到旧 id → 重读 → 拿到新视频）；
@@ -1152,7 +1161,7 @@ CSS 动画在样式优先级里的层级**高于行内 style**，所以它把让
 
 **回归保护**
 
-`dev-tests/metadata-extract.test.js` 新增 4 个章节、24 项断言，fixture 按**真实抓下来的抖音 DOM** 一比一还原，专门盯住上面三个坑：
+`tests/metadata-extract.test.js` 新增 4 个章节、24 项断言，fixture 按**真实抓下来的抖音 DOM** 一比一还原，专门盯住上面三个坑：
 - 标题来自抖音容器、已剥掉「 - 抖音」尾巴、长度 ≤ 140；
 - 封面来自播放器容器、带 `origin_cover` 标记、**没有**误选「相关推荐」那张、**没有**退回 lark 的 4:3 裁切版；
 - **没有**把「合集里下一集」的文案当摘要（这条专防串集）；
@@ -1272,7 +1281,7 @@ B 站页面壳无标题 → 留空，由浏览器标签页标题兜底（不再�
 ### 🧹 顺便理顺
 - 新增共享组件 `dialog.js` + `dialog.css`，任何页面引入即可使用 `LaterOnDialog.confirm(...)` / `LaterOnDialog.alert(...)`。收藏库、设置页、侧边栏、弹窗四个页面都已接入，以后新加的确认框不会再走浏览器自带的那套。
 - 把内部两个容易和浏览器原生弹窗混淆的函数名（`confirm`）改成 `submitSelection`，避免以后维护时看错。
-- 新增 `dev-tests/dialog.test.js`：39 项断言覆盖上述交互，并顺带**全项目排查**是否还有残留的浏览器自带弹窗调用。
+- 新增 `tests/dialog.test.js`：39 项断言覆盖上述交互，并顺带**全项目排查**是否还有残留的浏览器自带弹窗调用。
 
 ---
 
@@ -1286,7 +1295,7 @@ B 站页面壳无标题 → 留空，由浏览器标签页标题兜底（不再�
   - 每次点击都重新确认「完整界面在哪个窗口」，把它拖到别的窗口后也能开对位置；缓存的窗口 id 过期时会自动重试一次；
   - 只放行 http/https 的网址，收藏里万一混进 `javascript:` 这类地址会被挡下并提示；
   - 万一侧边栏打不开（浏览器拒绝等），会兜底在新标签页里打开原文并给出提示，不会出现「点了没反应」。
-- 新增 `dev-tests/library-open-item.test.js`（25 项断言）覆盖这段行为：点标题与封面、`⌘`/`Ctrl` 点击、侧栏失败兜底、窗口 id 过期重试、非法网址拒绝。
+- 新增 `tests/library-open-item.test.js`（25 项断言）覆盖这段行为：点标题与封面、`⌘`/`Ctrl` 点击、侧栏失败兜底、窗口 id 过期重试、非法网址拒绝。
 
 ---
 
@@ -1342,7 +1351,7 @@ B 站页面壳无标题 → 留空，由浏览器标签页标题兜底（不再�
 - **新建 / 改名项目后，卡片上的「所属项目」下拉不同步**：之前下拉里还是旧名字、或者找不到刚建好的项目，现在会立刻刷新。
 
 ### 🧪 开发
-- 新增 `dev-tests/folder-manage.test.js`（50 项断言）：把真实的 `library.js` 放进假 DOM，覆盖加号开关、点别处收起、新建（含重名）、改名（回车 / Esc / 点别处 / 重名）、右键与「⋯」菜单、删除（取消 / 确认 / 收藏转移 / 切回全部）、拖拽入项目，并额外断言「整个过程没有未捕获的页面错误」。
+- 新增 `tests/folder-manage.test.js`（50 项断言）：把真实的 `library.js` 放进假 DOM，覆盖加号开关、点别处收起、新建（含重名）、改名（回车 / Esc / 点别处 / 重名）、右键与「⋯」菜单、删除（取消 / 确认 / 收藏转移 / 切回全部）、拖拽入项目，并额外断言「整个过程没有未捕获的页面错误」。
 - 该测试当场抓出了上面「拖拽写坏归属」的问题。
 
 ---
@@ -1360,9 +1369,9 @@ B 站页面壳无标题 → 留空，由浏览器标签页标题兜底（不再�
 - 当前标签页如果是 Chrome 设置页、新标签页、应用商店等**不允许扩展注入内容**的页面，浮层无法显示，会自动退回原来的独立小窗口，功能不受影响。
 
 ### 🧪 开发
-- 新增 `dev-tests/folder-overlay.test.js`：把真实的浮层实现放进假 DOM 里跑一遍，覆盖渲染、切换项目、新建（含重名 / 空名）、回车确认、Esc 取消、重复触发，以及样式表自检（括号配对、漏写分号等）。
-- `dev-tests/save-all-tabs.test.js` 同步扩展：覆盖浮层注入、消息通道（确认 / 取消 / 新建项目）、内部页兜底。
-- `dev-tests/picker-preview.html` 改成**把真实的 `showFolderPickerOverlay` 内联进来**渲染预览（由 `dev-tests/build-preview.js` 从 `background.js` 自动抽取生成），预览不会和实现脱节。
+- 新增 `tests/folder-overlay.test.js`：把真实的浮层实现放进假 DOM 里跑一遍，覆盖渲染、切换项目、新建（含重名 / 空名）、回车确认、Esc 取消、重复触发，以及样式表自检（括号配对、漏写分号等）。
+- `tests/save-all-tabs.test.js` 同步扩展：覆盖浮层注入、消息通道（确认 / 取消 / 新建项目）、内部页兜底。
+- `tests/picker-preview.html` 改成**把真实的 `showFolderPickerOverlay` 内联进来**渲染预览（由 `tests/build-preview.js` 从 `background.js` 自动抽取生成），预览不会和实现脱节。
 
 ---
 

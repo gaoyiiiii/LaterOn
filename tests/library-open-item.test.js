@@ -41,7 +41,8 @@ const store = {
   ],
   laterOnProjects: [{ id: "work", name: "工作", createdAt: 1 }],
   laterOnActiveProject: "work",
-  laterOnSettings: {}
+  laterOnSettings: {},
+  laterOnFilter: "all"
 };
 
 const changeListeners = [];
@@ -90,7 +91,8 @@ window.chrome = {
   },
   runtime: {
     getURL: (path) => `chrome-extension://lateron/${path}`,
-    sendMessage: (message) => { pingCalls.push(message); return Promise.resolve({ ready: true }); }
+    sendMessage: (message) => { pingCalls.push(message); return Promise.resolve({ ready: true }); },
+    onMessage: { addListener() {} }
   }
 };
 

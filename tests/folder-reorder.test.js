@@ -77,7 +77,8 @@ window.chrome = {
   },
   runtime: {
     getURL: (path) => `chrome-extension://lateron/${path}`,
-    sendMessage: () => Promise.resolve({ ready: true })
+    sendMessage: () => Promise.resolve({ ready: true }),
+    onMessage: { addListener() {} }
   }
 };
 window.confirm = (message) => { nativeDialogs.push(String(message)); return true; };

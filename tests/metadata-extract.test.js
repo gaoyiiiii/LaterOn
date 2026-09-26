@@ -8,7 +8,7 @@
 // 这个测试把「直接加载过 background.js 的真实提取函数」放进假 DOM 里跑，
 // 确保各个场景都能抓到正确的内容，而不是把首页的信息当成视频的信息。
 //
-// 运行：node dev-tests/metadata-extract.test.js
+// 运行：node tests/metadata-extract.test.js
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");

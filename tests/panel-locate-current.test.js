@@ -7,7 +7,7 @@
 //  4) 那篇被筛选条件挡在外面 → 安静放弃，不报错
 //  5) 在别处点开另一篇 → 跟着高亮并滚过去
 //  6) 定位结果会记进 laterOnLocateDiag（设置页「自检信息」能看）
-// 运行：NODE_PATH=<jsdom 路径> node dev-tests/panel-locate-current.test.js
+// 运行：NODE_PATH=<jsdom 路径> node tests/panel-locate-current.test.js
 const fs = require("fs");
 const path = require("path");
 const { JSDOM, VirtualConsole } = require("jsdom");

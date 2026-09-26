@@ -50,7 +50,8 @@ const store = {
     { id: "empty", name: "空抽屉", createdAt: 3 }   // 一篇收藏都没有 → 不该出现在图板上
   ],
   laterOnActiveProject: "all",
-  laterOnSettings: {}
+  laterOnSettings: {},
+  laterOnFilter: "all"
 };
 const changeListeners = [];
 window.chrome = {
@@ -78,7 +79,7 @@ window.chrome = {
     query: () => Promise.resolve([{ id: 1, windowId: 1 }]),
     create: () => Promise.resolve({ id: 2 })
   },
-  runtime: { getURL: (p) => `chrome-extension://lateron/${p}` }
+  runtime: { getURL: (p) => `chrome-extension://lateron/${p}`, onMessage: { addListener() {} } }
 };
 
 let failures = 0;

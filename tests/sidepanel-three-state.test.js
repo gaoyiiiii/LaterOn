@@ -96,6 +96,11 @@ window.eval(sidepanelSource);
 (async () => {
   await tick(50);
 
+  check("首次打开默认高亮「未读」", document.querySelector(".filter.active")?.dataset.filter === "unread");
+  check("首次只显示未读与在读", ids().sort().join() === "a,b", `可见 ${ids()}`);
+  click(navOf("all"));
+  await tick(10);
+
   console.log("── 第 1 步：旧数据兼容 + 三档初始状态 ──");
   check("未读卡片：无 is-read / is-reading", !itemOf("a").classList.contains("is-read") && !itemOf("a").classList.contains("is-reading"));
   check("在读卡片：带 is-reading", itemOf("b").classList.contains("is-reading") && !itemOf("b").classList.contains("is-read"));

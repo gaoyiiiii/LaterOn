@@ -11,7 +11,7 @@
 // 这个测试用假的 chrome API 把真实的 settleDouyinDom / extractTabMetadata 跑起来，
 // 模拟「面板滞后 N 次探测」的场景，验证最终抓到的确实是新视频。
 //
-// 运行：NODE_PATH=~/.workbuddy/binaries/node/workspace/node_modules node dev-tests/douyin-spa.test.js
+// 运行：NODE_PATH=~/.workbuddy/binaries/node/workspace/node_modules node tests/douyin-spa.test.js
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");

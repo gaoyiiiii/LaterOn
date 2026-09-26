@@ -101,9 +101,9 @@
         scripting: { insertCSS: async () => {}, executeScript: async () => [] }
       };
     </script>
-    <!-- ② 真实的浮层实现由 dev-tests/build-preview.js 从这个占位符处内联进来 -->
+    <!-- ② 真实的浮层实现由 tests/build-preview.js 从这个占位符处内联进来 -->
     <script>
-// ⚠️ 本文件由 dev-tests/build-preview.js 自动生成，请勿直接编辑。
+// ⚠️ 本文件由 tests/build-preview.js 自动生成，请勿直接编辑。
 // 下面是真实的选项目面板实现（picker-ui.js + content-folder-picker.js），预览用的就是上线那份。
 // 收藏库（全屏页）和网页浮层（content script）共用的「选项目」面板。
 //
@@ -750,7 +750,7 @@ function showFolderPickerOverlay(payload) {
         // 先把上一次的浮层清掉（去掉退场动画，直接移除），再按指定主题重新弹出。
         document.getElementById("lateron-folder-picker")?.remove();
         if (typeof window.showFolderPickerOverlay !== "function") {
-          document.querySelector(".preview-tip").textContent = "浮层实现没能加载：请重新运行 node dev-tests/build-preview.js 生成预览页。";
+          document.querySelector(".preview-tip").textContent = "浮层实现没能加载：请重新运行 node tests/build-preview.js 生成预览页。";
           return;
         }
         window.showFolderPickerOverlay({ theme, selected: "work", savedCount: SAMPLE.savedCount, folders: SAMPLE.folders, pages: SAMPLE.pages });

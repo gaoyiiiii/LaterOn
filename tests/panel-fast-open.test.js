@@ -3,7 +3,7 @@
 //  2) 骨架屏：没有缓存时先显示占位卡片，第一次 render 后撤掉
 //  3) 封面搬家：旧数据里 base64 大图自动挪到单独的 laterOnCovers 键，条目只留 local://<id> 指针
 //  4) 删除收藏时，它自己上传的封面也一并删掉
-// 运行：NODE_PATH=<jsdom 路径> node dev-tests/panel-fast-open.test.js
+// 运行：NODE_PATH=<jsdom 路径> node tests/panel-fast-open.test.js
 const fs = require("fs");
 const path = require("path");
 const { JSDOM, VirtualConsole } = require("jsdom");

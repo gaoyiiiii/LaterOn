@@ -48,7 +48,8 @@ const store = {
     { id: "read", name: "阅读", createdAt: 2 }
   ],
   laterOnActiveProject: "all",
-  laterOnSettings: {}
+  laterOnSettings: {},
+  laterOnFilter: "all"
 };
 
 const changeListeners = [];
@@ -83,7 +84,8 @@ window.chrome = {
   sidePanel: { open: () => Promise.resolve() },
   runtime: {
     getURL: (path) => `chrome-extension://lateron/${path}`,
-    sendMessage: () => Promise.resolve({ ready: true })
+    sendMessage: () => Promise.resolve({ ready: true }),
+    onMessage: { addListener() {} }
   }
 };
 

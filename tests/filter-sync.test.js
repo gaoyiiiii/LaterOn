@@ -117,11 +117,14 @@ const activePanelNav = () => panelWin.document.querySelector(".filters .filter.a
 (async () => {
   await tick(80);
 
-  console.log("── 第 1 步：两个视图都起来了，默认都在「全部」──");
-  check("全屏默认高亮「全部」，三张都在", activeLibNav() === "all" && libIds() === "a,b,c", `高亮=${activeLibNav()} 可见=${libIds()}`);
-  check("侧栏默认高亮「全部」，三张都在", activePanelNav() === "all" && panelIds() === "a,b,c", `高亮=${activePanelNav()} 可见=${panelIds()}`);
+  console.log("── 第 1 步：首次打开还没有偏好，两个视图都默认显示「未读」──");
+  check("全屏默认高亮「未读」，只显示未读与在读", activeLibNav() === "unread" && libIds() === "a,b", `高亮=${activeLibNav()} 可见=${libIds()}`);
+  check("侧栏默认高亮「未读」，只显示未读与在读", activePanelNav() === "unread" && panelIds() === "a,b", `高亮=${activePanelNav()} 可见=${panelIds()}`);
 
   console.log("\n── 第 2 步：全屏点「未读」→ 侧栏跟着切 ──");
+  // 先切走，再点回未读，验证这是一次真正的用户选择并会被持久化。
+  click(libWin, libNav("all"));
+  await tick(40);
   click(libWin, libNav("unread"));
   await tick(40);
   check("全屏：只剩 a、b（在读仍算未读）", libIds() === "a,b", `可见=${libIds()}`);
@@ -144,8 +147,8 @@ const activePanelNav = () => panelWin.document.querySelector(".filters .filter.a
   await tick(40);
   check("两边都回到「全部」，三张都在", libIds() === "a,b,c" && panelIds() === "a,b,c", `全屏=${libIds()} 侧栏=${panelIds()}`);
 
-  console.log("\n── 第 5 步：重新打开侧栏 → 接着用当前那一档 ──");
-  click(libWin, libNav("unread"));
+  console.log("\n── 第 5 步：用户选过后，重新打开侧栏 → 接着用偏好 ──");
+  click(libWin, libNav("done"));
   await tick(40);
   // 关掉旧侧栏、重新开一个（模拟重新打开侧栏面板）
   panelWin.close();
@@ -154,8 +157,8 @@ const activePanelNav = () => panelWin.document.querySelector(".filters .filter.a
   await tick(80);
   const freshActive = freshPanel.document.querySelector(".filters .filter.active")?.dataset.filter;
   const freshIds = [...freshPanel.document.querySelectorAll("#items .item")].map((i) => i.dataset.id).sort().join();
-  check("新开的侧栏直接落在「未读」档", freshActive === "unread", `高亮=${freshActive}`);
-  check("新开的侧栏只显示 a、b", freshIds === "a,b", `可见=${freshIds}`);
+  check("新开的侧栏恢复用户选择的「已读」档", freshActive === "done", `高亮=${freshActive}`);
+  check("新开的侧栏只显示 c", freshIds === "c", `可见=${freshIds}`);
   freshPanel.close();
 
   console.log("\n── 第 6 步：全程没有未捕获的错误 ──");

@@ -8,6 +8,7 @@ const CURRENT_ITEM_KEY = "laterOnCurrentItem";
 // 全屏与侧栏共享的「当前筛到哪一档」（全部 / 未读 / 已读）：
 // 一边切换筛选，另一边跟着切——不用两边各点一次。
 const FILTER_KEY = "laterOnFilter";
+const DEFAULT_FILTER = "unread";
 // 「自定义顺序」：用户在一个项目里拖出来的阅读顺序。
 // 结构是 { 范围: [收藏 id, ...] }，范围是 "all" / "unfiled" / 某个项目 id——
 // 每个项目各自记一份，互不干扰。
@@ -17,7 +18,7 @@ const ORDER_KEY = "laterOnOrder";
 const COVERS_KEY = "laterOnCovers";
 let items = [];
 let projects = [];
-let filter = "all";
+let filter = DEFAULT_FILTER;
 let query = "";
 let sort = "newest";
 let orders = {};
@@ -149,10 +150,11 @@ function readToggleLabel(status) {
   return status === "done" ? "标为未读" : "标为已读";
 }
 
-// 筛选只认这三档，存进来的值不认识（老数据 / 手改）就退回「全部」。
+// 筛选只认这三档。第一次打开还没有偏好，或存入了异常值时，默认展示「未读」；
+// 用户手动切换后会写进 FILTER_KEY，以后恢复上次选择。
 const FILTER_VALUES = new Set(["all", "unread", "done"]);
 function normalizeFilter(value) {
-  return FILTER_VALUES.has(value) ? value : "all";
+  return FILTER_VALUES.has(value) ? value : DEFAULT_FILTER;
 }
 // 把三个筛选按钮的高亮同步成当前的 filter。
 // 之前只有「点按钮」时才改高亮，另一边改了存储这边就对不上了，所以抽出来单独调。

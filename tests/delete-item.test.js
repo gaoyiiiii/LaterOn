@@ -3,7 +3,7 @@
 //  1) 点卡片上的垃圾桶 → 弹出自定义确认弹窗（不是浏览器自带 alert）
 //  2) 弹窗标题写明是哪一篇；标题太长会截断
 //  3) 点「取消」/ 按 Esc 都不删；点「删除」才真的删掉，并弹 toast
-// 运行：NODE_PATH=<jsdom 路径> node dev-tests/delete-item.test.js
+// 运行：NODE_PATH=<jsdom 路径> node tests/delete-item.test.js
 const fs = require("fs");
 const path = require("path");
 const { JSDOM, VirtualConsole } = require("jsdom");
@@ -67,7 +67,7 @@ window.chrome = {
     onChanged: { addListener(fn) { changeListeners.push(fn); } }
   },
   tabs: { query: () => Promise.resolve([{ id: 1, windowId: 1 }]) },
-  runtime: { getURL: (p) => `chrome-extension://lateron/${p}` }
+  runtime: { getURL: (p) => `chrome-extension://lateron/${p}`, onMessage: { addListener() {} } }
 };
 window.confirm = (m) => { nativeDialogs.push(String(m)); return true; };
 window.alert = (m) => { nativeDialogs.push(String(m)); };

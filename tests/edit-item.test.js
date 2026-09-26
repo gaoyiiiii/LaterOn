@@ -2,7 +2,7 @@
 //   ① 带输入框的弹窗（dialog.js 新增的 prompt）：能不能填、能不能取消、回车的行为
 //   ② 后台重复收藏时的合并逻辑：用户亲手改过的内容不能被自动抓取的结果顶掉
 //   ③ 收藏库页面上的完整链路：点编辑 → 改 → 保存 → 卡片立刻变样 → 写进库
-// 运行：NODE_PATH=<jsdom 路径> node dev-tests/edit-item.test.js
+// 运行：NODE_PATH=<jsdom 路径> node tests/edit-item.test.js
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
@@ -234,7 +234,7 @@ async function partLibrary() {
       update: async () => ({}),
       create: async () => ({})
     },
-    runtime: { getURL: (file) => `chrome-extension://lateron/${file}`, sendMessage: async () => ({ ok: true }) },
+    runtime: { getURL: (file) => `chrome-extension://lateron/${file}`, sendMessage: async () => ({ ok: true }), onMessage: { addListener() {} } },
     windows: { getCurrent: async () => ({ id: 3 }) },
     sidePanel: { open: async () => ({}), close: async () => ({}) }
   };

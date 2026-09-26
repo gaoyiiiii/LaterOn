@@ -865,7 +865,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
 
 </style>
     <script>
-// ⚠️ 本文件由 dev-tests/build-board-preview.js 自动生成，请勿直接编辑。
+// ⚠️ 本文件由 tests/build-board-preview.js 自动生成，请勿直接编辑。
 // 下面是一份假数据（代替扩展的本地存储），页面本身用的是真实的 library.html + library.js。
 (() => {
   // 预览用的假封面：直接用 SVG data URI，不依赖网络，离线也能看到拼图效果。
@@ -1977,9 +1977,9 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
       <header class="topbar">
         <a class="brand" id="homeBrand" href="#" aria-label="LaterOn 首页" title="回到首页"><span>↗</span>LaterOn</a>
         <nav aria-label="筛选">
-          <button class="nav-item" data-filter="unread">未读</button>
+          <button class="nav-item active" data-filter="unread">未读</button>
           <button class="nav-item" data-filter="done">已读</button>
-          <button class="nav-item active" data-filter="all">全部</button>
+          <button class="nav-item" data-filter="all">全部</button>
         </nav>
         <label class="search">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3m2.3-5.2a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z"/></svg>
@@ -2128,6 +2128,7 @@ const CURRENT_ITEM_KEY = "laterOnCurrentItem";
 // 全屏与侧栏共享的「当前筛到哪一档」（全部 / 未读 / 已读）：
 // 一边切换筛选，另一边跟着切——不用两边各点一次。
 const FILTER_KEY = "laterOnFilter";
+const DEFAULT_FILTER = "unread";
 // 「自定义顺序」：用户在一个项目里拖出来的阅读顺序。
 // 结构是 { 范围: [收藏 id, ...] }，范围是 "all" / "unfiled" / 某个项目 id——
 // 每个项目各自记一份，互不干扰。
@@ -2137,7 +2138,7 @@ const ORDER_KEY = "laterOnOrder";
 const COVERS_KEY = "laterOnCovers";
 let items = [];
 let projects = [];
-let filter = "all";
+let filter = DEFAULT_FILTER;
 let query = "";
 let sort = "newest";
 let orders = {};
@@ -2269,10 +2270,11 @@ function readToggleLabel(status) {
   return status === "done" ? "标为未读" : "标为已读";
 }
 
-// 筛选只认这三档，存进来的值不认识（老数据 / 手改）就退回「全部」。
+// 筛选只认这三档。第一次打开还没有偏好，或存入了异常值时，默认展示「未读」；
+// 用户手动切换后会写进 FILTER_KEY，以后恢复上次选择。
 const FILTER_VALUES = new Set(["all", "unread", "done"]);
 function normalizeFilter(value) {
-  return FILTER_VALUES.has(value) ? value : "all";
+  return FILTER_VALUES.has(value) ? value : DEFAULT_FILTER;
 }
 // 把三个筛选按钮的高亮同步成当前的 filter。
 // 之前只有「点按钮」时才改高亮，另一边改了存储这边就对不上了，所以抽出来单独调。

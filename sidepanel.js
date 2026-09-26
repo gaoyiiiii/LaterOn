@@ -6,6 +6,7 @@ const SETTINGS_KEY = "laterOnSettings";
 const CURRENT_ITEM_KEY = "laterOnCurrentItem";
 // 与全屏界面共享的「当前筛到哪一档」（全部 / 未读 / 已读）：一边切，另一边跟着切。
 const FILTER_KEY = "laterOnFilter";
+const DEFAULT_FILTER = "unread";
 // 与全屏界面共享的「自定义顺序」：全屏拖出来的阅读顺序，侧栏照着排。
 const ORDER_KEY = "laterOnOrder";
 // 用户自己上传的封面（体积大）：单独放一个键，不和收藏列表混在一个数组里。
@@ -40,7 +41,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 let items = [];
 let projects = [];
 let currentItem = null;
-let filter = "all";
+let filter = DEFAULT_FILTER;
 let query = "";
 let activeProject = "all";
 let autoMarkRead = true;   // 点开文章是否自动标记为「在读」（与设置页同步）
@@ -81,10 +82,11 @@ function readToggleLabel(status) {
   return status === "done" ? "标为未读" : "标为已读";
 }
 
-// 筛选只认这三档，存进来的值不认识就退回「全部」。
+// 筛选只认这三档。第一次打开还没有偏好，或存入了异常值时，默认展示「未读」；
+// 用户手动切换后会写进 FILTER_KEY，以后恢复上次选择。
 const FILTER_VALUES = new Set(["all", "unread", "done"]);
 function normalizeFilter(value) {
-  return FILTER_VALUES.has(value) ? value : "all";
+  return FILTER_VALUES.has(value) ? value : DEFAULT_FILTER;
 }
 // 把三个筛选按钮的高亮同步成当前的 filter（全屏那边改了筛选，这边也要亮对按钮）。
 function syncFilterButtons() {

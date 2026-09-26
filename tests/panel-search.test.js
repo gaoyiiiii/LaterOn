@@ -47,7 +47,8 @@ const store = {
     { id: "read", name: "阅读", createdAt: 2 }
   ],
   laterOnActiveProject: "work",
-  laterOnSettings: {}
+  laterOnSettings: {},
+  laterOnFilter: "all"
 };
 
 const changeListeners = [];

@@ -17,7 +17,7 @@
 //
 // 夹具 fixtures/topbook-modal.html 是弹窗打开状态下的完整真实 DOM。
 //
-// 运行：NODE_PATH=~/.workbuddy/binaries/node/workspace/node_modules node dev-tests/topbook-modal.test.js
+// 运行：NODE_PATH=~/.workbuddy/binaries/node/workspace/node_modules node tests/topbook-modal.test.js
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");

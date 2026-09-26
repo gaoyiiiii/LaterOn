@@ -5,7 +5,7 @@
 //  1) 后台迟迟不回（模拟冷启动）时，标题/来源/收藏按钮照样立刻可用
 //  2) 后台稍后返回时，封面和标题会被补上（渐进增强）
 //  3) 耗时写进了 laterOnPopupDiag，设置页能看到
-// 运行：NODE_PATH=<jsdom 路径> node dev-tests/popup-fast-open.test.js
+// 运行：NODE_PATH=<jsdom 路径> node tests/popup-fast-open.test.js
 const fs = require("fs");
 const path = require("path");
 const { JSDOM, VirtualConsole } = require("jsdom");

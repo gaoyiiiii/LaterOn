@@ -2,7 +2,7 @@
 //   ① 「自定义顺序」下按存下来的顺序渲染
 //   ② 拖一张卡片到另一个位置 → 顺序写进存储（且不影响被筛掉的收藏的位置）
 //   ③ 每个项目各存一份顺序，互不干扰；在别的排序方式下拖一次会自动切到自定义顺序
-// 运行：NODE_PATH=<jsdom 路径> node dev-tests/card-order.test.js
+// 运行：NODE_PATH=<jsdom 路径> node tests/card-order.test.js
 const fs = require("fs");
 const path = require("path");
 const { JSDOM } = require("jsdom");
@@ -86,7 +86,7 @@ async function boot({ items, orders = {}, settings = {}, activeProject = "unfile
       create: async () => ({}),
       onCreated: { addListener() {} }
     },
-    runtime: { getURL: (file) => `chrome-extension://lateron/${file}`, sendMessage: async () => ({ ok: true }) },
+    runtime: { getURL: (file) => `chrome-extension://lateron/${file}`, sendMessage: async () => ({ ok: true }), onMessage: { addListener() {} } },
     windows: { getCurrent: async () => ({ id: 3 }) },
     sidePanel: { open: async () => ({}), close: async () => ({}) }
   };

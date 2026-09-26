@@ -1,7 +1,7 @@
-// 生成「弹窗效果预览页」：把真实的 theme-vars.css / dialog.css / dialog.js 内联进 dev-tests/dialog-preview.html。
+// 生成「弹窗效果预览页」：把真实的 theme-vars.css / dialog.css / dialog.js 内联进 tests/dialog-preview.html。
 // 为什么要内联：present_files 的预览面板是把单个 HTML 放进快照目录打开的，相对路径的 css/js 加载不到。
 // 好处：预览用的就是上线那份实现，改完 dialog.css / dialog.js 重跑一次这个脚本即可同步。
-// 用法：node dev-tests/build-dialog-preview.js
+// 用法：node tests/build-dialog-preview.js
 const fs = require("fs");
 const path = require("path");
 
