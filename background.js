@@ -59,8 +59,8 @@ function setupContextMenus() {
         // 菜单已存在或权限未就绪时忽略。
       }
     };
-    create({ id: MENU_SAVE_ALL, title: "收藏本窗口所有标签页到 LaterOn", contexts: ["page", "action"] });
     create({ id: MENU_SAVE_PAGE, title: "收藏此页面到 LaterOn", contexts: ["page", "action"] });
+    create({ id: MENU_SAVE_ALL, title: "收藏本窗口所有标签页到 LaterOn", contexts: ["page", "action"] });
   });
 }
 
