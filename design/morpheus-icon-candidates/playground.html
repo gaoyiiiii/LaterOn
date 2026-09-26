@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LaterOn · Morpheus icon playground</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; color: #282521; background: #f5f2ee; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; padding: 38px clamp(20px, 6vw, 84px); }
+    .shell { max-width: 1180px; margin: auto; }
+    header { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:28px; }
+    h1 { margin:0; font-size:clamp(25px,4vw,42px); letter-spacing:-1.5px; }
+    header p { max-width:510px; margin:0; color:#817a72; line-height:1.7; font-size:13px; }
+    .stage { display:grid; grid-template-columns:minmax(220px, .7fr) minmax(0, 1.3fr); gap:24px; align-items:start; }
+    .preview { position:sticky; top:24px; min-height:390px; padding:28px; border:1px solid #e2ddd6; border-radius:28px; background:rgba(255,255,255,.7); box-shadow:0 20px 60px rgba(70,57,45,.08); }
+    .preview h2 { margin:0 0 4px; font-size:14px; }
+    .preview p { margin:0 0 24px; color:#928a81; font-size:12px; }
+    .preview-row { display:flex; gap:14px; margin-top:16px; }
+    .preview-item { flex:1; display:grid; gap:8px; justify-items:center; color:#817a72; font-size:11px; }
+    .preview-icon { display:grid; place-items:center; width:88px; height:88px; border-radius:26px; background:#fffaf5; color:#ff6842; }
+    .preview-icon svg { width:54px; height:54px; }
+    .cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .candidate { appearance:none; width:100%; padding:18px; border:1px solid #e2ddd6; border-radius:22px; text-align:left; color:inherit; background:rgba(255,255,255,.66); cursor:pointer; transition:.18s ease; }
+    .candidate:hover, .candidate.active { border-color:#ff6842; box-shadow:0 12px 32px rgba(255,104,66,.13); transform:translateY(-2px); }
+    .candidate-title { display:flex; justify-content:space-between; align-items:center; margin-bottom:13px; font-weight:700; font-size:14px; }
+    .candidate-title small { color:#a29a91; font-size:11px; font-weight:500; }
+    .pair { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .sample { display:grid; gap:7px; justify-items:center; padding:12px 8px; border-radius:16px; background:#f8f5f1; color:#6c665f; }
+    .sample svg { width:58px; height:58px; }
+    .sample span { color:#8b837a; font-size:10px; }
+    @media (max-width:760px) { body{padding:24px 16px}.stage{grid-template-columns:1fr}.preview{position:static;min-height:0}.cards{grid-template-columns:1fr 1fr} }
+    @media (max-width:460px) { .cards{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header><div><h1>Morpheus Icon Playground</h1><p>等待整理与全部内容的候选。刻意避开硬方框和直线网格，尝试更柔和的弧线、胶囊、圆点与有机轮廓。</p></div></header>
+  <main class="stage">
+    <section class="preview"><h2 id="previewTitle">A · Soft Orbit</h2><p id="previewDesc">柔和托盘 + 环形内容层</p><div class="preview-row"><div class="preview-item"><div class="preview-icon" id="previewInbox"></div><span>等待整理</span></div><div class="preview-item"><div class="preview-icon" id="previewAll"></div><span>全部内容</span></div></div></section>
+    <section class="cards" id="cards"></section>
+  </main>
+</div>
+<script>
+const icons = {
+  tray: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.2 6.5c.4-1.6 1.6-2.5 3.2-2.5h9.2c1.6 0 2.8.9 3.2 2.5l1.1 7.1c.2 1.1-.7 2.1-1.8 2.1h-3.2l-1.2 2.2h-3l-1.2-2.2H7.1c-1.1 0-2-.9-1.8-2.1z"/><path d="M7.1 12.5h2.7l1.1 1.8h2.2l1.1-1.8h2.7"/></svg>`,
+  orbit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2c4.9 0 8.8 2.1 8.8 4.7s-3.9 4.7-8.8 4.7S3.2 10.5 3.2 7.9 7.1 3.2 12 3.2Z"/><path d="M4.3 10.4c1.4 2 4.3 3.3 7.7 3.3s6.3-1.3 7.7-3.3"/><path d="M5.9 14.7c1.6 1.4 3.7 2.2 6.1 2.2s4.5-.8 6.1-2.2"/></svg>`,
+  flow: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5.5h8.5a3 3 0 0 1 3 3v7"/><path d="m13.7 13.4 2.8 2.8 2.8-2.8"/><path d="M5 18.5h4"/><circle cx="5" cy="5.5" r="1.5" fill="currentColor" stroke="none"/></svg>`,
+  pebbles: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6.2c2-1.7 5.4-1.7 7.4 0s2 4.4 0 6.1-5.4 1.7-7.4 0-2-4.4 0-6.1Z"/><path d="M11.1 13.1c2-1.7 5.4-1.7 7.4 0s2 4.4 0 6.1-5.4 1.7-7.4 0-2-4.4 0-6.1Z"/></svg>`,
+  cloud: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.3 17.5a4.3 4.3 0 1 1 1.1-8.4A5.7 5.7 0 0 1 18 11.4a3.1 3.1 0 0 1-.5 6.1z"/><path d="M12 11.5v5"/><path d="m9.8 14.3 2.2 2.2 2.2-2.2"/></svg>`,
+  constellation: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2"/><circle cx="17.5" cy="5.5" r="1.5"/><circle cx="15.5" cy="17" r="2.5"/><circle cx="6" cy="17" r="1.4"/><path d="m7.7 8.2 6.8 7M7.8 6.8l8.3-.7M7.2 15.8l6-1.1"/></svg>`,
+  bookmark: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5.5A2.5 2.5 0 0 1 9.5 3H17a2 2 0 0 1 2 2v14.5l-5-3.1-5 3.1V6.5A1.5 1.5 0 0 0 7.5 5H5.8A2.8 2.8 0 0 0 3 7.8v9.7"/></svg>`,
+  waves: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5c2.4-2.1 4.8-2.1 7.2 0s4.8 2.1 7.2 0"/><path d="M4 13c2.4-2.1 4.8-2.1 7.2 0s4.8 2.1 7.2 0"/><path d="M4 17.5c2.4-2.1 4.8-2.1 7.2 0s4.8 2.1 7.2 0"/></svg>`
+};
+const sets = [
+  ['A · Soft Orbit','柔和托盘 + 环形内容层','tray','orbit'],
+  ['B · Flow','流程托盘 + 胶囊内容层','flow','pebbles'],
+  ['C · Cloud','云朵收件 + 点阵内容层','cloud','constellation'],
+  ['D · Bookmark','书签收纳 + 波纹内容层','bookmark','waves']
+];
+const cards = document.querySelector('#cards');
+function select(i) { document.querySelectorAll('.candidate').forEach((e,n)=>e.classList.toggle('active',n===i)); const s=sets[i]; document.querySelector('#previewTitle').textContent=s[0]; document.querySelector('#previewDesc').textContent=s[1]; document.querySelector('#previewInbox').innerHTML=icons[s[2]]; document.querySelector('#previewAll').innerHTML=icons[s[3]]; }
+sets.forEach((s,i)=>{ const b=document.createElement('button'); b.className='candidate'; b.innerHTML=`<div class="candidate-title"><span>${s[0]}</span><small>候选 ${i+1}</small></div><div class="pair"><div class="sample">${icons[s[2]]}<span>等待整理</span></div><div class="sample">${icons[s[3]]}<span>全部内容</span></div></div>`; b.onclick=()=>select(i); cards.append(b); });
+select(0);
+</script>
+</body>
+</html>
