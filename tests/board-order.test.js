@@ -3,7 +3,7 @@
 //   ② 松手后顺序写回：项目顺序进 PROJECTS_KEY（侧栏项目列表同步跟着变）
 //   ③ 重新打开还在那个顺序；取消（dragend 没 drop）什么都不改；
 //      从改简介的铅笔上按下不会触发拖拽
-// 注：图板上只有项目，「待整理」不占一块，所以顺序就是项目的顺序。
+// 注：图板上只有项目，「等待整理」不占一块，所以顺序就是项目的顺序。
 // 运行：NODE_PATH=<jsdom 路径> node tests/board-order.test.js
 const fs = require("fs");
 const path = require("path");
@@ -143,8 +143,8 @@ async function dropDrag(app, point) {
   console.log("\n── ① 拖动中：DOM 不动，只让位 ──");
   const store = makeStore();
   const app = await boot(store);
-  // 4 篇收藏里 u1 没归项目（待整理），图板上不占一块 → 3 个项目 3 块图板
-  check("三块图板：工作 / 阅读 / 观影（待整理不占块）", boardIds(app.board).join(",") === "work,read,movie", boardIds(app.board).join(","));
+  // 4 篇收藏里 u1 没归项目（等待整理），图板上不占一块 → 3 个项目 3 块图板
+  check("三块图板：工作 / 阅读 / 观影（等待整理不占块）", boardIds(app.board).join(",") === "work,read,movie", boardIds(app.board).join(","));
 
   const dragging = await startDrag(app, "movie", 0);
   check("被拖的那块加上了 .dragging", boardOf(app.board, "movie").classList.contains("dragging"));

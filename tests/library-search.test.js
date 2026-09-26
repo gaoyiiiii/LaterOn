@@ -28,7 +28,7 @@ const dom = new JSDOM(html, {
 const { window } = dom;
 const { document } = window;
 
-// ── 假数据：三篇带「深度」的文章散在三个不同的归属里（项目 / 另一个项目 / 待整理），
+// ── 假数据：三篇带「深度」的文章散在三个不同的归属里（项目 / 另一个项目 / 等待整理），
 //    外加一篇已读的，用来验证「未读 / 已读」筛选还照常起作用。 ──
 const now = Date.now();
 const item = (id, extra) => ({
@@ -121,7 +121,7 @@ async function search(word) {
 
   console.log("── 起点：在「全部项目」图板视图里 ──");
   check("默认是图板视图，两个类目", boardIds().join(",") === "read,work", boardIds().join(","));
-  check("顶部计数是图板的说法", /2 个类目 · 共 4 篇收藏 · 3 篇没看完/.test(countText()) && !countText().includes("待整理"), countText());
+  check("顶部计数是图板的说法", /2 个类目 · 共 4 篇收藏 · 3 篇没看完/.test(countText()) && !countText().includes("等待整理"), countText());
 
   console.log("\n── 在「全部项目」里搜索：直接铺文章卡片，不筛类目 ──");
   await search("深度");
@@ -141,14 +141,14 @@ async function search(word) {
   console.log("\n── 清空搜索：回到图板 ──");
   await search("");
   check("又是图板视图", boardIds().join(",") === "read,work" && document.querySelector("#boardGrid").hidden === false);
-  check("计数回到图板说法", /2 个类目 · 共 4 篇收藏 · 3 篇没看完/.test(countText()) && !countText().includes("待整理"), countText());
+  check("计数回到图板说法", /2 个类目 · 共 4 篇收藏 · 3 篇没看完/.test(countText()) && !countText().includes("等待整理"), countText());
 
-  console.log("\n── 钻进「阅读」项目里搜索：照样能搜到别的项目 / 待整理里的文章 ──");
+  console.log("\n── 钻进「阅读」项目里搜索：照样能搜到别的项目 / 等待整理里的文章 ──");
   click(document.querySelector('#projectList .project-nav[data-project="read"]'));
   await tick(30);
   check("（准备）人在「阅读」里，只看得见这个项目的 2 篇", cardIds().join(",") === "b1,d1", cardIds().join(","));
   await search("深度");
-  check("搜到了「工作」项目和「待整理」里的文章（以前搜不到）", cardIds().join(",") === "a1,b1,d1,u1", cardIds().join(","));
+  check("搜到了「工作」项目和「等待整理」里的文章（以前搜不到）", cardIds().join(",") === "a1,b1,d1,u1", cardIds().join(","));
   check("顶栏会写明这是全局结果", /在全部收藏里找到 4 篇/.test(countText()), countText());
   check("侧栏仍然高亮着「阅读」（搜索不会把人从项目里踢出去）",
     document.querySelector('#projectList .project-nav[data-project="read"]').classList.contains("active"));
@@ -159,14 +159,14 @@ async function search(word) {
   check("计数回到项目的说法", /2 篇收藏 · 1 篇没看完/.test(countText()), countText());
   check("侧栏还在「阅读」上", store.laterOnActiveProject === "read", String(store.laterOnActiveProject));
 
-  console.log("\n── 在「待整理」里搜索也一样 ──");
+  console.log("\n── 在「等待整理」里搜索也一样 ──");
   click(document.querySelector('.project-nav[data-project="unfiled"]'));
   await tick(30);
-  check("（准备）待整理里只有 1 篇", cardIds().join(",") === "u1", cardIds().join(","));
+  check("（准备）等待整理里只有 1 篇", cardIds().join(",") === "u1", cardIds().join(","));
   await search("深度");
   check("同样搜出全部 4 篇", cardIds().join(",") === "a1,b1,d1,u1", cardIds().join(","));
   await search("");
-  check("清空后回到待整理", cardIds().join(",") === "u1", cardIds().join(","));
+  check("清空后回到等待整理", cardIds().join(",") === "u1", cardIds().join(","));
 
   console.log("\n── 搜不到东西时 ──");
   await search("这个词肯定没有");

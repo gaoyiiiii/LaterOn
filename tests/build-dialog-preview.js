@@ -128,7 +128,7 @@ ${dialogJs}
         deleteFolder: () => LaterOnDialog.confirm({
           tone: "danger",
           title: "删除项目「工作与灵感」？",
-          message: "里面的 2 篇收藏会移到「待整理」，不会被删除。",
+          message: "里面的 2 篇收藏会移到「等待整理」，不会被删除。",
           confirmText: "删除项目"
         }),
         bulkDelete: () => LaterOnDialog.confirm({

@@ -1,10 +1,10 @@
 // 把真实的 library.js 放进假 DOM 里跑，检查「图板」视图与全屏侧栏：
-//  1) 全部项目默认就是图板视图（一个类目一张图板，待整理不占块）
+//  1) 全部项目默认就是图板视图（一个类目一张图板，等待整理不占块）
 //  2) 封面是该类目里几篇收藏拼出来的：有封面的优先，最多 3 张
 //  3) 没写过简介时自动生成一句概览；写过就用写的那句
 //  4) 点图板进入该类目看卡片列表；侧栏的项目列表任何时候都列着（不用先钻进去）
 //  5) 顶部「未读 / 已读」筛选照样影响图板上的篇数
-//  6) 不再有手动「卡片/图板」切换；全部项目恒为图板，待整理/项目恒为卡片
+//  6) 不再有手动「卡片/图板」切换；全部项目恒为图板，等待整理/项目恒为卡片
 // 用 jsdom 而不是真浏览器，只是为了让这个检查能在命令行里快速反复跑。
 const fs = require("fs");
 const path = require("path");
@@ -153,18 +153,18 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   check("两个项目 = 2 张图板", boardCards().length === 2, boardCards().map((c) => c.dataset.project).join(","));
   check("一篇收藏都没有的项目不显示图板", !boardOf("empty"), boardCards().map((c) => c.dataset.project).join(","));
   check("图板上写着类目名", text(boardOf("work"), ".board-name") === "工作", text(boardOf("work"), ".board-name"));
-  check("「待整理」不再单独占一块图板", !boardOf("unfiled"));
-  // 待整理那 1 篇不进任何图板；全部项目统计只描述项目图板本身。
-  check("顶部计数改成按类目算且不混入待整理", /2 个类目 · 共 5 篇收藏 · 4 篇没看完/.test(document.querySelector("#countText").textContent) && !document.querySelector("#countText").textContent.includes("待整理"), document.querySelector("#countText").textContent);
-  // 侧栏：全屏页面里「待整理」要钉在最上面，而且有内容时整块高亮
+  check("「等待整理」不再单独占一块图板", !boardOf("unfiled"));
+  // 等待整理那 1 篇不进任何图板；全部项目统计只描述项目图板本身。
+  check("顶部计数改成按类目算且不混入等待整理", /2 个类目 · 共 5 篇收藏 · 4 篇没看完/.test(document.querySelector("#countText").textContent) && !document.querySelector("#countText").textContent.includes("等待整理"), document.querySelector("#countText").textContent);
+  // 侧栏：全屏页面里「等待整理」要钉在最上面，而且有内容时整块高亮
   const inbox = document.querySelector(".inbox-card");
-  check("侧栏有「待整理」这块，而且钉在最上面", !!inbox && document.querySelector(".project-sidebar").firstElementChild === inbox);
-  check("点它进的是待整理范围", inbox.dataset.project === "unfiled");
-  check("有待整理的收藏时整块高亮", inbox.classList.contains("has-items"));
+  check("侧栏有「等待整理」这块，而且钉在最上面", !!inbox && document.querySelector(".project-sidebar").firstElementChild === inbox);
+  check("点它进的是等待整理范围", inbox.dataset.project === "unfiled");
+  check("有等待整理的收藏时整块高亮", inbox.classList.contains("has-items"));
   check("提示写明还有几篇没归位", inbox.querySelector(".inbox-hint").textContent === "1 篇还没归到项目", inbox.querySelector(".inbox-hint").textContent);
   check("篇数写在右侧的圆形角标里", inbox.querySelector("#unfiledCount").textContent === "1", inbox.querySelector("#unfiledCount").textContent);
   const topNavs = [...document.querySelectorAll(".project-sidebar > .project-nav")];
-  check("侧栏顶层只有「待整理 + 全部项目」两项（平级）", topNavs.length === 2 && topNavs[0].dataset.project === "unfiled" && topNavs[1].dataset.project === "all", topNavs.map((n) => n.dataset.project).join(","));
+  check("侧栏顶层只有「等待整理 + 全部项目」两项（平级）", topNavs.length === 2 && topNavs[0].dataset.project === "unfiled" && topNavs[1].dataset.project === "all", topNavs.map((n) => n.dataset.project).join(","));
 
   console.log("\n── 组合封面 ──");
   const workCover = boardOf("work").querySelector(".board-cover");

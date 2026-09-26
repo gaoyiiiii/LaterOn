@@ -54,7 +54,7 @@ const check = (label, ok, extra = "") => {
 const tick = (ms = 0) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 const FOLDERS = [
-  { id: "", name: "待整理", count: 3 },
+  { id: "", name: "等待整理", count: 3 },
   { id: "work", name: "工作", count: 18 },
   { id: "design", name: "设计灵感", count: 7 }
 ];
@@ -75,7 +75,7 @@ const PAGES = [
   const shadow = host.shadowRoot;
   const q = (selector) => shadow.querySelector(selector);
   const rows = [...shadow.querySelectorAll(".lon-folder")];
-  check("列出了全部项目（含待整理）", rows.length === 3, rows.map((r) => r.querySelector(".lon-folder-name").textContent).join(" / "));
+  check("列出了全部项目（含等待整理）", rows.length === 3, rows.map((r) => r.querySelector(".lon-folder-name").textContent).join(" / "));
   check("每行显示各自已收藏数量", rows[0].querySelector(".lon-folder-count").textContent === "3" && rows[1].querySelector(".lon-folder-count").textContent === "18");
   check("默认选中传入的项目", rows[1].classList.contains("is-selected") && rows[1].getAttribute("aria-checked") === "true");
   check("确认按钮写明了要存进的项目", q(".lon-primary").textContent === "收藏到「工作」", q(".lon-primary").textContent);
@@ -203,7 +203,7 @@ const PAGES = [
   window.__overlay({ theme: "dark", selected: "", folders: FOLDERS, pages: PAGES });
   const host2 = document.getElementById("lateron-folder-picker");
   check("深色主题下打了深色标记", host2.shadowRoot.querySelector(".lon-root").getAttribute("data-dark") === "1");
-  check("未选中时默认落到「待整理」", host2.shadowRoot.querySelector(".lon-primary").textContent === "收藏到「待整理」", host2.shadowRoot.querySelector(".lon-primary").textContent);
+  check("未选中时默认落到「等待整理」", host2.shadowRoot.querySelector(".lon-primary").textContent === "收藏到「等待整理」", host2.shadowRoot.querySelector(".lon-primary").textContent);
   const cancelBefore = sent.filter((m) => m.type === "CANCEL_BATCH_SAVE").length;
   document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
   await tick(300);

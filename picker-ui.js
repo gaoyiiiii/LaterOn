@@ -141,8 +141,8 @@
     // 输入框里写下的新项目名（空 = 用上面选中的那个项目）。
     const pendingNewName = () => newInput.value.trim();
     const selectedName = () => {
-      if (!selected) return "待整理";
-      return folders.find((folder) => folder.id === selected)?.name || "待整理";
+      if (!selected) return "等待整理";
+      return folders.find((folder) => folder.id === selected)?.name || "等待整理";
     };
     const applyLabel = () => {
       const name = pendingNewName();

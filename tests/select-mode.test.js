@@ -163,7 +163,7 @@ const ITEMS = ["a", "b", "c"].map((key, index) => ({
   const pickerShadow = pickerHost?.shadowRoot;
   check("点击移动到后打开共享项目浮层", !!pickerShadow?.querySelector(".lon-root.lon-popover"));
   check("标题写明本次移动两篇", pickerShadow?.querySelector(".lon-title")?.textContent === "把选中的 2 篇放到哪个项目？", pickerShadow?.querySelector(".lon-title")?.textContent);
-  check("浮层显示待整理和项目列表", pickerShadow?.querySelectorAll(".lon-folder").length === 3, `${pickerShadow?.querySelectorAll(".lon-folder").length} 行`);
+  check("浮层显示等待整理和项目列表", pickerShadow?.querySelectorAll(".lon-folder").length === 3, `${pickerShadow?.querySelectorAll(".lon-folder").length} 行`);
   check("每行包含缩略图与数量", !!pickerShadow?.querySelector(".lon-folder-icon") && !!pickerShadow?.querySelector(".lon-folder-count"));
   const workRow = [...pickerShadow.querySelectorAll(".lon-folder")]
     .find((row) => row.querySelector(".lon-folder-name")?.textContent === "工作");

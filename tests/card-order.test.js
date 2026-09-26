@@ -222,7 +222,7 @@ async function dragCard({ window, grid, tick }, fromId, index) {
     // 把 c 拖到最前面 → 项目里的顺序变成 c a b。
     await dragCard(app, "c", 0);
     check("只改了这个项目的顺序", app.store.laterOnOrder.p1.join("") === "cab", String(app.store.laterOnOrder.p1));
-    check("「待整理」那一份没被动过", app.store.laterOnOrder.unfiled.join("") === "cba", String(app.store.laterOnOrder.unfiled));
+    check("「等待整理」那一份没被动过", app.store.laterOnOrder.unfiled.join("") === "cba", String(app.store.laterOnOrder.unfiled));
   }
 
   // ── ⑥ 拖到项目上仍然是「移动到该项目」（老功能没被抢走）──

@@ -22,7 +22,7 @@ assert.strictEqual(
 );
 assert.match(settings, /默认 Alt\+Shift\+1/);
 assert.match(readme, /按 `Alt\+Shift\+1`/);
-assert.match(settingsHtml, /关掉后收藏进「待整理」/);
+assert.match(settingsHtml, /关掉后收藏进「等待整理」/);
 assert.doesNotMatch(settingsHtml, /关掉后[^<]*全部文章/);
 assert.match(theme, /askFolderOnSingle:\s*true/);
 assert.match(background, /settings\.askFolderOnSingle\s*!==\s*false/);

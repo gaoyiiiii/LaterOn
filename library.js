@@ -1264,7 +1264,7 @@ function createCard(item) {
 // 但卡片 select 需要这个选项才能把 .value 设对，否则卡片上会显示成空白。
 function fillProjectSelect(select, ensureId, ensureName) {
   select.replaceChildren();
-  select.append(new Option("待整理", ""));
+  select.append(new Option("等待整理", ""));
   projects.forEach((project) => select.append(new Option(project.name, project.id)));
   if (ensureId && !projects.some((project) => project.id === ensureId)) {
     select.append(new Option(ensureName || "新项目", ensureId));
@@ -1505,7 +1505,7 @@ function refreshCardProjectOptions() {
     const select = card.querySelector(".project-select");
     if (!select) continue;
     const current = select.value;
-    select.replaceChildren(new Option("待整理", ""));
+    select.replaceChildren(new Option("等待整理", ""));
     projects.forEach((project) => select.append(new Option(project.name, project.id)));
     if (select.value !== current) select.value = current;
   }
@@ -1530,7 +1530,7 @@ function enableDropTarget(target) {
     const itemId = event.dataTransfer.getData("text/plain");
     const destination = target.dataset.project;
     const projectId = destination === "unfiled" ? null : destination;
-    const projectName = projectId ? projects.find((project) => project.id === projectId)?.name : "待整理";
+    const projectName = projectId ? projects.find((project) => project.id === projectId)?.name : "等待整理";
     clearDropHighlights();
     if (!itemId || !items.some((item) => item.id === itemId)) return;
     await updateItem(itemId, { projectId });
@@ -1728,7 +1728,7 @@ async function deleteProject(id) {
     tone: "danger",
     title: `删除项目「${project.name}」？`,
     message: affected
-      ? `里面的 ${affected} 篇收藏会移到「待整理」，不会被删除。`
+      ? `里面的 ${affected} 篇收藏会移到「等待整理」，不会被删除。`
       : "这个项目里还没有收藏，删除后无法恢复。",
     confirmText: "删除项目"
   });
@@ -1745,7 +1745,7 @@ async function deleteProject(id) {
   }
   renderProjects();
   render();
-  showToast(affected ? `已删除项目「${project.name}」，${affected} 篇已移到待整理` : `已删除项目「${project.name}」`);
+  showToast(affected ? `已删除项目「${project.name}」，${affected} 篇已移到等待整理` : `已删除项目「${project.name}」`);
 }
 
 function openFolderMenu(projectId, x, y) {
@@ -1922,7 +1922,7 @@ function projectPickerFolders() {
   }
   // 每行左侧的封面缩略图用 projectCoverFor —— 和侧栏项目行是同一份逻辑，两处永远一致。
   return [
-    { id: "", name: "待整理", count: unfiled, cover: projectCoverFor("") },
+    { id: "", name: "等待整理", count: unfiled, cover: projectCoverFor("") },
     ...projects.map((project) => ({ id: project.id, name: project.name, count: counts.get(project.id) || 0, cover: projectCoverFor(project.id) }))
   ];
 }
@@ -1951,7 +1951,7 @@ function openCardProjectPicker(card, item, select) {
       await updateItem(item.id, { projectId });
       const latest = items.find((entry) => entry.id === item.id);
       updateCard(card, latest);
-      showToast(projectId ? `已移到「${name}」` : "已移回待整理");
+      showToast(projectId ? `已移到「${name}」` : "已移回等待整理");
     }
   });
 }
@@ -2031,7 +2031,7 @@ function openBulkProjectPicker() {
     onCreateProject: createProjectFromPicker,
     onPick: async (projectId, name) => {
       await bulkMove(projectId || null);
-      showToast(`已将 ${count} 篇移到「${name || "待整理"}」`);
+      showToast(`已将 ${count} 篇移到「${name || "等待整理"}」`);
     }
   });
 }

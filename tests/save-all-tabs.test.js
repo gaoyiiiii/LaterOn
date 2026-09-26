@@ -226,8 +226,8 @@ const check = (label, ok, extra = "") => {
   const folderPayload = overlays[0]?.payload?.folders || [];
   const unfiledRow = folderPayload.find((folder) => folder.id === "");
   const workRow = folderPayload.find((folder) => folder.id === FOLDER_ID);
-  check("浮层里列出了「待整理」和已有项目", !!unfiledRow && !!workRow, folderPayload.map((f) => `${f.name}(${f.count})`).join(" / "));
-  check("每个项目都带上了已收藏数量", unfiledRow?.count === 2 && workRow?.count === 0, `待整理=${unfiledRow?.count} 工作=${workRow?.count}`);
+  check("浮层里列出了「等待整理」和已有项目", !!unfiledRow && !!workRow, folderPayload.map((f) => `${f.name}(${f.count})`).join(" / "));
+  check("每个项目都带上了已收藏数量", unfiledRow?.count === 2 && workRow?.count === 0, `等待整理=${unfiledRow?.count} 工作=${workRow?.count}`);
   check("浮层默认选中上次用过的项目", overlays[0]?.payload?.selected === FOLDER_ID, `selected=${JSON.stringify(overlays[0]?.payload?.selected)}`);
   check("浮层里带上了将要收藏的页面清单", overlays[0]?.payload?.pages?.length === 12 && overlays[0].payload.pages[0].title === "文章一", `${overlays[0]?.payload?.pages?.length} 个页面`);
   check("浮层的主题跟着扩展设置走", overlays[0]?.payload?.theme === "light", `theme=${overlays[0]?.payload?.theme}`);
@@ -341,21 +341,21 @@ const check = (label, ok, extra = "") => {
   console.log("\n── 第 6 步：已收藏过的链接会被搬进这次新选的项目 ──");
   const before6 = store.laterOnItems.length;
   const pillsBefore6 = pills.length;
-  store[LAST_PROJECT_KEY] = ""; // 这次「上次用过的项目」是空的 → 目标为「待整理」
+  store[LAST_PROJECT_KEY] = ""; // 这次「上次用过的项目」是空的 → 目标为「等待整理」
   await sandbox.saveAllTabsInWindow("shortcut");
   const diag6 = store.laterOnDiag || {};
   check("一条也没新增（12 篇都已在库里）", diag6.lastAdded === 0 && store.laterOnItems.length === before6, `added=${diag6.lastAdded} / ${store.laterOnItems.length} 条`);
-  check("12 篇全部从「工作」搬回「待整理」", store.laterOnItems.every((i) => (i.projectId || null) === null), `仍在「工作」的 ${store.laterOnItems.filter((i) => i.projectId === FOLDER_ID).length} 篇`);
+  check("12 篇全部从「工作」搬回「等待整理」", store.laterOnItems.every((i) => (i.projectId || null) === null), `仍在「工作」的 ${store.laterOnItems.filter((i) => i.projectId === FOLDER_ID).length} 篇`);
   check("搬了家但没被复制成两条", store.laterOnItems.length === 12, `${store.laterOnItems.length} 条`);
   check("诊断里记下了「搬家 12 篇」", diag6.lastMoved === 12, `lastMoved=${diag6.lastMoved}`);
 
   const pills6 = pills.slice(pillsBefore6).map((p) => p.items[0]);
-  const movedPills = pills6.filter((p) => String(p.text).startsWith("已移到「待整理」"));
+  const movedPills = pills6.filter((p) => String(p.text).startsWith("已移到「等待整理」"));
   check("每篇都弹了一条「已移到…」的通知", movedPills.length === 12, `共 ${movedPills.length} 条`);
   check("「搬家」通知用的是橙色搬家样式", movedPills.every((p) => p.kind === "move"), [...new Set(movedPills.map((p) => p.kind))].join(","));
-  check("总结说明「把 12 篇已收藏的移入待整理」", pills6.some((p) => /把 12 篇已收藏的移入「待整理」/.test(String(p.text))), pills6.map((p) => p.text).join(" | "));
+  check("总结说明「把 12 篇已收藏的移入等待整理」", pills6.some((p) => /把 12 篇已收藏的移入「等待整理」/.test(String(p.text))), pills6.map((p) => p.text).join(" | "));
 
-  // ── 第 7 步：选的项目在「等待选择」期间被删掉 → 退回「待整理」──
+  // ── 第 7 步：选的项目在「等待选择」期间被删掉 → 退回「等待整理」──
   console.log("\n── 第 7 步：项目被删掉后的兜底 ──");
   store.laterOnItems = [];
   store.laterOnSettings = {}; // 重新打开「先选项目」
@@ -366,7 +366,7 @@ const check = (label, ok, extra = "") => {
   store.laterOnProjects = []; // 模拟：用户在这期间把「工作」删了
   await sendFromPage({ type: "CONFIRM_BATCH_SAVE", projectId: FOLDER_ID });
   await waitForBatchDone();
-  check("项目已经不存在时，收藏退回「待整理」", store.laterOnItems.length === 12 && store.laterOnItems.every((i) => (i.projectId || null) === null), `${store.laterOnItems.filter((i) => i.projectId).length} 篇带 projectId`);
+  check("项目已经不存在时，收藏退回「等待整理」", store.laterOnItems.length === 12 && store.laterOnItems.every((i) => (i.projectId || null) === null), `${store.laterOnItems.filter((i) => i.projectId).length} 篇带 projectId`);
   check("也不会再把它记成「上次用过的项目」", !store[LAST_PROJECT_KEY], JSON.stringify(store[LAST_PROJECT_KEY]));
 
   console.log(failures === 0 ? "\n全部检查通过 🎉" : `\n有 ${failures} 项失败`);

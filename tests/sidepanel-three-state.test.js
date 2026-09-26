@@ -144,11 +144,11 @@ window.eval(sidepanelSource);
   check("已读：c、d 两张（不受点开影响）", visibleItems().length === 2 && ids().sort().join() === "c,d", `可见 ${ids()}`);
   click(navOf("all")); await tick(10);
 
-  console.log("\n── 第 6 步：侧栏模式不给「待整理」筛选项 ──");
+  console.log("\n── 第 6 步：侧栏模式不给「等待整理」筛选项 ──");
   // 这 4 篇全是 projectId: null（都没归项目），但侧栏不管整理这件事——
-  // 「待整理」只在全屏页面的左侧栏最上面，那边才负责催人归位。
+  // 「等待整理」只在全屏页面的左侧栏最上面，那边才负责催人归位。
   const filterNames = [...document.querySelectorAll("#projectFilters .project-filter .project-name")].map((el) => el.textContent);
-  check("筛选项里没有「待整理」", !filterNames.includes("待整理"), filterNames.join(" / "));
+  check("筛选项里没有「等待整理」", !filterNames.includes("等待整理"), filterNames.join(" / "));
   check("「全部项目」还在，且没归项目的收藏照样看得见", filterNames[0] === "全部项目" && visibleItems().length === 4, `${filterNames.join("/")} · 可见 ${visibleItems().length}`);
   // 万一首选项里存着 unfiled（老用户切过），这里也要当成「全部项目」，否则一个按钮都不高亮。
   // 这条只能静态断言：本测试是单实例 jsdom，没法干净地重新初始化。

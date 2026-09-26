@@ -50,7 +50,7 @@ const text = (selector) => visible()?.querySelector(selector)?.textContent || ""
 
   console.log("\n── 普通确认框 ──");
   let answer;
-  const first = window.LaterOnDialog.confirm({ title: "删除项目「工作」？", message: "里面的 2 篇收藏会移到「待整理」。", confirmText: "删除项目" });
+  const first = window.LaterOnDialog.confirm({ title: "删除项目「工作」？", message: "里面的 2 篇收藏会移到「等待整理」。", confirmText: "删除项目" });
   first.then((value) => { answer = value; });
   await tick();
   check("弹窗出现在页面上", !!visible());

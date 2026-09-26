@@ -578,10 +578,10 @@ function isIncomplete(record) {
 // 用途：用户可能在浮层开着的时候把项目删了，或上次用过的项目早已被删，
 // 这时要退回「待整理」，否则收藏会带上一个指向不存在项目的归属。
 async function resolveProject(projectId) {
-  if (!projectId) return { id: null, name: "待整理" };
+  if (!projectId) return { id: null, name: "等待整理" };
   const projects = (await chrome.storage.local.get(PROJECTS_KEY))[PROJECTS_KEY] || [];
   const matched = projects.find((project) => project.id === projectId);
-  return matched ? { id: matched.id, name: matched.name } : { id: null, name: "待整理" };
+  return matched ? { id: matched.id, name: matched.name } : { id: null, name: "等待整理" };
 }
 
 async function saveItem(item, options = {}) {
@@ -775,7 +775,7 @@ async function runBatchSave({ tabs, source = "shortcut", notifyTabId = null, pro
   // 此时「当前活动标签页」已经变成那个弹窗了。
   const notify = (text, kind = "") => notifyTab(notifyTabId, text, kind);
   // 这一批要存进哪个项目（用于提示文案）。
-  const folderLabel = projectName || "待整理";
+  const folderLabel = projectName || "等待整理";
   // 只收一篇时（设置里打开了「收藏单篇前先选项目」）提示从简：
   // 跟以前「一键收藏」一样只弹一条结果，不再多出「开始收藏」「全部完成」两条。
   const single = (tabs || []).length === 1;
@@ -989,7 +989,7 @@ async function showPickerOverlay(tab, payload) {
       return null;
     };
     const folders = [
-      { id: "", name: "待整理", count: unfiled, cover: coverFor("") },
+      { id: "", name: "等待整理", count: unfiled, cover: coverFor("") },
       ...projects.map((project) => ({ id: project.id, name: project.name, count: counts.get(project.id) || 0, cover: coverFor(project.id) }))
     ];
 

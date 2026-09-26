@@ -1,7 +1,7 @@
 // 模拟验证：收藏「单篇」时的两种行为（由设置里的「收藏当前网页前，先选项目」控制）。
 // 用假的 chrome API 把 background.js 跑起来，检查：
 //  1) 尚未存过设置时默认开启：先在当前网页里弹出「选项目」浮层
-//  2) 用户明确关闭时：一键直接收藏，收进「待整理」，不弹任何浮层
+//  2) 用户明确关闭时：一键直接收藏，收进「等待整理」，不弹任何浮层
 //  3) 开关打开时：先在当前网页里弹出「选项目」浮层，此刻还没有真正收藏
 //  3) 浮层里选好项目并确认 → 这一篇带上所选项目，且只弹一条结果提示（不再多出「开始/总结」）
 //  4) 这一篇已经收藏过时：确认后被搬进所选项目，提示写明「已移到」
@@ -183,7 +183,7 @@ const check = (label, ok, extra = "") => {
   check("没有弹任何浮层、也没开窗口", overlays.length === 0 && windowsCreated.length === 0, `浮层 ${overlays.length} / 窗口 ${windowsCreated.length}`);
   const saved = store.laterOnItems.find((i) => i.url === PAGE_URL);
   check("这一篇被直接收藏了", !!saved, saved ? saved.title : "没找到");
-  check("关闭后收进「待整理」（不带项目）", saved && (saved.projectId || null) === null, `projectId=${JSON.stringify(saved?.projectId)}`);
+  check("关闭后收进「等待整理」（不带项目）", saved && (saved.projectId || null) === null, `projectId=${JSON.stringify(saved?.projectId)}`);
   check("只弹了一条结果提示", pills.length === 1 && String(pills[0].items[0].text).includes("已收藏："), pills.map((p) => p.items[0].text).join(" | "));
 
   // ── 第 2 步：打开开关 → 先弹浮层，此刻不收藏 ──────────────────
@@ -197,7 +197,7 @@ const check = (label, ok, extra = "") => {
   check("此刻还没有真正收藏", !store.laterOnItems.some((i) => i.url === PAGE_URL), `${store.laterOnItems.length} 条`);
   check("浮层里只有这一篇", overlays[0]?.payload?.pages?.length === 1 && overlays[0].payload.pages[0].url === PAGE_URL, `${overlays[0]?.payload?.pages?.length} 个页面`);
   check("浮层默认选中上次用过的项目", overlays[0]?.payload?.selected === FOLDER_ID, overlays[0]?.payload?.selected);
-  check("浮层里列出了已有项目和「待整理」", (overlays[0]?.payload?.folders?.length || 0) === 2, (overlays[0]?.payload?.folders || []).map((f) => f.name).join(" / "));
+  check("浮层里列出了已有项目和「等待整理」", (overlays[0]?.payload?.folders?.length || 0) === 2, (overlays[0]?.payload?.folders || []).map((f) => f.name).join(" / "));
   check("这一篇没收藏过，浮层不提示「已收藏过」", overlays[0]?.payload?.savedCount === 0, `savedCount=${overlays[0]?.payload?.savedCount}`);
   check("这一篇被暂存下来了", session[PENDING_KEY]?.tabs?.length === 1, `${session[PENDING_KEY]?.tabs?.length} 个`);
 
@@ -243,7 +243,7 @@ const check = (label, ok, extra = "") => {
   await sandbox.quickSave(tab, "shortcut");
   check("不再弹浮层", overlays.length === overlayBefore, `浮层 +${overlays.length - overlayBefore}`);
   const again = store.laterOnItems.find((i) => i.url === PAGE_URL);
-  check("直接收进「待整理」", !!again && (again.projectId || null) === null, `projectId=${JSON.stringify(again?.projectId)}`);
+  check("直接收进「等待整理」", !!again && (again.projectId || null) === null, `projectId=${JSON.stringify(again?.projectId)}`);
 
   // ── 第 7 步：侧边栏 / 工具栏小窗口里的「收藏」按钮 ────────────
   // 这两个入口以前各自直接写库，会绕过开关；现在统一走后台的 QUICK_SAVE_TAB。
@@ -264,7 +264,7 @@ const check = (label, ok, extra = "") => {
   check("这时不弹浮层", overlays.length === overlaysBeforeDirect, `浮层 +${overlays.length - overlaysBeforeDirect}`);
   check("结果回传给按钮显示（不是重复的旧收藏）", panelDirect?.duplicated === false, JSON.stringify(panelDirect));
   const fromPanel = store.laterOnItems.find((i) => i.url === PAGE_URL);
-  check("这一篇被收进「待整理」", !!fromPanel && (fromPanel.projectId || null) === null, `projectId=${JSON.stringify(fromPanel?.projectId)}`);
+  check("这一篇被收进「等待整理」", !!fromPanel && (fromPanel.projectId || null) === null, `projectId=${JSON.stringify(fromPanel?.projectId)}`);
   check("诊断里记下这次来自面板按钮", store.laterOnDiag?.lastTrigger === "panel", store.laterOnDiag?.lastTrigger);
 
   const badPage = await sendFromPage({ type: "QUICK_SAVE_TAB", source: "panel", tabId: 404 });

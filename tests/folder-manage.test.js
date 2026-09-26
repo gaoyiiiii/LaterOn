@@ -4,7 +4,7 @@
 //  3) 重名不重复创建
 //  4) 双击改名 / 回车保存 / Esc 取消 / 点到别处自动保存 / 重名被拒绝
 //  5) 右键与「⋯」都能打开菜单，点别处或 Esc 关闭
-//  6) 删除项目：取消不删；确认后里面的收藏移到待整理、当前项目切回全部
+//  6) 删除项目：取消不删；确认后里面的收藏移到等待整理、当前项目切回全部
 //  7) 拖拽收藏到项目仍然有效（监听挂在整行上）
 // 用 jsdom 而不是真浏览器，只是为了让这个检查能在命令行里快速反复跑。
 const fs = require("fs");
@@ -161,7 +161,7 @@ const cardFolderOptions = () => [...document.querySelectorAll(".card .project-se
   check("没有封面的项目用首字占位缩略图", rowOf(design?.id)?.querySelector(".project-thumb .project-ph")?.textContent === "设", rowOf(design?.id)?.querySelector(".project-thumb")?.innerHTML);
   check("新建后自动跳到该项目", store.laterOnActiveProject === design?.id && rowOf(design?.id)?.querySelector(".project-nav").classList.contains("active"));
   check("给了「已新建」的提示", /已新建项目/.test(toastText()), toastText());
-  // 回到「待整理」——新项目是空的，只有切到卡片视图（待整理 / 某个项目）下拉里才看得到。
+  // 回到「等待整理」——新项目是空的，只有切到卡片视图（等待整理 / 某个项目）下拉里才看得到。
   click(document.querySelector('.project-nav[data-project="unfiled"]'));
   await tick(10);
   check("收藏卡片上的「所属项目」下拉里也能选到新项目", cardFolderOptions().includes("设计灵感"), cardFolderOptions().join("/"));
@@ -279,10 +279,10 @@ const cardFolderOptions = () => [...document.querySelectorAll(".card .project-se
   await tick(300);
   check("确认后项目被删除", !store.laterOnProjects.some((p) => p.id === "work"));
   check("收藏一篇都没丢", store.laterOnItems.length === 3, `${store.laterOnItems.length} 条`);
-  check("里面的收藏被移到「待整理」", store.laterOnItems.every((item) => item.projectId !== "work"), store.laterOnItems.map((i) => i.projectId).join(","));
+  check("里面的收藏被移到「等待整理」", store.laterOnItems.every((item) => item.projectId !== "work"), store.laterOnItems.map((i) => i.projectId).join(","));
   check("删除后自动切回「全部收藏」", store.laterOnActiveProject === "all", store.laterOnActiveProject);
   check("侧栏里已经没有这一行", !projectRows().some((row) => row.dataset.id === "work"));
-  check("「待整理」计数同步更新", document.querySelector("#unfiledCount").textContent === "3", document.querySelector("#unfiledCount").textContent);
+  check("「等待整理」计数同步更新", document.querySelector("#unfiledCount").textContent === "3", document.querySelector("#unfiledCount").textContent);
   check("删除后菜单关闭", !document.querySelector(".folder-menu"));
 
   console.log("\n── 拖拽收藏到项目（监听已挪到整行）──");
