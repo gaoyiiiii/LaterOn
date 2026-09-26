@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="referrer" content="no-referrer" />
+    <title>LaterOn · 封面占位预览</title>
+    <link rel="stylesheet" href="../theme-vars.css" />
+    <link rel="stylesheet" href="../library.css" />
+    <link rel="stylesheet" href="../sidepanel.css" />
+    <style>
+      body { padding: 22px; }
+      h2 { margin: 22px 0 10px; font: 700 13px/1.4 var(--font, sans-serif); color: #55524b; letter-spacing: .5px; }
+      .demo-grid { display: grid; grid-template-columns: repeat(3, 210px); gap: 14px; }
+      .demo-row { display: flex; gap: 12px; flex-wrap: wrap; }
+      .panel-host { width: 320px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper, #f6f5f1); }
+      /* 侧栏条目在预览里按窄栏尺寸渲染 */
+      .panel-host .items { display: flex; }
+      .panel-host .item { width: 100%; }
+      /* 浏览器窗口通常比 620px 宽，sidepanel.css 里的宽版媒体查询会把卡片切成「上图下文」；
+         这里显式按住窄版排版，预览才跟真正的侧栏一致。 */
+      .panel-host .open-item { display: grid; grid-template-columns: 92px minmax(0, 1fr); }
+      .panel-host .thumb { width: 92px; aspect-ratio: auto; }
+    </style>
+  </head>
+  <body>
+    <h2>① 收藏库卡片（宽幅 1.62:1）—— 无封面 / 有封面</h2>
+    <div class="demo-grid" id="libGrid"></div>
+
+    <h2>② 侧栏条目（92×92 缩略图）—— 无封面 / 有封面</h2>
+    <div class="panel-host">
+      <section class="items" id="panelItems"></section>
+    </div>
+
+    <h2>③ 顶部「当前页面」预览 —— 无封面 / 有封面</h2>
+    <div class="demo-row" id="savePanelRow"></div>
+    <script>
+      // 假的「真实封面」：一张 16:9 的渐变图（data-URI，不依赖网络）
+      const FAKE_COVER =
+        "data:image/svg+xml;utf8," +
+        encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 90">' +
+            '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+            '<stop offset="0" stop-color="#3b82f6"/><stop offset="1" stop-color="#0ea5e9"/>' +
+            "</linearGradient></defs>" +
+            '<rect width="160" height="90" fill="url(#g)"/>' +
+            '<text x="80" y="50" font-size="14" fill="#fff" text-anchor="middle">真实封面</text>' +
+          "</svg>"
+        );
+
+      const libGrid = document.getElementById("libGrid");
+      for (const withCover of [false, true]) {
+        for (const read of [false, true]) {
+          const card = document.createElement("article");
+          card.className = "card" + (read ? " is-read" : "");
+          card.innerHTML = `
+            <a class="cover-link"><div class="cover">
+              <div class="cover-placeholder"><img class="cover-logo" src="../icon.svg" alt="" /></div>
+            </div></a>
+            <div class="copy">
+              <div class="source-row"><img class="favicon" src="../icon.svg" alt="" /><span class="source-name">示例来源</span><span class="dot">·</span><time>刚刚</time></div>
+              <h2>${withCover ? "有封面" : "没抓到封面"}${read ? "（已读）" : ""}</h2>
+              <p class="description">这张卡片用来对比「无封面占位」和「真实封面」的观感差异。</p>
+            </div>`;
+          const cover = card.querySelector(".cover");
+          if (withCover) {
+            const img = document.createElement("img");
+            img.src = FAKE_COVER;
+            img.alt = "";
+            cover.replaceChildren(img);
+          }
+          libGrid.append(card);
+        }
+      }
+
+      const panelItems = document.getElementById("panelItems");
+      for (const withCover of [false, true]) {
+        const article = document.createElement("article");
+        article.className = "item";
+        article.innerHTML = `
+          <button class="open-item">
+            <div class="thumb"><div class="thumb-placeholder"><img class="thumb-logo" src="../icon.svg" alt="" /></div></div>
+            <div class="copy">
+              <div class="meta"><img src="../icon.svg" alt="" /><span class="source">示例来源</span><span>·</span><time>刚刚</time></div>
+              <h2>${withCover ? "有封面" : "没抓到封面"}</h2>
+              <p class="description">侧栏缩略图对比。</p>
+            </div>
+          </button>`;
+        if (withCover) {
+          // 和 sidepanel.js 的 applyThumb 保持一致：真实封面这张图带 .thumb-img 类。
+          const thumb = article.querySelector(".thumb");
+          const image = document.createElement("img");
+          image.className = "thumb-img";
+          image.src = FAKE_COVER;
+          image.alt = "";
+          thumb.prepend(image);
+        }
+        panelItems.append(article);
+      }
+
+      // 真实侧栏里文字通常更长：右边多几行，卡片就比 92px 的缩略图高。
+      // 缩略图不跟着撑满的话，封面底下会露出一截白 —— 这条专门用来盯住它。
+      const longItem = document.createElement("article");
+      longItem.className = "item";
+      longItem.innerHTML = `
+        <button class="open-item">
+          <div class="thumb"><div class="thumb-placeholder"><img class="thumb-logo" src="../icon.svg" alt="" /></div></div>
+          <div class="copy">
+            <div class="meta"><img src="../icon.svg" alt="" /><span class="source">示例来源</span><span>·</span><time>刚刚</time></div>
+            <h2>标题占满两行的时候，卡片会比缩略图更高</h2>
+            <p class="description">摘要也占满两行。右边文字把卡片撑高，封面就得跟着上下铺满，否则底下会露白。</p>
+          </div>
+        </button>
+        <button class="read-toggle">标为已读</button>`;
+      const longThumb = longItem.querySelector(".thumb");
+      const longImage = document.createElement("img");
+      longImage.className = "thumb-img";
+      longImage.src = FAKE_COVER;
+      longImage.alt = "";
+      longThumb.prepend(longImage);
+      panelItems.append(longItem);
+
+      const savePanelRow = document.getElementById("savePanelRow");
+      for (const withCover of [false, true]) {
+        const panel = document.createElement("section");
+        panel.className = "save-panel";
+        panel.style.minWidth = "320px";
+        panel.innerHTML = `
+          <div class="current-thumb${withCover ? " has-cover" : ""}"><img class="thumb-logo" src="../icon.svg" alt="" /></div>
+          <div class="current-copy">
+            <p class="cur-source">example.com</p>
+            <h1 class="cur-title">${withCover ? "抓到封面的页面" : "没抓到封面的页面"}</h1>
+          </div>
+          <button id="saveCurrent"><span>＋</span><span class="save-label">收藏</span></button>`;
+        if (withCover) {
+          const thumb = panel.querySelector(".current-thumb");
+          thumb.style.backgroundImage = `url("${FAKE_COVER}")`;
+        }
+        savePanelRow.append(panel);
+      }
+    </script>
+  </body>
+</html>

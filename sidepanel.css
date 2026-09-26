@@ -1,0 +1,205 @@
+/* 颜色全部来自 theme-vars.css（和全屏共用）：这里不再自己定义 :root 变量，
+   否则这份写死的浅色值会和 [data-theme="dark"] 的覆盖冲突、把深色盖回浅色。 */
+* { box-sizing: border-box; }
+/* padding 必须显式清零：head 里的首屏兜底样式给 body 留了 12px/16px 的空，
+   不清掉的话吸顶导航栏够不到面板两缘（毛玻璃块两头缺一截，滚动时露馅）。 */
+body { min-width: 280px; margin: 0; padding: 0; background: var(--paper); color: var(--ink); }
+button, input { font: inherit; }
+button { cursor: pointer; }
+header { position: sticky; z-index: 5; top: 0; display: flex; align-items: center; justify-content: space-between; height: 58px; margin: 0; padding: 0 15px; border-bottom: 1px solid var(--hairline-2); background: var(--topbar-bg); backdrop-filter: blur(15px); }
+.brand { display:flex; align-items:center; gap:7px; font-size:17px; font-weight:850; letter-spacing:-.5px; }
+.brand span { display:grid; place-items:center; width:25px; height:25px; border-radius:8px; background:linear-gradient(140deg,#ff7a52,#ff4f2e); color:white; box-shadow:0 4px 12px -5px rgba(255,80,50,.6); }
+.icon-button { display:grid; place-items:center; width:33px; height:33px; border:1px solid var(--line); border-radius:9px; background:var(--field); color:var(--chip-text); }
+.icon-button:hover { color:var(--ink); border-color:var(--subtle); }
+.icon-button svg { width:16px; fill:none; stroke:currentColor; stroke-linecap:round; stroke-width:1.7; }
+main { padding:14px 13px 30px; }
+.save-panel { display:grid; grid-template-columns:52px minmax(0,1fr) auto; gap:10px; align-items:center; padding:9px; border:1px solid var(--line); border-radius:13px; background:var(--card); box-shadow:0 3px 10px rgba(30,26,20,.035); }
+.current-thumb { display:grid; place-items:center; width:52px; height:52px; overflow:hidden; border-radius:9px; background:linear-gradient(145deg,#33312e,#777169); background-position:center; background-size:cover; }
+/* 顶部「当前页面」小预览：没抓到封面时在深色底上居中放一枚 Logo。 */
+.current-thumb .thumb-logo { width:22px; height:22px; border-radius:6px; box-shadow:0 3px 8px -3px rgba(0,0,0,.4); }
+.current-thumb.has-cover .thumb-logo { display:none; }
+.current-copy { min-width:0; }
+.current-copy p { overflow:hidden; margin:0 0 4px; color:var(--muted); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+.current-copy h1 { display:-webkit-box; overflow:hidden; margin:0; font-size:12px; line-height:1.4; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+#saveCurrent { display:flex; align-items:center; gap:4px; border:0; border-radius:9px; padding:8px 9px; background:var(--active-bg); color:var(--active-text); font-size:11px; font-weight:700; }
+#saveCurrent:disabled { opacity:.35; cursor:wait; }
+#saveCurrent.done { background:#2d7a4f; }
+#status { min-height:13px; margin:5px 3px 2px; color:var(--accent); font-size:10px; }
+.search { display:flex; align-items:center; margin-top:8px; padding:9px 10px; border:1px solid var(--line); border-radius:10px; background:var(--field); }
+.search svg { width:15px; fill:none; stroke:var(--muted); stroke-linecap:round; stroke-width:1.8; }
+.search input { min-width:0; width:100%; border:0; outline:0; padding:0 7px; background:transparent; color:var(--ink); font-size:11px; }
+.filter-row { display:flex; align-items:center; justify-content:space-between; margin:12px 1px 9px; }
+.filters { display:flex; gap:3px; }
+.filter { border:0; border-radius:99px; padding:5px 9px; background:transparent; color:var(--chip-text); font-size:10px; }
+.filter.active { background:var(--btn-soft); color:var(--ink); font-weight:700; }
+#itemCount { color:var(--subtle); font-size:10px; }
+.project-filters { display:flex; gap:5px; overflow-x:auto; margin:0 -13px 10px; padding:0 13px 3px; scrollbar-width:none; }
+.project-filters::-webkit-scrollbar { display:none; }
+.project-filter { flex:0 0 auto; display:flex; align-items:center; gap:5px; max-width:150px; border:1px solid var(--line); border-radius:8px; padding:6px 8px; background:var(--card); color:var(--chip-text); font-size:9.5px; white-space:nowrap; }
+.project-filter:hover { border-color:var(--subtle); color:var(--ink); }
+.project-filter.active { border-color:var(--active-bg); background:var(--active-bg); color:var(--active-text); }
+.project-filter .project-name { overflow:hidden; text-overflow:ellipsis; }
+.project-filter strong { color:var(--subtle); font-size:8px; font-weight:600; }
+.project-filter.active strong { color:rgba(255,255,255,.6); }
+.items { display:flex; flex-direction:column; gap:8px; }
+.item { position:relative; overflow:hidden; border:1px solid var(--line); border-radius:12px; background:var(--card); transition:border-color .15s, transform .15s; }
+.item:hover { border-color:var(--subtle); transform:translateY(-1px); }
+.open-item { display:grid; grid-template-columns:92px minmax(0,1fr); width:100%; border:0; padding:0; background:transparent; color:inherit; text-align:left; }
+/* 高度不写死：卡片实际比 92px 高（右边文字多几行时尤其明显），
+   写死就会在封面底下留一截空白。这里让它跟着卡片高度撑满（最低仍是 92px）。
+   注意 position:relative —— 封面与占位都改成绝对定位（下面的 .thumb-placeholder /
+   .thumb-img），这样它们就不再参与「卡片该多高」的计算：高度只由右边的文字决定，
+   图片永远填满剩下的空间。否则占位里那张 Logo 会按自身比例把卡片反过来顶高。 */
+.thumb { position:relative; width:92px; height:auto; min-height:92px; overflow:hidden; background:var(--cover-bg); }
+.thumb img { width:100%; height:100%; object-fit:cover; }
+/* 没抓到封面时的兜底：和完整界面一样铺满显示 LaterOn 的 Logo 砖，而不是一个箭头。 */
+.thumb-placeholder { position:absolute; inset:0; display:grid; place-items:center; background:linear-gradient(140deg,#ff7a45,#ff5c35); }
+/* 真实封面：盖在占位之上（它在 DOM 里排在占位前面，不给 z-index 会被占位挡住）。 */
+.thumb .thumb-img { position:absolute; inset:0; z-index:1; }
+.thumb-logo { display:block; width:100%; height:100%; object-fit:cover; }
+.copy { min-width:0; padding:10px 29px 9px 11px; }
+.meta { display:grid; grid-template-columns:14px minmax(0,1fr) auto auto; align-items:center; column-gap:4px; min-width:0; width:100%; color:var(--subtle); font-size:9px; white-space:nowrap; }
+.meta img { width:14px; height:14px; border-radius:50%; object-fit:cover; }
+.meta .source { display:block; overflow:hidden; min-width:0; max-width:100%; color:var(--field-text); font-weight:650; text-overflow:ellipsis; white-space:nowrap; }
+.meta time { justify-self:end; min-width:max-content; white-space:nowrap; }
+.copy h2 { display:-webkit-box; overflow:hidden; margin:7px 0 5px; font-size:12px; line-height:1.4; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.description { display:-webkit-box; overflow:hidden; margin:0; color:var(--muted); font-size:9.5px; line-height:1.45; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.edit, .delete { position:absolute; top:7px; display:grid; place-items:center; width:25px; height:25px; border:0; border-radius:7px; background:var(--glass-strong); color:var(--subtle); opacity:0; }
+.edit { right:35px; }
+.delete { right:6px; }
+.item:hover .edit, .item:hover .delete { opacity:1; }
+.edit:hover { background:var(--btn-soft); color:var(--ink); }
+.delete:hover { background:var(--accent-soft); color:var(--accent); }
+.edit svg, .delete svg { width:14px; fill:none; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:1.6; }
+/* ── 骨架屏 ──────────────────────────────────────────────
+   数据还没到位时，先按真实界面的完整轮廓画一份灰色占位：
+   顶部收藏条 → 搜索框 → 筛选 → 项目 → 卡片。每块的尺寸都对真界面，
+   真内容一到就是「原地填实」，不会整块跳一下、也不会两副样子叠着出现。
+   颜色全走主题变量，深色模式自动跟着变。 */
+/* 骨架屏在场时，真界面整块不占位（等真内容画出来再露面）。 */
+body.booting #appBody { display:none; }
+
+#bootSkeleton { display:grid; gap:10px; }
+/* 一块灰色占位：底子用 --cover-bg，上面跑一道用 --card 做的扫光。 */
+.sk { position:relative; overflow:hidden; background:var(--cover-bg); border-radius:8px; }
+.sk::after {
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(90deg, transparent 0%, var(--card) 48%, transparent 92%);
+  transform:translateX(-100%);
+  animation:skShimmer 1.35s ease-in-out infinite;
+}
+@keyframes skShimmer { to { transform:translateX(100%); } }
+
+/* ① 顶部「收藏当前网页」那一栏 */
+.skel-save {
+  display:grid; grid-template-columns:52px minmax(0,1fr) 54px; gap:10px; align-items:center;
+  padding:9px; border:1px solid var(--line); border-radius:13px; background:var(--card);
+}
+.sk-thumb-sm { width:52px; height:52px; border-radius:9px; }
+.skel-lines { display:grid; gap:6px; }
+.sk-btn { height:30px; border-radius:9px; }
+/* ② 搜索框 */
+.sk-search { height:36px; margin-top:8px; border-radius:10px; }
+/* ③ 全部 / 未读 / 已读 + 右侧篇数 */
+.skel-filters { display:flex; align-items:center; gap:3px; margin:12px 1px 9px; }
+.sk-pill { width:40px; height:22px; border-radius:99px; }
+.sk-count { width:30px; height:10px; margin-left:auto; border-radius:5px; }
+/* ④ 项目横条 */
+.skel-chips { display:flex; gap:5px; margin:0 0 10px; }
+.sk-chip { height:26px; border-radius:8px; }
+/* ⑤ 收藏卡片（跟真卡片一样：左边 92px 封面，右边几行文字） */
+.skel-list { display:grid; gap:8px; }
+.skel-item { display:grid; grid-template-columns:92px minmax(0,1fr); overflow:hidden; border:1px solid var(--line); border-radius:12px; background:var(--card); }
+.sk-thumb { width:92px; height:92px; border-radius:0; }
+.skel-copy { display:grid; gap:6px; align-content:center; padding:11px 16px; }
+
+/* 灰条：默认高度是标题行，.xs 用在来源 / 摘要那种小字行。 */
+.sk-line { height:11px; border-radius:5px; }
+.sk-line.xs { height:8px; }
+.sk-line.w90 { width:90%; } .sk-line.w88 { width:88%; } .sk-line.w85 { width:85%; } .sk-line.w84 { width:84%; }
+.sk-line.w82 { width:82%; } .sk-line.w80 { width:80%; } .sk-line.w75 { width:75%; } .sk-line.w72 { width:72%; }
+.sk-line.w70 { width:70%; } .sk-line.w66 { width:66%; } .sk-line.w62 { width:62%; } .sk-line.w60 { width:60%; }
+.sk-line.w58 { width:58%; } .sk-line.w55 { width:55%; } .sk-line.w50 { width:50%; } .sk-line.w48 { width:48%; }
+.sk-line.w45 { width:45%; } .sk-line.w40 { width:40%; } .sk-line.w38 { width:38%; } .sk-line.w35 { width:35%; }
+.sk-line.w32 { width:32%; } .sk-line.w30 { width:30%; }
+.sk-chip.w60 { width:60px; } .sk-chip.w80 { width:80px; } .sk-chip.w50 { width:50px; }
+
+/* 「正在打开…」提示条：只有等超过 1.2 秒才显示（快的时候界面保持干净），
+   顺便带上实时秒数和久等时的建议；真内容画出来由 JS 移除。 */
+.boot-tip { display:grid; grid-template-columns:auto auto auto; align-items:center; gap:6px; margin:10px 2px 0; color:var(--muted); font-size:10px; }
+.boot-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:bootBlink 1.2s ease-in-out infinite; }
+.boot-time { color:var(--subtle); font-size:9px; font-variant-numeric:tabular-nums; }
+.boot-hint { grid-column:1 / -1; color:var(--subtle); font-size:9px; line-height:1.5; }
+@keyframes bootBlink { 0%, 100% { opacity:1; } 50% { opacity:.25; } }
+
+/* 打开偏慢时的说明横幅：把「慢在哪一步」直接写在界面上，不用去设置页翻。 */
+.slow-banner {
+  margin:8px 2px 0; padding:9px 11px; border-radius:10px;
+  background:var(--accent-soft); color:var(--ink);
+  font-size:11px; line-height:1.7; white-space:pre-line;
+}
+.slow-banner[hidden] { display:none; }
+/* 左下角的「标为已读 / 标为未读」按钮：和全屏界面完全同一颗文字胶囊按钮
+   （原来那个空心圆圈太含蓄，不点下去看不出它是干什么的）。
+   平时收起不显示，鼠标移到卡片上才浮出来（触屏没有悬停，常驻显示）。 */
+.read-toggle {
+  position:absolute; left:8px; bottom:8px; z-index:4;
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:5px 10px; border:0; border-radius:99px;
+  background:var(--btn-soft); color:var(--chip-text);
+  font-size:9.5px; font-weight:700; line-height:1.3; white-space:nowrap;
+  box-shadow:0 3px 10px rgba(0,0,0,.16);
+  opacity:0;
+  transition: opacity .16s ease, background .15s, color .15s;
+}
+/* 悬停（或键盘聚焦）才浮出来 */
+.item:hover .read-toggle, .read-toggle:focus-visible { opacity:1; }
+/* 鼠标放到按钮上：整颗变主题色高亮（和全屏界面一致） */
+.read-toggle:hover, .read-toggle:focus-visible { background:var(--accent); color:#fff; }
+/* 触屏没有「悬停」这一说，按钮常驻显示 */
+@media (hover: none) { .read-toggle { opacity:1; } }
+/* 已读：整卡变浅 + 标题、摘要都划线（和全屏一致）。 */
+.item.is-read { opacity:.5; }
+.item.is-read h2, .item.is-read .description { text-decoration: line-through; text-decoration-color: var(--subtle); }
+/* 在读（已点开但还没标完成）不做任何视觉高亮：用户反馈橙框太扎眼。
+   在读与未读在界面上看起来一样，只有手动标「已读」后才变浅划线。 */
+/* 当前正在阅读的那篇：和全屏界面用一致的「橙圈 + 左上角『正在读』」标出来。 */
+.item.is-current { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,92,53,.5); }
+.item.is-current::after {
+  content: "正在读";
+  position: absolute; top: 7px; left: 7px; z-index: 3;
+  padding: 2px 8px; border-radius: 99px;
+  background: var(--accent); color: #fff;
+  font-size: 9px; font-weight: 700; letter-spacing: .2px;
+  pointer-events: none;
+}
+.empty { padding:45px 20px; color:var(--muted); text-align:center; }
+.empty>span { display:grid; place-items:center; width:48px; height:48px; margin:auto; border-radius:15px; background:var(--btn-soft); color:var(--accent); font-size:23px; }
+.empty h2 { margin:14px 0 5px; color:var(--ink); font-size:15px; }
+.empty p { margin:0; font-size:10px; }
+@media (max-width:330px) { .save-label { display:none; } .open-item { grid-template-columns:78px minmax(0,1fr); } .thumb { width:78px; min-height:88px; } }
+
+/* 拖宽侧边栏后，自动切换为完整界面的纵向卡片。 */
+@media (min-width:620px) {
+  header { height:64px; padding:0 22px; }
+  main { padding:20px 22px 40px; }
+  .save-panel { grid-template-columns:64px minmax(0,1fr) auto; padding:11px; }
+  .current-thumb { width:64px; height:64px; }
+  .current-copy h1 { font-size:13px; }
+  .search { max-width:420px; }
+  .filter-row { margin-top:15px; }
+  .project-filters { margin-right:-22px; margin-left:-22px; padding-right:22px; padding-left:22px; }
+  .items { display:grid; grid-template-columns:repeat(auto-fill,202px); justify-content:start; gap:16px; }
+  .item { border-radius:14px; }
+  .open-item { display:block; }
+  .thumb { width:100%; height:auto; aspect-ratio:1.62; }
+  .copy { min-height:145px; padding:14px 15px 34px; }
+  .meta { font-size:10px; }
+  .meta { grid-template-columns:16px minmax(0,1fr) auto auto; }
+  .meta img { width:16px; height:16px; }
+  .copy h2 { min-height:42px; margin:10px 0 7px; font-size:14px; line-height:1.48; }
+  .description { font-size:10.5px; -webkit-line-clamp:3; }
+  .edit, .delete { top:auto; bottom:9px; opacity:1; }
+  .edit { right:38px; }
+  .delete { right:9px; }
+}

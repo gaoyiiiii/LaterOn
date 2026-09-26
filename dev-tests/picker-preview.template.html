@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>预览：网页内的「收藏到哪个项目」浮层</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; padding: 0;
+        background: #f7f6f2; color: #171614;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      /* 底下假装是一个正在浏览的网页，这样能看到浮层是怎么盖在网页上的。 */
+      .fake-site-header {
+        display: flex; align-items: center; gap: 26px;
+        padding: 16px 40px; border-bottom: 1px solid #e6e3da; background: #fff;
+      }
+      .fake-site-logo { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 17px; letter-spacing: -.3px; }
+      .fake-site-logo i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: #1c1b19; color: #fff; font-style: normal; font-size: 14px; }
+      .fake-site-nav { display: flex; gap: 20px; color: #8a857c; font-size: 13.5px; }
+      .fake-article { max-width: 720px; margin: 46px auto 200px; padding: 0 24px; }
+      .fake-tag { display: inline-block; border-radius: 99px; background: #edebe4; color: #6f6b62; font-size: 11.5px; font-weight: 700; padding: 5px 11px; }
+      .fake-article h1 { margin: 16px 0 12px; font-size: 34px; line-height: 1.28; letter-spacing: -.9px; }
+      .fake-article .fake-meta { color: #9c988f; font-size: 13px; }
+      .fake-article p { color: #55524b; font-size: 15.5px; line-height: 1.95; }
+      .fake-block { height: 168px; margin: 24px 0; border-radius: 16px; background: linear-gradient(120deg, #e9e6de, #ded9cf); }
+
+      /* 预览页自己的控制条（浮层关掉之后才能点到）。 */
+      .preview-bar {
+        position: fixed; z-index: 5; top: 18px; right: 18px;
+        display: flex; align-items: center; gap: 8px;
+        padding: 8px; border: 1px solid #e6e3da; border-radius: 99px; background: rgba(255,255,255,.94);
+        box-shadow: 0 10px 30px -14px rgba(20,18,14,.4);
+      }
+      .preview-bar button {
+        border: 0; border-radius: 99px; padding: 9px 16px; background: #f1f0eb; color: #4f4c46;
+        font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+      }
+      .preview-bar button:hover { background: #e7e5df; }
+      .preview-bar button.accent { background: linear-gradient(140deg, #ff7a52, #ff4f2e); color: #fff; }
+      .preview-bar span { padding: 0 6px 0 10px; color: #8a857c; font-size: 12px; }
+      .preview-tip {
+        position: fixed; z-index: 5; left: 50%; bottom: 18px; transform: translateX(-50%);
+        padding: 10px 18px; border-radius: 99px; background: rgba(23,22,20,.9); color: #fff;
+        font-size: 12.5px; box-shadow: 0 12px 30px -12px rgba(0,0,0,.5);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="fake-site-header">
+      <div class="fake-site-logo"><i>T</i>Topbook</div>
+      <nav class="fake-site-nav"><span>首页</span><span>工具</span><span>效率</span><span>关于</span></nav>
+    </div>
+
+    <article class="fake-article">
+      <span class="fake-tag">效率工具</span>
+      <h1>为什么你的「稍后阅读」列表永远读不完</h1>
+      <p class="fake-meta">2026 年 9 月 17 日 · 约 6 分钟读完</p>
+      <p>这是一段用来充数的正文，目的只是让页面看起来像一个真实的文章页，从而能看出浮层是怎样盖在网页内容之上的。灰色的那层是遮罩，它会让底下的页面变暗，把注意力集中到中间的浮层上。</p>
+      <div class="fake-block"></div>
+      <p>收藏网页的时候最烦的往往不是「收」，而是「收完之后还要手动归类」。所以这次的浮层会在收藏之前先问一句：这一批要放进哪个项目？选好之后，收藏进来的文章天然就是整理好的状态。</p>
+    </article>
+
+    <div class="preview-bar">
+      <span>预览</span>
+      <button type="button" class="accent" data-theme="light">浅色浮层</button>
+      <button type="button" data-theme="dark">深色浮层</button>
+    </div>
+    <div class="preview-tip">这是真实实现的预览：点灰色遮罩、按 Esc 或点「取消」都能关掉浮层，再回右上角切换浅色 / 深色</div>
+
+    <script>
+      // ① 先准备一个「假的扩展环境」：下面的 background.js 会用到这些浏览器接口。
+      //    只是为了让真实代码跑起来做预览，不涉及任何真实数据。
+      let newFolderSeq = 0;
+      window.chrome = {
+        runtime: {
+          getURL: (path) => path,
+          onMessage: { addListener() {} },
+          onInstalled: { addListener() {} },
+          onStartup: { addListener() {} },
+          async sendMessage(message) {
+            if (message?.type === "CREATE_PROJECT") {
+              newFolderSeq += 1;
+              return { ok: true, project: { id: `preview-new-${newFolderSeq}`, name: message.name, createdAt: Date.now() } };
+            }
+            if (message?.type === "CONFIRM_BATCH_SAVE") return { ok: true, tabCount: 12 };
+            if (message?.type === "CANCEL_BATCH_SAVE") return { ok: true, cancelled: true };
+            return { ok: true };
+          }
+        },
+        storage: {
+          local: { get: async () => ({}), set: async () => {}, remove: async () => {} },
+          session: { get: async () => ({}), set: async () => {}, remove: async () => {} }
+        },
+        tabs: { onUpdated: { addListener() {} }, onRemoved: { addListener() {} } },
+        contextMenus: { removeAll() {}, create() {}, onClicked: { addListener() {} } },
+        commands: { onCommand: { addListener() {} } },
+        action: { setBadgeText: async () => {}, setBadgeBackgroundColor: async () => {} },
+        scripting: { insertCSS: async () => {}, executeScript: async () => [] }
+      };
+    </script>
+    <!-- ② 真实的浮层实现由 dev-tests/build-preview.js 从这个占位符处内联进来 -->
+    <!--INLINE_OVERLAY_IMPLEMENTATION-->
+    <script>
+      const SAMPLE = {
+        // 这一批 5 个页面里有 2 个以前收藏过：确认后会一并被移进所选项目。
+        savedCount: 2,
+        folders: [
+          { id: "", name: "待整理", count: 3 },
+          { id: "work", name: "工作", count: 18 },
+          { id: "design", name: "设计灵感", count: 7 },
+          { id: "later", name: "稍后细读", count: 42 },
+          { id: "read-later-2026", name: "一个名字比较长的项目", count: 5 }
+        ],
+        pages: [
+          { title: "DeepSeek Harness 快速入门", url: "https://example.com/1" },
+          { title: "Topbook - 工具、技术和数字生活", url: "https://example.com/2" },
+          { title: "一份关于稍后阅读的调研报告", url: "https://example.com/3" },
+          { title: "如何把信息流变成自己的资料库", url: "https://example.com/4" },
+          { title: "Chrome 扩展开发笔记（第 12 篇）", url: "https://example.com/5" }
+        ]
+      };
+
+      function openOverlay(theme) {
+        // 先把上一次的浮层清掉（去掉退场动画，直接移除），再按指定主题重新弹出。
+        document.getElementById("lateron-folder-picker")?.remove();
+        if (typeof window.showFolderPickerOverlay !== "function") {
+          document.querySelector(".preview-tip").textContent = "浮层实现没能加载：请重新运行 node dev-tests/build-preview.js 生成预览页。";
+          return;
+        }
+        window.showFolderPickerOverlay({ theme, selected: "work", savedCount: SAMPLE.savedCount, folders: SAMPLE.folders, pages: SAMPLE.pages });
+      }
+
+      document.querySelectorAll(".preview-bar button").forEach((button) => {
+        button.addEventListener("click", () => openOverlay(button.dataset.theme));
+      });
+
+      // 打开页面就先弹一次浅色的，方便直接看效果。
+      openOverlay("light");
+    </script>
+  </body>
+</html>

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- 小红书等站点的图片 CDN 会拒绝来自 chrome-extension:// 的 Referer（返回 403），
+         整页统一不发 Referer，收藏的封面与站点图标才能正常显示。 -->
+    <meta name="referrer" content="no-referrer" />
+    <title>LaterOn · 我的收藏</title>
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="theme-vars.css" />
+    <link rel="stylesheet" href="dialog.css" />
+    <link rel="stylesheet" href="library.css" />
+    <script src="theme.js"></script>
+    <script src="dialog.js"></script>
+    <script src="picker-ui.js"></script>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" id="homeBrand" href="#" aria-label="LaterOn 首页" title="回到首页"><span>↗</span>LaterOn</a>
+        <nav aria-label="筛选">
+          <button class="nav-item" data-filter="unread">未读</button>
+          <button class="nav-item" data-filter="done">已读</button>
+          <button class="nav-item active" data-filter="all">全部</button>
+        </nav>
+        <label class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3m2.3-5.2a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z"/></svg>
+          <input id="searchInput" type="search" placeholder="搜索收藏" autocomplete="off" />
+          <kbd>⌘ K</kbd>
+        </label>
+      </header>
+
+      <div class="workspace">
+        <aside class="project-sidebar" aria-label="项目导航">
+          <!-- 「待整理」单独占一块，钉在侧栏最上面：它不是一个普通筛选项，
+               而是一个待办——有东西堆在这里就该去归位。有内容时整块高亮。
+               仍然带 .project-nav，所以点击切换、拖收藏进来归类的行为都照旧。 -->
+          <button class="project-nav inbox-card" data-project="unfiled">
+            <span class="inbox-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.7 8.2 7 5.6A3 3 0 0 1 9.7 4h4.6A3 3 0 0 1 17 5.6l1.3 2.6"/><path d="M4 8.5h16v8.8A2.7 2.7 0 0 1 17.3 20H6.7A2.7 2.7 0 0 1 4 17.3z"/><path d="M4 13h4l1.5 2h5L16 13h4"/></svg>
+            </span>
+            <span class="inbox-body">
+              <strong class="inbox-title">待整理</strong>
+              <small class="inbox-hint">还没有要整理的</small>
+            </span>
+            <span class="inbox-count" id="unfiledCount">0</span>
+          </button>
+          <button class="project-nav top-entry" data-project="all">
+            <span class="nav-icon all-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>
+            </span>
+            <span>全部项目</span><strong class="nav-count" id="allCount">0</strong>
+          </button>
+          <!-- 项目列表：始终显示。不管当前在「全部项目」「待整理」还是某个项目里，
+               左侧都列出所有项目——想换到哪个项目直接点，不用先退回全部项目。 -->
+          <div class="projects-section">
+            <div class="projects-heading">
+              <p class="sidebar-label">项目</p>
+              <button id="showProjectForm" class="add-project" title="新建项目" aria-label="新建项目">＋</button>
+            </div>
+            <form id="projectForm" class="project-form" hidden>
+              <input id="projectName" maxlength="28" placeholder="项目名称" autocomplete="off" />
+              <button type="submit">创建</button>
+            </form>
+            <div id="projectList" class="project-list"></div>
+          </div>
+          <div class="sidebar-footer">
+            <button id="openSettings" class="sidebar-setting" type="button" title="设置" aria-label="设置">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span>设置</span>
+            </button>
+          </div>
+        </aside>
+
+        <main>
+        <section class="collection-bar">
+          <div class="collection-left">
+            <p id="countText">正在读取你的收藏…</p>
+            <button id="selectMode" type="button" class="select-mode">选择</button>
+          </div>
+          <div class="collection-right">
+            <!-- 全部项目固定是图板视图，待整理 / 单个项目是卡片视图，不再需要手动切换 -->
+            <select id="sortSelect" aria-label="排序方式">
+              <option value="newest">最新收藏</option>
+              <option value="oldest">最早收藏</option>
+              <option value="source">按来源</option>
+              <option value="custom">自定义顺序</option>
+            </select>
+          </div>
+        </section>
+
+        <section id="emptyState" class="empty" hidden>
+          <div class="empty-icon">↗</div>
+          <h2>这里还很安静</h2>
+          <p>打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。</p>
+        </section>
+        <section id="cardGrid" class="grid" aria-live="polite"></section>
+        <section id="boardGrid" class="board-grid" aria-live="polite" hidden></section>
+        </main>
+
+      </div>
+    </div>
+
+    <template id="cardTemplate">
+      <article class="card">
+        <label class="select-badge" aria-label="选择此收藏"><input type="checkbox" class="select-check" /></label>
+        <a class="cover-link" target="_blank" rel="noreferrer">
+          <div class="cover">
+            <div class="cover-placeholder"><img class="cover-logo" src="icon.svg" alt="" /></div>
+          </div>
+        </a>
+        <button class="edit" title="编辑标题和摘要" aria-label="编辑标题和摘要">
+          <svg viewBox="0 0 24 24"><path d="M4 20h4L20 8l-4-4L4 16zM14 6l4 4"/></svg>
+        </button>
+        <div class="card-body">
+          <div class="source-row"><img class="favicon" alt="" referrerpolicy="no-referrer" /><span class="source-name"></span><span class="dot">·</span><time></time></div>
+          <a class="title-link" target="_blank" rel="noreferrer"><h2></h2></a>
+          <p class="description"></p>
+          <footer>
+            <button class="read-toggle" title="切换阅读状态"></button>
+            <select class="project-select" aria-label="所属项目"></select>
+            <button class="delete" title="删除收藏" aria-label="删除收藏">
+              <svg viewBox="0 0 24 24"><path d="M4 7h16m-10 4v6m4-6v6M9 7l1-3h4l1 3m3 0-1 13H7L6 7"/></svg>
+            </button>
+          </footer>
+        </div>
+      </article>
+    </template>
+
+    <!-- 图板视图：一个类目 = 一张图板。封面由这个类目里最新几篇的封面拼成
+         （一张大的 + 两张小的），下方是类目名、简介和篇数。 -->
+    <template id="boardTemplate">
+      <article class="board-card">
+        <div class="board-cover" data-count="0"></div>
+        <button class="board-edit" type="button" title="编辑类目简介" aria-label="编辑类目简介">
+          <svg viewBox="0 0 24 24"><path d="M4 20h4L20 8l-4-4L4 16zM14 6l4 4"/></svg>
+        </button>
+        <div class="board-body">
+          <h3 class="board-name"></h3>
+          <p class="board-note"></p>
+          <p class="board-meta"></p>
+        </div>
+      </article>
+    </template>
+
+    <div id="bulkBar" class="bulk-bar">
+      <span id="bulkCount" class="bulk-count">已选 0 篇</span>
+      <div class="bulk-actions">
+        <button id="bulkSelectAll" type="button">全选</button>
+        <button id="bulkRead" type="button">标完成</button>
+        <button id="bulkUnread" type="button">标未读</button>
+        <button id="bulkProject" class="bulk-project" type="button" aria-label="移动到项目" aria-haspopup="dialog">
+          <span>移动到…</span>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+        </button>
+        <button id="bulkDelete" type="button" class="danger">删除</button>
+        <button id="bulkDone" type="button" class="primary">完成</button>
+      </div>
+    </div>
+    <div id="toast" class="toast" role="status"></div>
+    <script src="library.js"></script>
+  </body>
+</html>

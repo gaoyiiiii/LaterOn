@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- 小红书等站点的图片 CDN 会拒绝来自 chrome-extension:// 的 Referer（返回 403），
+         整页统一不发 Referer，收藏的封面与站点图标才能正常显示。 -->
+    <meta name="referrer" content="no-referrer" />
+    <title>LaterOn</title>
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <!-- 第一帧不依赖外部文件：Chrome 偶发延迟扩展资源时，也能立刻画出完整轮廓。 -->
+    <style>
+      :root { color-scheme: light; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif; }
+      * { box-sizing: border-box; }
+      body { margin: 0; width: 370px; background: #f4f2ed; color: #151515; }
+      main { padding: 18px; }
+      header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+      .logo { font-size: 19px; font-weight: 800; }
+      .logo span { display: inline-grid; place-items: center; width: 25px; height: 25px; margin-right: 5px; border-radius: 8px; background: #ff5c35; color: white; }
+      .eyebrow, .source { color: #77736b; font-size: 12px; }
+      .preview { overflow: hidden; border: 1px solid #dedbd3; border-radius: 16px; background: #fff; }
+      .preview-image { height: 136px; background: linear-gradient(135deg, #ddd8ce, #f4f2ed); }
+      .preview-copy { padding: 14px 15px 16px; }
+      h1 { margin: 7px 0 0; font-size: 17px; line-height: 1.35; }
+      button { width: 100%; border: 0; font: inherit; }
+      .save { margin-top: 13px; padding: 13px; border-radius: 12px; background: #171717; color: white; font-weight: 700; }
+      .library { display: flex; justify-content: space-between; margin-top: 5px; padding: 12px 2px 5px; background: transparent; color: #55524c; }
+      #message { min-height: 14px; margin: 8px 2px 0; font-size: 11px; }
+    </style>
+    <link rel="stylesheet" href="popup.css" media="print" data-boot-style />
+    <noscript><link rel="stylesheet" href="popup.css" /></noscript>
+    <script src="boot.js" defer></script>
+    <script src="popup.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="logo"><span>↗</span> LaterOn</div>
+        <span class="eyebrow">稍后阅读</span>
+      </header>
+      <section id="pagePreview" class="preview">
+        <div id="previewImage" class="preview-image"></div>
+        <div class="preview-copy">
+          <div id="previewSource" class="source">正在读取当前网页…</div>
+          <h1 id="previewTitle">当前页面</h1>
+        </div>
+      </section>
+      <button id="saveButton" class="save" disabled>
+        <span id="saveIcon">＋</span><span id="saveLabel">收藏当前网页</span>
+      </button>
+      <button id="sidePanelButton" class="library">打开侧边栏 <span>▤</span></button>
+      <button id="libraryButton" class="library">打开我的收藏 <span>→</span></button>
+      <p id="message" role="status"></p>
+    </main>
+  </body>
+</html>

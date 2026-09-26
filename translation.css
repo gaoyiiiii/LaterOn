@@ -1,0 +1,115 @@
+.lateron-inline-translation {
+  box-sizing: border-box !important;
+  clear: both !important;
+  padding: 0.08em 0.24em !important;
+  border: 0 !important;
+  border-radius: 0.2em !important;
+  background: rgba(79, 226, 181, 0.3) !important;
+  box-shadow: 0 0 0 0.14em rgba(79, 226, 181, 0.14) !important;
+  -webkit-box-decoration-break: clone !important;
+  box-decoration-break: clone !important;
+}
+
+#lateron-translation-status {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  top: 18px !important;
+  right: 18px !important;
+  box-sizing: border-box !important;
+  max-width: min(360px, calc(100vw - 36px)) !important;
+  padding: 11px 15px !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 12px !important;
+  background: rgba(27, 27, 25, 0.94) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.24) !important;
+  color: #fff !important;
+  font: 600 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif !important;
+  letter-spacing: normal !important;
+  text-align: left !important;
+  white-space: normal !important;
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+  transition: opacity 180ms ease, transform 180ms ease !important;
+}
+
+#lateron-translation-status.lateron-status-leaving {
+  opacity: 0 !important;
+  transform: translateY(-5px) !important;
+}
+
+/* 收藏成功提示：页面右上角（工具栏图标正下方）逐条滑入的「药丸」通知。 */
+#lateron-pill-stack {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  top: 18px !important;
+  right: 18px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  gap: 8px !important;
+  max-width: min(380px, calc(100vw - 36px)) !important;
+  pointer-events: none !important;
+}
+
+.lateron-pill {
+  position: relative !important;
+  box-sizing: border-box !important;
+  display: block !important;
+  max-width: 100% !important;
+  padding: 9px 16px 9px 33px !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 999px !important;
+  background: rgba(27, 27, 25, 0.94) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24) !important;
+  color: #fff !important;
+  font: 600 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif !important;
+  letter-spacing: normal !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  opacity: 0 !important;
+  transform: translateX(18px) scale(0.96) !important;
+  transition: opacity 240ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+.lateron-pill::before {
+  content: "✓" !important;
+  position: absolute !important;
+  left: 13px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  color: #4fe2b5 !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.lateron-pill.is-in {
+  opacity: 1 !important;
+  transform: translateX(0) scale(1) !important;
+}
+
+/* 次要提示（已收藏过 / 没抓到封面）：颜色收一档，图标换成 ↺，一眼能区分主次。 */
+.lateron-pill.is-skip {
+  background: rgba(66, 63, 58, 0.9) !important;
+}
+
+.lateron-pill.is-skip::before {
+  content: "↺" !important;
+  color: #ffc978 !important;
+}
+
+/* 已收藏过的链接这次被搬进了新项目：用品牌橙 + 搬移图标，和「新增」「跳过」都区分开。 */
+.lateron-pill.is-move {
+  background: rgba(61, 41, 34, 0.94) !important;
+}
+
+.lateron-pill.is-move::before {
+  content: "↪" !important;
+  color: #ff8a66 !important;
+}
+
+.lateron-pill.is-out {
+  opacity: 0 !important;
+  transform: translateX(12px) scale(0.98) !important;
+}

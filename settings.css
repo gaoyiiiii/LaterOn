@@ -1,0 +1,127 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  min-height: 100vh;
+  background: var(--bg-grad);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  font-family: inherit;
+}
+.settings-shell { max-width: 760px; margin: 0 auto; padding: 0 clamp(18px, 5vw, 40px) 80px; }
+/* 顶栏通栏铺满窗口（和全屏页同款玻璃条），内容再用内层容器对齐 760px 的正文列。
+   之前整条栏被包在 760px 的壳里，宽窗口下两头像被截断的色块。 */
+/* 顶栏：与全屏页的 .topbar 参数一致（高度 78、左右间距 clamp(24px,5vw,76px)、同样玻璃质感）。 */
+.settings-top {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  height: 78px; padding: 0 clamp(24px, 5vw, 76px);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--topbar-bg); backdrop-filter: blur(22px) saturate(160%);
+}
+/* 品牌标识：字号、间距、圆角色块尺寸与全屏页完全一致（22px / gap 10 / 32px 方块）。
+   它现在是个链接（点了回全屏首页），所以把下划线去掉、光标给成手型。 */
+.settings-brand {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--ink); font-size: 22px; font-weight: 850; letter-spacing: -.8px; white-space: nowrap;
+  text-decoration: none; cursor: pointer;
+}
+.settings-brand .logo {
+  display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px;
+  background: linear-gradient(140deg, #ff7a52, #ff4f2e); color: #fff; font-size: 18px;
+  box-shadow: 0 6px 16px -6px rgba(255,80,50,.6);
+}
+/* 返回按钮：挪到顶栏右侧，与品牌标识左右呼应；用和全屏页搜索框同款的玻璃胶囊。 */
+.settings-back {
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 1px solid var(--hairline-2); border-radius: 14px; padding: 9px 15px;
+  background: var(--glass-strong); color: var(--chip-text);
+  font-size: 13px; font-weight: 650; text-decoration: none; white-space: nowrap;
+  box-shadow: var(--shadow-sm); transition: color .15s, border-color .15s;
+}
+.settings-back:hover { color: var(--ink); border-color: var(--card-line); }
+.settings-back svg { width: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+/* 页头：「设置」标题的大本营，放在正文里当页面导航基准。 */
+.settings-title { margin: 34px 0 22px; }
+.settings-title h1 { margin: 0; font-size: 30px; font-weight: 850; letter-spacing: -1.1px; }
+.settings-title p { margin: 8px 0 0; color: var(--muted); font-size: 13.5px; }
+/* 窗口很窄时先省掉品牌文字，避免和返回按钮撞在一起。 */
+@media (max-width: 560px) {
+  .settings-brand .brand-name { display: none; }
+  .settings-title h1 { font-size: 25px; }
+}
+
+/* ── 分组卡片：和全屏页的卡片同款（圆角 20 + 细边 + 柔和投影），
+      不再靠一条条 1px 横线切分，层次更清楚。 ── */
+.settings-main { padding-top: 10px; }
+.settings-group {
+  margin-bottom: 16px; padding: 22px clamp(18px, 3vw, 26px);
+  border: 1px solid var(--card-line); border-radius: var(--radius);
+  background: var(--card); box-shadow: var(--shadow-sm);
+}
+.settings-group h2 { margin: 0 0 6px; font-size: 12px; font-weight: 750; letter-spacing: 1px; text-transform: uppercase; color: var(--subtle); }
+.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 0; }
+.setting-row + .setting-row { border-top: 1px solid var(--hairline); }
+.setting-label { min-width: 0; }
+.setting-label strong { display: block; font-size: 14px; font-weight: 650; }
+.setting-label span { display: block; margin-top: 4px; color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+.setting-note { margin: 0 0 6px; color: var(--muted); font-size: 12.5px; line-height: 1.7; }
+/* 窄窗口：标签和控制件上下排列，避免挤成两竖条看不清。 */
+@media (max-width: 620px) {
+  .setting-row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .setting-row > .segmented, .setting-row > .setting-select, .setting-row > .switch, .setting-row > .setting-action, .setting-row > .setting-days { align-self: flex-start; }
+}
+
+/* ── 自检信息：平时折叠起来，避免首页就堆一堆「读取中…」看着乱 ── */
+.settings-diagnostics {
+  margin-top: 14px; padding: 12px 16px;
+  border: 1px dashed var(--hairline-2); border-radius: 14px;
+  background: var(--chip);
+}
+.settings-diagnostics > summary {
+  cursor: pointer; list-style: none;
+  color: var(--muted); font-size: 12.5px; font-weight: 700;
+}
+.settings-diagnostics > summary::-webkit-details-marker { display: none; }
+.settings-diagnostics > summary::before { content: "▸"; display: inline-block; margin-right: 7px; transition: transform .18s ease; }
+.settings-diagnostics[open] > summary::before { transform: rotate(90deg); }
+.settings-diagnostics > summary:hover { color: var(--ink); }
+.settings-diagnostics[open] > summary { margin-bottom: 6px; }
+.settings-diagnostics .setting-row { padding: 10px 0; }
+.settings-diagnostics .setting-row + .setting-row { border-top: 1px solid var(--hairline-2); }
+
+.segmented { display: inline-flex; padding: 4px; border-radius: 13px; background: var(--chip); border: 1px solid var(--hairline-2); }
+.segmented button { border: 0; border-radius: 9px; padding: 7px 14px; background: transparent; color: var(--chip-text); font-size: 12.5px; font-weight: 650; transition: background .15s, color .15s; white-space: nowrap; cursor: pointer; }
+.segmented button:hover { color: var(--ink); }
+.segmented button.active { background: var(--active-bg); color: var(--active-text); box-shadow: var(--shadow-sm); }
+
+.switch { position: relative; display: inline-block; width: 46px; height: 27px; flex: none; }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch .slider { position: absolute; inset: 0; border-radius: 99px; background: var(--btn-soft); border: 1px solid var(--hairline-2); transition: background .2s; }
+.switch .slider::before { content: ""; position: absolute; top: 2px; left: 2px; width: 21px; height: 21px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s; }
+.switch input:checked + .slider { background: var(--accent); border-color: var(--accent); }
+.switch input:checked + .slider::before { transform: translateX(19px); }
+
+.setting-select {
+  appearance: none; -webkit-appearance: none;
+  border: 1px solid var(--hairline-2); border-radius: 12px; padding: 10px 36px 10px 14px;
+  background: var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Cpath d='m2 4 4 4 4-4' fill='none' stroke='%23777'/%3E%3C/svg%3E") no-repeat right 13px center;
+  color: var(--field-text); font-size: 13px; cursor: pointer;
+}
+[data-theme="dark"] .setting-select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Cpath d='m2 4 4 4 4-4' fill='none' stroke='%23cfc9c0'/%3E%3C/svg%3E"); }
+
+/* 「多少天后自动清除」的输入框 + 单位 */
+.setting-days { display: flex; align-items: center; gap: 8px; flex: none; color: var(--muted); font-size: 13px; font-weight: 650; }
+.setting-number {
+  width: 84px; border: 1px solid var(--hairline-2); border-radius: 12px;
+  padding: 10px 12px; background: var(--field); color: var(--field-text);
+  font-family: inherit; font-size: 13px; font-weight: 650; text-align: center;
+}
+.setting-number:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.setting-action { border: 1px solid var(--hairline-2); border-radius: 12px; padding: 9px 16px; background: var(--field); color: var(--ink); font-size: 13px; font-weight: 650; cursor: pointer; transition: background .15s, border-color .15s; }
+.setting-action:hover { background: var(--btn-soft); }
+.setting-action.danger { color: #df4c31; border-color: rgba(223,76,49,.3); background: var(--accent-soft); }
+.setting-action.danger:hover { background: rgba(223,76,49,.16); }
+.data-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.danger-row { align-items: flex-start; }
+.danger-row .setting-label strong { color: #df4c31; }

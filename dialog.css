@@ -1,0 +1,201 @@
+/* 共享的自定义弹窗（取代浏览器原生 confirm / alert）。
+   视觉与「选项目」浮层保持一致：同圆角、同阴影、同橙色渐变按钮。
+   颜色取 theme-vars.css 的变量并带兜底值，因此没引入主题变量的页面也能正常显示。 */
+
+.lod-root {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  --lod-card: var(--card, #ffffff);
+  --lod-ink: var(--ink, #171614);
+  --lod-muted: var(--muted, #8a857c);
+  --lod-line: var(--line, #e8e5dd);
+  --lod-soft: var(--btn-soft, #f1f0eb);
+  --lod-soft-hover: var(--btn-soft-hover, #e7e5df);
+  --lod-subtle: var(--subtle, #aaa69d);
+  --lod-danger: #dc3f22;
+  --lod-danger-soft: rgba(220,63,34,.12);
+  --lod-panel-shadow: 0 34px 80px -24px rgba(15,13,10,.5), 0 8px 26px -10px rgba(15,13,10,.2);
+}
+.lod-root[hidden] { display: none; }
+[data-theme="dark"] .lod-root {
+  --lod-danger: #ff7a5c;
+  --lod-danger-soft: rgba(255,122,92,.16);
+  --lod-panel-shadow: 0 34px 80px -24px rgba(0,0,0,.82), 0 8px 26px -10px rgba(0,0,0,.55);
+}
+[data-theme="dark"] .lod-backdrop { background: rgba(0,0,0,.56); }
+.lod-root, .lod-root *, .lod-root *::before, .lod-root *::after { box-sizing: border-box; }
+
+.lod-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20,18,14,.44);
+  -webkit-backdrop-filter: blur(4px) saturate(130%);
+  backdrop-filter: blur(4px) saturate(130%);
+  opacity: 0;
+  transition: opacity .22s ease;
+}
+
+.lod-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: min(400px, 100%);
+  padding: 24px 24px 20px;
+  border: 1px solid var(--lod-line);
+  border-radius: 22px;
+  background: var(--lod-card);
+  box-shadow: var(--lod-panel-shadow);
+  opacity: 0;
+  transform: translateY(12px) scale(.97);
+  transition: opacity .24s ease, transform .3s cubic-bezier(.2,.8,.3,1);
+  outline: none;
+}
+.lod-root.is-in .lod-backdrop { opacity: 1; }
+.lod-root.is-in .lod-panel { opacity: 1; transform: none; }
+.lod-root.is-out .lod-backdrop { opacity: 0; }
+.lod-root.is-out .lod-panel { opacity: 0; transform: translateY(8px) scale(.98); }
+
+.lod-head { display: flex; align-items: flex-start; gap: 13px; }
+.lod-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--accent-soft, #fff1ec);
+  color: var(--accent, #ff5c35);
+}
+.lod-icon svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.lod-root[data-tone="danger"] .lod-icon { background: var(--lod-danger-soft); color: var(--lod-danger); }
+
+.lod-copy { min-width: 0; padding-top: 2px; }
+.lod-title {
+  margin: 0;
+  color: var(--lod-ink);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -.3px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.lod-message {
+  margin: 7px 0 0;
+  color: var(--lod-muted);
+  font-size: 13px;
+  line-height: 1.62;
+  word-break: break-word;
+}
+.lod-message[hidden] { display: none; }
+
+/* ── 表单模式（编辑标题 / 摘要）──────────────────────────── */
+.lod-fields { display: grid; gap: 12px; }
+.lod-fields[hidden] { display: none; }
+.lod-field { display: grid; gap: 6px; }
+.lod-field-label { color: var(--lod-muted); font-size: 11.5px; font-weight: 650; letter-spacing: .2px; }
+.lod-input, .lod-textarea {
+  width: 100%;
+  border: 1px solid var(--lod-line);
+  border-radius: 13px;
+  padding: 10px 12px;
+  background: var(--lod-soft);
+  color: var(--lod-ink);
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.62;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.lod-textarea { min-height: 96px; max-height: 38vh; resize: vertical; }
+.lod-input::placeholder, .lod-textarea::placeholder { color: var(--lod-subtle); }
+.lod-input:focus, .lod-textarea:focus {
+  border-color: var(--accent, #ff5c35);
+  background: var(--lod-card);
+  box-shadow: 0 0 0 4px rgba(255,92,53,.12);
+}
+[data-theme="dark"] .lod-input, [data-theme="dark"] .lod-textarea { background: rgba(255,255,255,.04); }
+
+/* ── 封面上传区：左边小预览，右边两个按钮 ── */
+.lod-cover { display: grid; gap: 6px; }
+.lod-cover[hidden] { display: none; }
+.lod-cover-row { display: flex; align-items: center; gap: 12px; }
+.lod-cover-preview {
+  display: grid; place-items: center; flex: none;
+  width: 76px; height: 52px; overflow: hidden;
+  border: 1px solid var(--lod-line); border-radius: 10px;
+  background: var(--lod-soft); color: var(--lod-subtle); font-size: 11px;
+}
+.lod-cover-preview img { width: 100%; height: 100%; object-fit: cover; }
+.lod-cover-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.lod-cover-btn {
+  border: 1px solid var(--lod-line); border-radius: 11px; padding: 7px 13px;
+  background: var(--lod-soft); color: var(--lod-ink);
+  font-size: 12px; font-weight: 650; cursor: pointer; transition: background .15s, border-color .15s;
+}
+.lod-cover-btn:hover:not(:disabled) { border-color: var(--accent, #ff5c35); color: var(--accent, #ff5c35); }
+.lod-cover-btn:disabled { opacity: .45; cursor: default; }
+.lod-cover-btn.is-plain { background: transparent; }
+.lod-cover-note { margin: 0; color: var(--lod-subtle); font-size: 11px; line-height: 1.5; }
+
+.lod-hint { margin: 0; color: var(--lod-subtle); font-size: 11.5px; text-align: center; }
+.lod-hint[hidden] { display: none; }
+
+.lod-foot { display: flex; gap: 10px; margin-top: 3px; }
+.lod-foot button {
+  border-radius: 14px;
+  padding: 12px;
+  font-family: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: filter .15s, background .15s, transform .12s;
+}
+.lod-cancel {
+  flex: 1;
+  border: 1px solid var(--lod-line);
+  background: transparent;
+  color: var(--lod-ink);
+  font-weight: 650;
+}
+.lod-cancel:hover { background: var(--lod-soft); }
+.lod-cancel[hidden] { display: none; }
+.lod-ok {
+  flex: 1.5;
+  border: 0;
+  background: linear-gradient(140deg, #ff7a52, #ff4f2e);
+  color: #fff;
+  font-weight: 750;
+  box-shadow: 0 8px 20px -8px rgba(255,79,46,.9);
+}
+.lod-root[data-tone="danger"] .lod-ok {
+  background: linear-gradient(140deg, #f4694b, #db3a1c);
+  box-shadow: 0 8px 20px -8px rgba(219,58,28,.85);
+}
+.lod-ok:hover { filter: brightness(1.05); }
+.lod-ok:active { transform: scale(.985); }
+.lod-foot button:focus-visible { outline: 2px solid var(--accent, #ff5c35); outline-offset: 2px; }
+.lod-cancel[hidden] + .lod-ok { flex: 1; }
+
+@media (max-width: 460px) {
+  .lod-root { padding: 14px; }
+  .lod-panel { gap: 12px; padding: 18px 16px 14px; border-radius: 18px; }
+  .lod-title { font-size: 16px; }
+  .lod-icon { width: 34px; height: 34px; border-radius: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lod-backdrop, .lod-panel { transition-duration: .01ms; }
+}

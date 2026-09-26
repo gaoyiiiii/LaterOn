@@ -1,0 +1,64 @@
+{
+  "manifest_version": 3,
+  "name": "LaterOn · 稍后阅读",
+  "version": "1.56.9",
+  "minimum_chrome_version": "121",
+  "description": "一键收藏当前网页，在清爽的卡片界面中稍后阅读。",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "unlimitedStorage",
+    "alarms",
+    "scripting",
+    "tabs",
+    "sidePanel",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "action": {
+    "default_title": "LaterOn · 稍后阅读",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "commands": {
+    "quick-save": {
+      "suggested_key": {
+        "default": "Alt+1"
+      },
+      "description": "将当前网页收藏到 LaterOn"
+    },
+    "toggle-translation": {
+      "suggested_key": {
+        "default": "Alt+2"
+      },
+      "description": "翻译当前网页或恢复原文"
+    },
+    "save-all-tabs": {
+      "suggested_key": {
+        "default": "Alt+Shift+1"
+      },
+      "description": "将当前窗口所有标签页收藏到 LaterOn"
+    }
+  },
+  "options_page": "settings.html",
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- 小红书等站点的图片 CDN 会拒绝来自 chrome-extension:// 的 Referer（返回 403），
+         整页统一不发 Referer，收藏的封面与站点图标才能正常显示。 -->
+    <meta name="referrer" content="no-referrer" />
+    <title>LaterOn · 设置</title>
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="theme-vars.css" />
+    <link rel="stylesheet" href="dialog.css" />
+    <link rel="stylesheet" href="settings.css" />
+    <script src="theme.js"></script>
+    <script src="dialog.js"></script>
+  </head>
+  <body>
+    <!-- 顶栏和全屏页同款：通栏、同高度、同玻璃质感；品牌标识的尺寸与左侧间距完全照搬全屏页。
+         「设置」标题不再塞在顶栏里挤位置，改为正文的页头。 -->
+    <header class="settings-top">
+      <a class="settings-brand" id="settingsHome" href="library.html" aria-label="LaterOn 首页" title="回到收藏首页"><span class="logo">↗</span><span class="brand-name">LaterOn</span></a>
+      <a class="settings-back" id="back" href="#">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m0 0 6-6m-6 6 6 6"/></svg>
+        <span>返回收藏</span>
+      </a>
+    </header>
+
+    <div class="settings-shell">
+      <main class="settings-main">
+        <div class="settings-title">
+          <h1>设置</h1>
+          <p>外观、快捷键、数据与启动方式</p>
+        </div>
+        <section class="settings-group">
+          <h2>外观</h2>
+          <div class="setting-row">
+            <div class="setting-label"><strong>主题</strong><span>浅色 / 深色 / 跟随系统</span></div>
+            <div class="segmented" data-setting="theme">
+              <button type="button" data-value="light">浅色</button>
+              <button type="button" data-value="dark">深色</button>
+              <button type="button" data-value="system">跟随系统</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-group">
+          <h2>收藏</h2>
+          <div class="setting-row">
+            <div class="setting-label"><strong>默认排序</strong><span>打开收藏库时的默认排列方式</span></div>
+            <select class="setting-select" data-setting="defaultSort">
+              <option value="newest">最新收藏</option>
+              <option value="oldest">最早收藏</option>
+              <option value="source">按来源</option>
+              <option value="custom">自定义顺序（拖拽卡片排的）</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><strong>打开后自动标记为在读</strong><span>点开一篇收藏时自动标记为在读（读完再手动点按钮标成已完成）</span></div>
+            <label class="switch"><input type="checkbox" data-setting="autoMarkRead" /><span class="slider"></span></label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><strong>收藏当前网页前，先选项目</strong><span>按快捷键或右键收藏「这一篇」时先弹窗让你挑项目；关掉后默认收藏进「待整理」</span></div>
+            <label class="switch"><input type="checkbox" data-setting="askFolderOnSingle" /><span class="slider"></span></label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><strong>收藏所有标签前，先选项目</strong><span>按快捷键收藏整窗标签时先弹窗让你挑项目；关掉后直接用上次用过的项目</span></div>
+            <label class="switch"><input type="checkbox" data-setting="askFolderOnBatch" /><span class="slider"></span></label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><strong>已读收藏自动清除</strong><span>标记为已读后多少天自动删除（从标为已读那天算起），最短 30 天、最长 180 天，默认 30 天</span></div>
+            <div class="setting-days">
+              <input class="setting-number" type="number" min="30" max="180" step="1" data-setting="autoCleanDays" aria-label="已读收藏自动清除天数" />
+              <span>天</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-group">
+          <h2>启动</h2>
+          <div class="setting-row">
+            <div class="setting-label"><strong>新标签打开 LaterOn 全屏墙</strong><span>打开浏览器或按新标签时，直接显示 LaterOn 全屏收藏墙；关闭则恢复系统默认的新标签页</span></div>
+            <label class="switch"><input type="checkbox" data-setting="newTabPage" /><span class="slider"></span></label>
+          </div>
+        </section>
+
+        <section class="settings-group">
+          <h2>快捷键</h2>
+          <p class="setting-note">这些是全局快捷键，用于在任意网页上收藏或翻译。Chrome 不允许扩展在内部修改快捷键，请在 Chrome 的快捷键页面设置。</p>
+          <div class="setting-row">
+            <div class="setting-label"><strong>收藏当前网页</strong><span id="cmdSave">读取中…</span></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><strong>翻译当前网页</strong><span id="cmdTranslate">读取中…</span></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><strong>收藏当前窗口所有标签</strong><span id="cmdSaveAll">读取中…</span></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label"><strong>在收藏库内</strong><span>按 ⌘ / Ctrl + K 聚焦搜索框</span></div>
+          </div>
+          <div class="setting-row">
+            <button id="openShortcuts" class="setting-action" type="button">在 Chrome 中管理快捷键</button>
+          </div>
+          <!-- 自检信息平时折叠：只在排查快捷键问题时才展开，首页不再堆一排「读取中…」 -->
+          <details class="settings-diagnostics">
+            <summary>自检信息（快捷键没反应时再展开排查）</summary>
+            <div class="setting-row">
+              <div class="setting-label"><strong>最近一次快捷键触发</strong><span id="diagShortcut">读取中…</span></div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>最近一次「收藏所有标签」</strong><span id="diagRun">读取中…</span></div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>最近一次执行进度</strong><span id="diagStage">读取中…</span></div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>最近一次抓取来源</strong><span id="diagCover">读取中…</span></div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>侧栏打开耗时</strong><span id="diagPanelSpeed">读取中…</span></div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>侧栏「滚到正在读」</strong><span id="diagLocate">读取中…</span></div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label"><strong>小窗口就绪耗时</strong><span id="diagPopupSpeed">读取中…</span></div>
+            </div>
+            <div class="setting-row" id="diagErrorRow" hidden>
+              <div class="setting-label"><strong>最近一次错误</strong><span id="diagError"></span></div>
+            </div>
+            <p class="setting-note" id="diagHint">
+              自检方法：让这个设置页保持打开，切到任意网页按下快捷键，上面「最近一次快捷键触发」会立刻变成「刚刚」。
+              如果按了之后仍是「还没触发过」，说明这个按键被 macOS 或其他软件抢先拦截了（快捷键没能到达扩展），
+              去上面的快捷键页面换一个组合键即可。右键点击网页也能找到「收藏本窗口所有标签页」，不受快捷键影响。
+            </p>
+          </details>
+        </section>
+
+        <section class="settings-group">
+          <h2>数据</h2>
+          <div class="setting-row">
+            <div class="setting-label"><strong>备份与恢复</strong><span>把收藏导出成文件，或在另一台设备导入</span></div>
+            <div class="data-actions">
+              <button id="exportBtn" class="setting-action" type="button">导出收藏</button>
+              <button id="importBtn" class="setting-action" type="button">导入收藏</button>
+              <input id="importFile" type="file" accept="application/json,.json" hidden />
+            </div>
+          </div>
+          <div class="setting-row danger-row">
+            <div class="setting-label"><strong>清空所有收藏</strong><span>删除全部收藏，且无法撤销</span></div>
+            <button id="wipeBtn" class="setting-action danger" type="button">清空</button>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="settings.js"></script>
+  </body>
+</html>
