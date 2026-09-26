@@ -8,6 +8,7 @@ const CURRENT_ITEM_KEY = "laterOnCurrentItem";
 // 全屏与侧栏共享的「当前筛到哪一档」（全部 / 未读 / 已读）：
 // 一边切换筛选，另一边跟着切——不用两边各点一次。
 const FILTER_KEY = "laterOnFilter";
+const FILTER_CHOSEN_KEY = "laterOnFilterChosen";
 const DEFAULT_FILTER = "unread";
 // 「自定义顺序」：用户在一个项目里拖出来的阅读顺序。
 // 结构是 { 范围: [收藏 id, ...] }，范围是 "all" / "unfiled" / 某个项目 id——
@@ -182,14 +183,14 @@ async function setFilter(value) {
   filter = next;
   syncFilterButtons();
   render();
-  try { await chrome.storage.local.set({ [FILTER_KEY]: filter }); } catch { /* 存不下就算了，本地筛选照常用 */ }
+  try { await chrome.storage.local.set({ [FILTER_KEY]: filter, [FILTER_CHOSEN_KEY]: true }); } catch { /* 存不下就算了，本地筛选照常用 */ }
 }
 
 async function init() {
   await window.LaterOnI18n?.getLanguage();
   window.LaterOnI18n?.applyStatic();
   const [result, activeTabs] = await Promise.all([
-    chrome.storage.local.get([STORAGE_KEY, PROJECTS_KEY, ACTIVE_PROJECT_KEY, SETTINGS_KEY, CURRENT_ITEM_KEY, FILTER_KEY, ORDER_KEY, COVERS_KEY]),
+    chrome.storage.local.get([STORAGE_KEY, PROJECTS_KEY, ACTIVE_PROJECT_KEY, SETTINGS_KEY, CURRENT_ITEM_KEY, FILTER_KEY, FILTER_CHOSEN_KEY, ORDER_KEY, COVERS_KEY]),
     chrome.tabs.query({ active: true, currentWindow: true })
   ]);
   covers = result[COVERS_KEY] || {};
@@ -208,7 +209,8 @@ async function init() {
   sort = userSettings.defaultSort || "newest";
   sortSelect.value = sort;
   autoMarkRead = userSettings.autoMarkRead !== false;
-  filter = normalizeFilter(result[FILTER_KEY]);
+  // 旧版本会在回首页时写入 all，但那不是用户的筛选偏好；升级后首次打开回到未读。
+  filter = result[FILTER_CHOSEN_KEY] ? normalizeFilter(result[FILTER_KEY]) : DEFAULT_FILTER;
   syncFilterButtons();
   libraryTabId = activeTabs[0]?.id || null;
   libraryWindowId = activeTabs[0]?.windowId || null;
@@ -352,7 +354,7 @@ function goHome() {
   clearTimeout(searchTimer);
   if (searchInput.value) searchInput.value = "";
   query = "";
-  setFilter("all");
+  setFilter("unread");
   selectProject("all");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }

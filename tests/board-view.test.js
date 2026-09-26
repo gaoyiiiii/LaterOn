@@ -52,6 +52,7 @@ const store = {
   laterOnActiveProject: "all",
   laterOnSettings: {},
   laterOnFilter: "all"
+  laterOnFilterChosen: true,
 };
 const changeListeners = [];
 window.chrome = {

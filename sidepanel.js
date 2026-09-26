@@ -7,6 +7,7 @@ const tr = (key, vars) => window.LaterOnI18n?.t(key, vars) || key;
 const CURRENT_ITEM_KEY = "laterOnCurrentItem";
 // 与全屏界面共享的「当前筛到哪一档」（全部 / 未读 / 已读）：一边切，另一边跟着切。
 const FILTER_KEY = "laterOnFilter";
+const FILTER_CHOSEN_KEY = "laterOnFilterChosen";
 const DEFAULT_FILTER = "unread";
 // 与全屏界面共享的「自定义顺序」：全屏拖出来的阅读顺序，侧栏照着排。
 const ORDER_KEY = "laterOnOrder";
@@ -102,7 +103,7 @@ async function setFilter(value) {
   filter = next;
   syncFilterButtons();
   render();
-  try { await chrome.storage.local.set({ [FILTER_KEY]: filter }); } catch { /* 存不下就算了，本地筛选照常用 */ }
+  try { await chrome.storage.local.set({ [FILTER_KEY]: filter, [FILTER_CHOSEN_KEY]: true }); } catch { /* 存不下就算了，本地筛选照常用 */ }
 }
 
 const list = document.querySelector("#items");
@@ -255,7 +256,7 @@ async function init() {
   // 封面（COVERS_KEY）故意不在这批里：它可能比整个列表还大，
   // 排在首屏之后单独读，列表才能最快出来。
   const storedPromise = chrome.storage.local
-    .get([STORAGE_KEY, PROJECTS_KEY, ACTIVE_PROJECT_KEY, CURRENT_ITEM_KEY, SETTINGS_KEY, FILTER_KEY, ORDER_KEY])
+    .get([STORAGE_KEY, PROJECTS_KEY, ACTIVE_PROJECT_KEY, CURRENT_ITEM_KEY, SETTINGS_KEY, FILTER_KEY, FILTER_CHOSEN_KEY, ORDER_KEY])
     .catch((error) => ({ __laterOnLoadError: String(error?.message || error || "读取失败") }));
 
   // ② 读「秒开缓存」并立刻画第一屏：上一回的列表快照就在本页 localStorage 里，
@@ -308,7 +309,7 @@ async function init() {
   sortMode = (stored[SETTINGS_KEY] || {}).defaultSort || "newest";
   orders = stored[ORDER_KEY] || {};
   // 全屏那边可能已经切过筛选了，打开侧栏时接着用同一档。
-  filter = normalizeFilter(stored[FILTER_KEY]);
+  filter = stored[FILTER_CHOSEN_KEY] ? normalizeFilter(stored[FILTER_KEY]) : DEFAULT_FILTER;
   syncFilterButtons();
   const paintStart2 = nowMs();
   render();

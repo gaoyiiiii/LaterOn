@@ -43,6 +43,7 @@ const store = {
   laterOnActiveProject: "work",
   laterOnSettings: {},
   laterOnFilter: "all"
+  laterOnFilterChosen: true,
 };
 
 const changeListeners = [];
