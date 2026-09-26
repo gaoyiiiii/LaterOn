@@ -19,7 +19,7 @@
   <body>
     <div class="shell">
       <header class="topbar">
-        <a class="brand" id="homeBrand" href="#" aria-label="LaterOn 首页" title="回到首页"><span>↗</span>LaterOn</a>
+        <a class="brand" id="homeBrand" href="#" aria-label="LaterOn 首页" title="回到首页"><img class="brand-icon" src="icon.svg" width="32" height="32" alt="" />LaterOn</a>
         <nav aria-label="筛选">
           <button class="nav-item active" data-filter="unread" data-i18n="unread">未读</button>
           <button class="nav-item" data-filter="done" data-i18n="read">已读</button>
@@ -39,7 +39,8 @@
                仍然带 .project-nav，所以点击切换、拖收藏进来归类的行为都照旧。 -->
           <button class="project-nav inbox-card" data-project="unfiled">
             <span class="inbox-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.7 8.2 7 5.6A3 3 0 0 1 9.7 4h4.6A3 3 0 0 1 17 5.6l1.3 2.6"/><path d="M4 8.5h16v8.8A2.7 2.7 0 0 1 17.3 20H6.7A2.7 2.7 0 0 1 4 17.3z"/><path d="M4 13h4l1.5 2h5L16 13h4"/></svg>
+              <!-- Morpheus/Lucide: list-todo -->
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5h8M13 12h8M13 19h8M3 17l2 2 4-4M3 7l2 2 4-4"/></svg>
             </span>
             <span class="inbox-body">
               <strong class="inbox-title" data-i18n="inbox">等待整理</strong>
@@ -49,7 +50,8 @@
           </button>
           <button class="project-nav top-entry" data-project="all">
             <span class="nav-icon all-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>
+              <!-- Morpheus/Lucide: layers-3 -->
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12.83 2.18 8.5 4.14a1 1 0 0 1 0 1.79l-8.5 4.14a2 2 0 0 1-1.66 0l-8.5-4.14a1 1 0 0 1 0-1.79l8.5-4.14a2 2 0 0 1 1.66 0Z"/><path d="m6.5 10.5-3.83 1.87a1 1 0 0 0 0 1.79l8.5 4.14a2 2 0 0 0 1.66 0l8.5-4.14a1 1 0 0 0 0-1.79l-3.83-1.87"/><path d="m6.5 16.5-3.83 1.87a1 1 0 0 0 0 1.79l8.5 4.14a2 2 0 0 0 1.66 0l8.5-4.14a1 1 0 0 0 0-1.79l-3.83-1.87"/></svg>
             </span>
             <span data-i18n="allProjects">全部内容</span><strong class="nav-count" id="allCount">0</strong>
           </button>
@@ -92,7 +94,7 @@
         </section>
 
         <section id="emptyState" class="empty" hidden>
-          <div class="empty-icon">↗</div>
+          <img class="empty-icon" src="icon.svg" alt="" />
           <h2>这里还很安静</h2>
           <p>打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。</p>
         </section>
