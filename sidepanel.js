@@ -705,7 +705,7 @@ function renderProjectFilters() {
   // 侧栏模式里不给「待整理」筛选项：这里是快速翻看的地方，整理这件事交给全屏页面
   // （那边的「待整理」钉在左侧栏最上面）。真有待整理的收藏，在「全部项目」里照样看得到。
   const choices = [
-    { id: "all", name: "全部项目", count: items.length },
+    { id: "all", name: tr("allProjects"), count: items.length },
     ...projects.map((project) => ({ ...project, count: counts.get(project.id) || 0 }))
   ];
   choices.forEach((choice) => {

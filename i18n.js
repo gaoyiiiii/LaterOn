@@ -5,7 +5,7 @@
   const KEY = "laterOnSettings";
   const dictionaries = {
     "zh-CN": {
-      unread: "未读", read: "已读", all: "全部", allProjects: "全部项目", inbox: "待整理",
+      unread: "未读", read: "已读", all: "全部", allProjects: "全部内容", inbox: "待整理",
       noInbox: "还没有要整理的", projects: "项目", settings: "设置", search: "搜索收藏",
       select: "选择", create: "创建", projectName: "项目名称", sortNewest: "最新收藏", sortOldest: "最早收藏",
       sortSource: "按来源", sortCustom: "自定义顺序", selectCount: "已选 {count} 篇", selectAll: "全选",
@@ -24,7 +24,7 @@
       export: "导出收藏", import: "导入收藏", wipe: "清空所有收藏", saveCurrent: "收藏", currentPage: "当前页面",
     },
     en: {
-      unread: "Unread", read: "Read", all: "All", allProjects: "All projects", inbox: "To sort",
+      unread: "Unread", read: "Read", all: "All", allProjects: "All content", inbox: "Inbox",
       noInbox: "Nothing to sort", projects: "Projects", settings: "Settings", search: "Search saves",
       select: "Select", create: "Create", projectName: "Project name", sortNewest: "Newest", sortOldest: "Oldest",
       sortSource: "By source", sortCustom: "Custom order", selectCount: "{count} selected", selectAll: "Select all",
