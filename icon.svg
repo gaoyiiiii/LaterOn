@@ -8,6 +8,6 @@
   </defs>
   <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
   <path d="M270 754 754 270M754 270H490M754 270v264"
-        fill="none" stroke="#fff" stroke-width="82"
+        fill="none" stroke="#fff" stroke-width="108"
         stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
