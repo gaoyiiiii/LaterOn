@@ -1,7 +1,8 @@
 // 模拟验证：收藏「单篇」时的两种行为（由设置里的「收藏当前网页前，先选项目」控制）。
 // 用假的 chrome API 把 background.js 跑起来，检查：
-//  1) 开关关闭（默认）时：一键直接收藏，收进「待整理」，不弹任何浮层
-//  2) 开关打开时：先在当前网页里弹出「选项目」浮层，此刻还没有真正收藏
+//  1) 尚未存过设置时默认开启：先在当前网页里弹出「选项目」浮层
+//  2) 用户明确关闭时：一键直接收藏，收进「待整理」，不弹任何浮层
+//  3) 开关打开时：先在当前网页里弹出「选项目」浮层，此刻还没有真正收藏
 //  3) 浮层里选好项目并确认 → 这一篇带上所选项目，且只弹一条结果提示（不再多出「开始/总结」）
 //  4) 这一篇已经收藏过时：确认后被搬进所选项目，提示写明「已移到」
 //  5) 浮层里取消 → 什么都不收藏
@@ -167,13 +168,22 @@ const check = (label, ok, extra = "") => {
 };
 
 (async () => {
-  // ── 第 1 步：开关默认关闭 → 直接收藏，不弹浮层 ────────────────
-  console.log("── 第 1 步：开关关闭（默认）──");
+  // ── 第 0 步：没有存过该字段 → 默认开启并弹浮层 ──────────────
+  console.log("── 第 0 步：首次使用默认开启 ──");
+  const defaultResult = await sandbox.quickSave(tab, "shortcut");
+  check("没有设置记录时默认先选项目", defaultResult?.pending === true && overlays.length === 1, JSON.stringify(defaultResult));
+  check("选择项目前不会提前收藏", !store.laterOnItems.some((i) => i.url === PAGE_URL));
+  await sendFromPage({ type: "CANCEL_BATCH_SAVE" });
+  overlays.length = 0;
+
+  // ── 第 1 步：用户明确关闭 → 直接收藏，不弹浮层 ────────────────
+  console.log("── 第 1 步：用户明确关闭开关 ──");
+  store.laterOnSettings = { askFolderOnSingle: false };
   await sandbox.quickSave(tab, "shortcut");
   check("没有弹任何浮层、也没开窗口", overlays.length === 0 && windowsCreated.length === 0, `浮层 ${overlays.length} / 窗口 ${windowsCreated.length}`);
   const saved = store.laterOnItems.find((i) => i.url === PAGE_URL);
   check("这一篇被直接收藏了", !!saved, saved ? saved.title : "没找到");
-  check("默认收进「待整理」（不带项目）", saved && (saved.projectId || null) === null, `projectId=${JSON.stringify(saved?.projectId)}`);
+  check("关闭后收进「待整理」（不带项目）", saved && (saved.projectId || null) === null, `projectId=${JSON.stringify(saved?.projectId)}`);
   check("只弹了一条结果提示", pills.length === 1 && String(pills[0].items[0].text).includes("已收藏："), pills.map((p) => p.items[0].text).join(" | "));
 
   // ── 第 2 步：打开开关 → 先弹浮层，此刻不收藏 ──────────────────

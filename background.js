@@ -675,10 +675,10 @@ async function saveAllTabsInWindow(source = "shortcut") {
 }
 
 // 设置里「收藏单篇前先选项目」有没有打开。
-// 默认关：单篇收藏不选择项目，一键直接收进「待整理」（projectId 为 null）。
+// 默认开：旧设置里还没有这个字段时也先选项目；只有用户明确关掉（false）才直收「待整理」。
 async function shouldAskFolderForSingle() {
   const settings = (await chrome.storage.local.get(SETTINGS_KEY))[SETTINGS_KEY] || {};
-  return settings.askFolderOnSingle === true;
+  return settings.askFolderOnSingle !== false;
 }
 
 // 把这一批标签页暂存起来，弹出「选项目」浮层，等用户选好再真正收藏。
