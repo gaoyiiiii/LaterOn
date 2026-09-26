@@ -73,6 +73,10 @@ const icons = {
   ribbonField: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5h8a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h8"/><path d="M20 16.5h-8a3 3 0 0 1 0-6h4a3 3 0 0 0 0-6H8"/></svg>`,
   arcPocket: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15a8 8 0 0 1 16 0"/><path d="M6 15a6 6 0 0 0 12 0"/><path d="M8 15a4 4 0 0 0 8 0"/><path d="M4 18h16"/></svg>`,
   dotConstellation: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m6 7 6 5 6-5M6 17l6-5 6 5"/><circle cx="6" cy="7" r="1.5" fill="currentColor"/><circle cx="18" cy="7" r="1.5" fill="currentColor"/><circle cx="6" cy="17" r="1.5" fill="currentColor"/><circle cx="18" cy="17" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>`
+  ,boxSoft: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 8.5 6 5.2A2 2 0 0 1 7.8 4h8.4A2 2 0 0 1 18 5.2l1.5 3.3v9A2.5 2.5 0 0 1 17 20H7a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M4.5 8.5h15"/><path d="M9 8.5v2.8c0 .7.6 1.2 1.3 1.2h3.4c.7 0 1.3-.5 1.3-1.2V8.5"/><path d="M9.5 16.2h5"/></svg>`,
+  boxBow: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9h14v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2Z"/><path d="M4 6.8A1.8 1.8 0 0 1 5.8 5H18.2A1.8 1.8 0 0 1 20 6.8V9H4Z"/><path d="M12 5v15"/><path d="M12 5c-2.8 0-4.4-.7-4.4-2S9.5 1.5 12 5ZM12 5c2.8 0 4.4-.7 4.4-2S14.5 1.5 12 5Z"/></svg>`,
+  boxPeek: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h16v8A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5Z"/><path d="M4 9.5 6 5h12l2 4.5"/><path d="M8 9.5c.8-1.8 2-2.7 3.5-2.7S14.2 7.7 15 9.5"/><circle cx="9.2" cy="14.2" r=".7" fill="currentColor" stroke="none"/><circle cx="14.8" cy="14.2" r=".7" fill="currentColor" stroke="none"/></svg>`,
+  boxSpark: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8.5h14v9A2.5 2.5 0 0 1 16.5 20h-9A2.5 2.5 0 0 1 5 17.5Z"/><path d="M4 8.5 6.2 5h11.6L20 8.5"/><path d="M12 11v5M9.5 13.5h5"/><path d="m19 3 .5 1.5L21 5l-1.5.5L19 7l-.5-1.5L17 5l1.5-.5Z"/></svg>`
 };
 const sets = [
   ['A · Soft Orbit','柔和托盘 + 环形内容层','tray','orbit'],
@@ -89,7 +93,11 @@ const sets = [
   ['L · Wave','波纹收纳 + 轨道内容','wavePocket','orbitCluster'],
   ['M · Seed','种子托盘 + 花瓣内容','seedTray','petalField'],
   ['N · Loop','循环收纳 + 丝带内容','loopInbox','ribbonField'],
-  ['O · Arc','弧线收纳 + 星点内容','arcPocket','dotConstellation']
+  ['O · Arc','弧线收纳 + 星点内容','arcPocket','dotConstellation'],
+  ['P · Soft Box','圆角盒 + 轨道内容','boxSoft','orbitCluster'],
+  ['Q · Bow Box','蝴蝶结盒 + 花瓣内容','boxBow','petalField'],
+  ['R · Peek Box','探头盒 + 点阵内容','boxPeek','dotConstellation'],
+  ['S · Spark Box','星光盒 + 胶囊内容','boxSpark','softstack']
 ];
 const cards = document.querySelector('#cards');
 function select(i) { document.querySelectorAll('.candidate').forEach((e,n)=>e.classList.toggle('active',n===i)); const s=sets[i]; document.querySelector('#previewTitle').textContent=s[0]; document.querySelector('#previewDesc').textContent=s[1]; document.querySelector('#previewInbox').innerHTML=icons[s[2]]; document.querySelector('#previewAll').innerHTML=icons[s[3]]; }
