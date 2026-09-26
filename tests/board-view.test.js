@@ -154,8 +154,8 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   check("一篇收藏都没有的项目不显示图板", !boardOf("empty"), boardCards().map((c) => c.dataset.project).join(","));
   check("图板上写着类目名", text(boardOf("work"), ".board-name") === "工作", text(boardOf("work"), ".board-name"));
   check("「待整理」不再单独占一块图板", !boardOf("unfiled"));
-  // 待整理那 1 篇不进任何图板，但顶上要报出来，否则篇数看着像少了
-  check("顶部计数改成按类目算，并报出待整理的篇数", /2 个类目 · 共 5 篇收藏 · 4 篇还没读完 · 1 篇待整理/.test(document.querySelector("#countText").textContent), document.querySelector("#countText").textContent);
+  // 待整理那 1 篇不进任何图板；全部项目统计只描述项目图板本身。
+  check("顶部计数改成按类目算且不混入待整理", /2 个类目 · 共 5 篇收藏 · 4 篇没看完/.test(document.querySelector("#countText").textContent) && !document.querySelector("#countText").textContent.includes("待整理"), document.querySelector("#countText").textContent);
   // 侧栏：全屏页面里「待整理」要钉在最上面，而且有内容时整块高亮
   const inbox = document.querySelector(".inbox-card");
   check("侧栏有「待整理」这块，而且钉在最上面", !!inbox && document.querySelector(".project-sidebar").firstElementChild === inbox);
@@ -179,8 +179,8 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   const workNote = boardOf("work").querySelector(".board-note");
   check("没写过简介时自动生成一句概览", /主要来自 少数派/.test(workNote.textContent), workNote.textContent);
   check("自动生成的简介标成 is-auto（显示更淡）", workNote.classList.contains("is-auto"));
-  check("篇数写在最下面", text(boardOf("work"), ".board-meta") === "4 篇 · 3 篇还没读完", text(boardOf("work"), ".board-meta"));
-  check("读完了的类目写「都读完了」", text(boardOf("read"), ".board-meta") === "1 篇 · 1 篇还没读完", text(boardOf("read"), ".board-meta"));
+  check("篇数写在最下面", text(boardOf("work"), ".board-meta") === "4 篇 · 3 篇没看完", text(boardOf("work"), ".board-meta"));
+  check("读完了的类目写「都读完了」", text(boardOf("read"), ".board-meta") === "1 篇 · 1 篇没看完", text(boardOf("read"), ".board-meta"));
 
   console.log("\n── 自己写一句简介 ──");
   click(boardOf("work").querySelector(".board-edit"));
@@ -261,7 +261,7 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   check("当前筛选下没有内容的类目也不显示", !boardOf("read"));
   click(document.querySelector('.nav-item[data-filter="all"]'));
   await tick(30);
-  check("切回全部又恢复 4 篇", text(boardOf("work"), ".board-meta") === "4 篇 · 3 篇还没读完");
+  check("切回全部又恢复 4 篇", text(boardOf("work"), ".board-meta") === "4 篇 · 3 篇没看完");
 
   console.log("\n── 点左上角品牌标识 = 回全屏首页 ──");
   // 先把页面弄「脏」：钻进某个项目 + 筛选拨到「未读」+ 搜索框里留个字。

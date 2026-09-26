@@ -121,27 +121,27 @@ async function search(word) {
 
   console.log("── 起点：在「全部项目」图板视图里 ──");
   check("默认是图板视图，两个类目", boardIds().join(",") === "read,work", boardIds().join(","));
-  check("顶部计数是图板的说法", /2 个类目 · 共 4 篇收藏 · 3 篇还没读完 · 1 篇待整理/.test(countText()), countText());
+  check("顶部计数是图板的说法", /2 个类目 · 共 4 篇收藏 · 3 篇没看完/.test(countText()) && !countText().includes("待整理"), countText());
 
   console.log("\n── 在「全部项目」里搜索：直接铺文章卡片，不筛类目 ──");
   await search("深度");
   check("视图从图板切成卡片列表", document.querySelector("#boardGrid").hidden === true && document.querySelector("#cardGrid").hidden === false);
   check("命中全部含「深度」的文章（跨项目，4 篇）", cardIds().join(",") === "a1,b1,d1,u1", cardIds().join(","));
-  check("计数写明是在全部收藏里找的", /在全部收藏里找到 4 篇 · 3 篇还没读完/.test(countText()), countText());
+  check("计数写明是在全部收藏里找的", /在全部收藏里找到 4 篇 · 3 篇没看完/.test(countText()), countText());
   check("排序下拉在搜索时可用（卡片视图）", document.querySelector("#sortSelect").hidden === false);
 
   console.log("\n── 「未读 / 已读」那一档仍然生效 ──");
   click(document.querySelector('.nav-item[data-filter="done"]'));
   await tick(30);
   check("只看已读时，命中里只剩那篇已完成的", cardIds().join(",") === "d1", cardIds().join(","));
-  check("计数跟着变", /在全部收藏里找到 1 篇 · 0 篇还没读完/.test(countText()), countText());
+  check("计数跟着变", /在全部收藏里找到 1 篇 · 0 篇没看完/.test(countText()), countText());
   click(document.querySelector('.nav-item[data-filter="all"]'));
   await tick(30);
 
   console.log("\n── 清空搜索：回到图板 ──");
   await search("");
   check("又是图板视图", boardIds().join(",") === "read,work" && document.querySelector("#boardGrid").hidden === false);
-  check("计数回到图板说法", /2 个类目 · 共 4 篇收藏 · 3 篇还没读完 · 1 篇待整理/.test(countText()), countText());
+  check("计数回到图板说法", /2 个类目 · 共 4 篇收藏 · 3 篇没看完/.test(countText()) && !countText().includes("待整理"), countText());
 
   console.log("\n── 钻进「阅读」项目里搜索：照样能搜到别的项目 / 待整理里的文章 ──");
   click(document.querySelector('#projectList .project-nav[data-project="read"]'));
@@ -156,7 +156,7 @@ async function search(word) {
   console.log("\n── 清空搜索：回到刚才那个项目（不是跳回全部） ──");
   await search("");
   check("回到「阅读」项目的卡片列表", cardIds().join(",") === "b1,d1", cardIds().join(","));
-  check("计数回到项目的说法", /2 篇收藏 · 1 篇还没读完/.test(countText()), countText());
+  check("计数回到项目的说法", /2 篇收藏 · 1 篇没看完/.test(countText()), countText());
   check("侧栏还在「阅读」上", store.laterOnActiveProject === "read", String(store.laterOnActiveProject));
 
   console.log("\n── 在「待整理」里搜索也一样 ──");

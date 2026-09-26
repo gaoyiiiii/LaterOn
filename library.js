@@ -65,6 +65,18 @@ const boardTemplate = document.querySelector("#boardTemplate");
 const searchInput = document.querySelector("#searchInput");
 const sortSelect = document.querySelector("#sortSelect");
 const toast = document.querySelector("#toast");
+const tr = (key, vars) => {
+  if (window.LaterOnI18n?.t) return window.LaterOnI18n.t(key, vars);
+  const fallback = {
+    noInbox: "还没有要整理的", searchCount: "在全部收藏里找到 {count} 篇 · {unfinished} 篇没看完",
+    scopedCount: "{count} 篇收藏 · {unfinished} 篇没看完", noMatches: "没有找到匹配的收藏",
+    noMatchesHint: "换个关键词，或切换顶部的阅读状态筛选。", quiet: "这里还很安静",
+    quietHint: "打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。",
+    noBoard: "没有匹配的类目", noBoardHint: "换个关键词，或切换顶部的阅读状态筛选。",
+    boardCount: "{groups} 个类目 · 共 {total} 篇收藏 · {unfinished} 篇没看完", notFinished: "没看完"
+  };
+  return String(fallback[key] || key).replace(/\{(\w+)\}/g, (_, k) => vars?.[k] ?? `{${k}}`);
+};
 
 // 在全屏收藏库里按 Alt+1 / Alt+2 时，后台不能对这个扩展页面执行网页收藏或翻译。
 // 直接复用本页 toast 解释原因，避免用户只看到工具栏图标上的「!」却不知道发生了什么。
@@ -174,6 +186,8 @@ async function setFilter(value) {
 }
 
 async function init() {
+  await window.LaterOnI18n?.getLanguage();
+  window.LaterOnI18n?.applyStatic();
   const [result, activeTabs] = await Promise.all([
     chrome.storage.local.get([STORAGE_KEY, PROJECTS_KEY, ACTIVE_PROJECT_KEY, SETTINGS_KEY, CURRENT_ITEM_KEY, FILTER_KEY, ORDER_KEY, COVERS_KEY]),
     chrome.tabs.query({ active: true, currentWindow: true })
@@ -804,8 +818,8 @@ function renderCardsView() {
   // 计数要说清是「在哪找的」：搜索时报命中数，并写明是在全部收藏里找的
   // ——否则人在某个项目里会以为顶上那个数字还是这个项目的。
   countText.textContent = query
-    ? `在全部收藏里找到 ${visible.length} 篇 · ${visible.filter((item) => item.status !== "done").length} 篇还没读完`
-    : `${scopedItems.length} 篇收藏 · ${scopedItems.filter((item) => item.status !== "done").length} 篇还没读完`;
+    ? tr("searchCount", { count: visible.length, unfinished: visible.filter((item) => item.status !== "done").length })
+    : tr("scopedCount", { count: scopedItems.length, unfinished: scopedItems.filter((item) => item.status !== "done").length });
 
   // 增量更新：只增删/重排发生变化的卡片，保留已有 DOM（不丢滚动、不重建监听）。
   const visibleIds = new Set(visible.map((item) => item.id));
@@ -819,11 +833,11 @@ function renderCardsView() {
 
   empty.hidden = visible.length > 0;
   if (!visible.length && items.length) {
-    empty.querySelector("h2").textContent = "没有找到匹配的收藏";
-    empty.querySelector("p").textContent = "换个关键词，或切换顶部的阅读状态筛选。";
+    empty.querySelector("h2").textContent = tr("noMatches");
+    empty.querySelector("p").textContent = tr("noMatchesHint");
   } else if (!items.length) {
-    empty.querySelector("h2").textContent = "这里还很安静";
-    empty.querySelector("p").textContent = "打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。";
+    empty.querySelector("h2").textContent = tr("quiet");
+    empty.querySelector("p").textContent = tr("quietHint");
   }
 }
 
@@ -891,19 +905,20 @@ function renderBoards() {
   // 没归到项目里的收藏不占图板，但得让人知道还有这么多没归位，
   // 否则顶上的篇数和卡片视图对不上，会以为收藏丢了。
   const loose = items.filter((item) => !item.projectId && matchesReadFilter(item)).length;
-  countText.textContent = `${groups.length} 个类目 · 共 ${total} 篇收藏 · ${unfinished} 篇还没读完`
-    + (loose ? ` · ${loose} 篇待整理` : "");
+  // 「全部项目」是项目总览，不把未归类收藏伪装成一个项目统计；
+  // 待整理数量只在左侧待整理入口显示。
+  countText.textContent = tr("boardCount", { groups: groups.length, total, unfinished });
 
   boardGrid.replaceChildren();
   for (const group of groups) boardGrid.append(createBoardCard(group));
 
   empty.hidden = groups.length > 0;
   if (!groups.length && items.length) {
-    empty.querySelector("h2").textContent = "没有匹配的类目";
-    empty.querySelector("p").textContent = "换个关键词，或切换顶部的阅读状态筛选。";
+    empty.querySelector("h2").textContent = tr("noBoard");
+    empty.querySelector("p").textContent = tr("noBoardHint");
   } else if (!items.length) {
-    empty.querySelector("h2").textContent = "这里还很安静";
-    empty.querySelector("p").textContent = "打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。";
+    empty.querySelector("h2").textContent = tr("quiet");
+    empty.querySelector("p").textContent = tr("quietHint");
   }
 }
 
@@ -1015,7 +1030,9 @@ function boardMeta(group) {
   const count = group.items.length;
   if (!count) return "还没有收藏";
   const unread = group.items.filter((item) => item.status !== "done").length;
-  return unread ? `${count} 篇 · ${unread} 篇还没读完` : `${count} 篇 · 都读完了`;
+  const english = document.documentElement.lang === "en";
+  return unread ? (english ? `${count} saves · ${unread} ${tr("notFinished")}` : `${count} 篇 · ${unread} ${tr("notFinished")}`)
+    : (english ? `${count} saves · All read` : `${count} 篇 · 都读完了`);
 }
 
 boardGrid.addEventListener("click", (event) => {
@@ -1378,8 +1395,8 @@ function renderProjects() {
   if (inbox) {
     inbox.classList.toggle("has-items", unfiled > 0);
     inbox.querySelector(".inbox-hint").textContent = unfiled
-      ? `${unfiled} 篇还没归到项目`
-      : "还没有要整理的";
+      ? (document.documentElement.lang === "en" ? `${unfiled} saves not assigned` : `${unfiled} 篇还没归到项目`)
+      : tr("noInbox");
   }
   document.querySelectorAll(".project-nav").forEach((button) => button.classList.toggle("active", button.dataset.project === activeProject));
 

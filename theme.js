@@ -10,6 +10,7 @@
     askFolderOnSingle: true,   // 收藏当前这一篇前，是否先弹窗选项目（默认开；主动关掉才直收「待整理」）
     newTabPage: true,          // 新标签（含浏览器启动首页）自动打开 LaterOn 全屏收藏墙
     autoCleanDays: 30          // 标为已读后多少天自动清除（30–180 天）
+    ,language: "zh-CN"         // zh-CN | en
   };
 
   function resolveTheme(theme) {

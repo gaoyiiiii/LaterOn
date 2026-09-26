@@ -99,6 +99,7 @@
     <script src="boot.js" defer></script>
     <!-- defer：不卡住 <body> 的解析（骨架屏因此能更早被浏览器读进来） -->
     <script src="theme.js" defer></script>
+    <script src="i18n.js" defer></script>
     <script src="dialog.js" defer></script>
     <script src="sidepanel.js" defer></script>
   </head>
@@ -210,7 +211,7 @@
           <p id="currentSource">正在读取当前网页…</p>
           <h1 id="currentTitle">当前页面</h1>
         </div>
-        <button id="saveCurrent" disabled><span>＋</span><span class="save-label">收藏</span></button>
+        <button id="saveCurrent" disabled><span>＋</span><span class="save-label" data-i18n="saveCurrent">收藏</span></button>
       </section>
       <p id="status" role="status"></p>
 
@@ -221,9 +222,9 @@
 
       <div class="filter-row">
         <div class="filters">
-          <button class="filter active" data-filter="unread">未读</button>
-          <button class="filter" data-filter="done">已读</button>
-          <button class="filter" data-filter="all">全部</button>
+          <button class="filter active" data-filter="unread" data-i18n="unread">未读</button>
+          <button class="filter" data-filter="done" data-i18n="read">已读</button>
+          <button class="filter" data-filter="all" data-i18n="all">全部</button>
         </div>
         <span id="itemCount"></span>
       </div>

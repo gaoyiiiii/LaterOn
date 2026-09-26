@@ -2,6 +2,7 @@ const STORAGE_KEY = "laterOnItems";
 const PROJECTS_KEY = "laterOnProjects";
 const ACTIVE_PROJECT_KEY = "laterOnActiveProject";
 const SETTINGS_KEY = "laterOnSettings";
+const tr = (key, vars) => window.LaterOnI18n?.t(key, vars) || key;
 // 与全屏界面共享的「当前正在读哪篇」标记（详见 library.js 的注释）。
 const CURRENT_ITEM_KEY = "laterOnCurrentItem";
 // 与全屏界面共享的「当前筛到哪一档」（全部 / 未读 / 已读）：一边切，另一边跟着切。
@@ -237,6 +238,8 @@ function saveOpenDiag(record) {
 }
 
 async function init() {
+  await window.LaterOnI18n?.getLanguage();
+  window.LaterOnI18n?.applyStatic();
   // 计时起点：boot.js 在页面 <head> 里记的那一刻（比侧栏脚本更早），
   // 这样「页面加载」和「读数据」花的时间能分别算出来。
   const bootStart = window.LaterOnBoot?.t0 ?? nowMs();
@@ -561,7 +564,7 @@ function render() {
   }
   const token = ++renderToken;
   renderComplete = false;   // 这一轮还没画完，先别拿半张列表的坐标去做定位
-  document.querySelector("#itemCount").textContent = `${visible.length} 篇`;
+  document.querySelector("#itemCount").textContent = document.documentElement.lang === "en" ? `${visible.length} saves` : `${visible.length} 篇`;
 
   // 已经不在列表里的卡片先撤掉（删掉的收藏要立刻从界面消失）。
   const visibleIds = new Set(visible.map((item) => item.id));

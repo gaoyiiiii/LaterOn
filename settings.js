@@ -11,6 +11,8 @@ function clampDays(value) {
 }
 
 async function init() {
+  await window.LaterOnI18n?.getLanguage();
+  window.LaterOnI18n?.applyStatic();
   const current = await settings.get();
 
   // 还原控件当前值
@@ -49,6 +51,10 @@ async function init() {
         seg.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
         button.classList.add("active");
         await settings.set({ [key]: button.dataset.value });
+        if (key === "language") {
+          await window.LaterOnI18n?.setLanguage(button.dataset.value);
+          window.setTimeout(() => window.location.reload(), 0);
+        }
       });
     });
   });
