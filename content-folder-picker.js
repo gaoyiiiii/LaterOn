@@ -40,14 +40,18 @@ function showFolderPickerOverlay(payload) {
   });
 }
 
-// 后台把配置放进一个一次性 JSON 节点再执行本文件：从这里读出 payload。
-// 仅在节点确实存在时才自动弹出——预览页不会带上这个节点，就不会在加载时误弹一个空浮层。
-  const laterOnPickerPayloadNode = document.getElementById("lateron-picker-payload-data");
-  let laterOnPickerPayload = null;
-  try { laterOnPickerPayload = JSON.parse(laterOnPickerPayloadNode?.textContent || "null"); } catch {}
-  laterOnPickerPayloadNode?.remove();
+  // 后台把配置放进一个一次性 JSON 节点再执行本文件：从这里读出 payload。
+  // 配置和本文件可能并行注入，所以既检查现有节点，也监听后台发出的就绪事件。
+  const consumePickerPayload = () => {
+    const node = document.getElementById("lateron-picker-payload-data");
+    let payload = null;
+    try { payload = JSON.parse(node?.textContent || "null"); } catch {}
+    node?.remove();
+    if (payload) showFolderPickerOverlay(payload);
+  };
 
   // 预览页会直接调用这个入口；重复注入时覆盖同名属性是安全的。
   window.showFolderPickerOverlay = showFolderPickerOverlay;
-  if (laterOnPickerPayload) showFolderPickerOverlay(laterOnPickerPayload);
+  document.addEventListener("lateron-picker-payload-ready", consumePickerPayload, { once: true });
+  consumePickerPayload();
 })();

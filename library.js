@@ -446,6 +446,8 @@ function enableReorder({ container, selector, idAttr, commit }) {
   container.addEventListener("dragstart", (event) => {
     const el = event.target.closest(selector);
     if (!el) return;
+    // 拖拽是另一种明确操作：离开多选状态，避免拖动后仍保留旧的勾选。
+    if (selectMode) setSelectMode(false);
     // 从按钮 / 下拉上按下的是想点它，不是想拖整块（图板上那个改简介的铅笔就是）。
     if (event.target.closest("button, select")) { event.preventDefault(); return; }
     const id = el.dataset[idAttr];
@@ -1986,6 +1988,15 @@ function setSelectMode(on) {
   if (!on) selectedIds.clear();
   updateSelectionUI();
 }
+
+// 多选期间点击卡片以外的页面操作区，视为用户要离开多选；
+// 卡片本身、底部批量工具栏和“选择”按钮保留原有交互。
+document.addEventListener("pointerdown", (event) => {
+  if (!selectMode) return;
+  const target = event.target;
+  if (target?.closest?.(".card, #bulkBar, #selectMode")) return;
+  setSelectMode(false);
+}, true);
 
 function toggleSelect(id, card, force) {
   const willSelect = force !== undefined ? force : !selectedIds.has(id);

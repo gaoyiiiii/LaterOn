@@ -56,7 +56,7 @@
     // 人已经在收藏库里了，顶部再写一遍品牌纯属重复，还把项目列表往下挤了一截。
     const brandHtml = isPopover
       ? ""
-      : `<div class="lon-brand"><span class="lon-logo">↗</span>LaterOn</div>`;
+      : `<div class="lon-brand"><img class="lon-logo" src="${chrome.runtime.getURL("icon.svg")}" width="34" height="34" alt="" />LaterOn</div>`;
 
     const root = document.createElement("div");
     root.className = "lon-root" + (isPopover ? " lon-popover" : "");
@@ -465,10 +465,9 @@
       .lon-root.is-out .lon-backdrop { opacity: 0; }
       .lon-root.is-out .lon-panel { opacity: 0; transform: translateY(8px) scale(.98); }
 
-      .lon-brand { display: flex; align-items: center; gap: 8px; color: var(--lon-muted); font-size: 12px; font-weight: 700; letter-spacing: .2px; }
+      .lon-brand { display: flex; align-items: center; gap: 10px; color: var(--lon-muted); font-size: 13.5px; font-weight: 700; letter-spacing: .2px; }
       .lon-logo {
-        display: grid; place-items: center; width: 26px; height: 26px; border-radius: 9px;
-        background: linear-gradient(140deg, #ff7a52, #ff4f2e); color: #fff; font-size: 15px; line-height: 1;
+        display: block; width: 34px; height: 34px; border-radius: 9px;
         box-shadow: 0 6px 16px -6px rgba(255,80,50,.6);
       }
       .lon-title { margin: 12px 0 0; font-size: 20px; font-weight: 800; letter-spacing: -.4px; line-height: 1.3; color: var(--lon-ink); }

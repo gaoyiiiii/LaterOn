@@ -1006,35 +1006,39 @@ async function showPickerOverlay(tab, payload) {
     };
     // files 注入不能直接带 args：先把很小的配置放进一个一次性 JSON 节点，
     // 再执行真正的 UI 文件。用 DOM 传递比依赖两次注入共享全局变量更稳。
-    const payloadInjected = await withTimeout(
-      chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: (value) => {
-          const id = "lateron-picker-payload-data";
-          document.getElementById(id)?.remove();
-          const node = document.createElement("script");
-          node.id = id;
-          node.type = "application/json";
-          node.textContent = JSON.stringify(value);
-          document.documentElement.appendChild(node);
-        },
-        args: [pickerPayload]
-      }),
-      PICKER_INJECT_TIMEOUT_MS,
-      null
-    );
-    if (!Array.isArray(payloadInjected)) return false;
-
-    const uiInjected = await withTimeout(
-      chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        // picker-ui.js 先注入（提供 window.openFolderPicker），content-folder-picker.js 再调用它。
-        files: ["picker-ui.js", "content-folder-picker.js"]
-      }),
-      PICKER_INJECT_TIMEOUT_MS,
-      null
-    );
+    // 配置节点和 UI 文件可以并行注入：content-folder-picker.js 会监听配置就绪事件，
+    // 即使两条注入的先后顺序不同，也能在两者都到位后立即打开浮层。
+    const [payloadInjected, uiInjected] = await Promise.all([
+      withTimeout(
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: (value) => {
+            const id = "lateron-picker-payload-data";
+            document.getElementById(id)?.remove();
+            const node = document.createElement("script");
+            node.id = id;
+            node.type = "application/json";
+            node.textContent = JSON.stringify(value);
+            document.documentElement.appendChild(node);
+            document.dispatchEvent(new CustomEvent("lateron-picker-payload-ready"));
+          },
+          args: [pickerPayload]
+        }),
+        PICKER_INJECT_TIMEOUT_MS,
+        null
+      ),
+      withTimeout(
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          // picker-ui.js 先注入（提供 window.openFolderPicker），content-folder-picker.js 再调用它。
+          files: ["picker-ui.js", "content-folder-picker.js"]
+        }),
+        PICKER_INJECT_TIMEOUT_MS,
+        null
+      )
+    ]);
     if (!Array.isArray(uiInjected)) return false;
+    if (!Array.isArray(payloadInjected)) return false;
 
     // executeScript 成功只代表文件执行完，不代表浮层一定留在页面上。
     // 页面恰好导航、DOM 被站点重建、共享 UI 初始化失败时，主动确认宿主确实存在；

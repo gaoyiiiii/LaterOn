@@ -406,7 +406,13 @@ async function loadCurrentPage() {
   resetCurrentPage();
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || !/^https?:/i.test(tab.url || "")) throw new Error("当前页面无法收藏");
+    if (!tab?.id) throw new Error("当前窗口没有可收藏的页面");
+    if (!/^https?:/i.test(tab.url || "")) {
+      const scheme = String(tab.url || "").split(":", 1)[0].toLowerCase();
+      throw new Error(scheme === "file"
+        ? "本地文件无法收藏，请切换到普通网页"
+        : "浏览器内部页面无法收藏，请切换到普通网页");
+    }
     const fallback = fallbackMetadata(tab);
     // 第一段：立刻显示，按钮放开，不等后台。
     applyCurrentPage({ ...fallback, url: tab.url }, generation);
@@ -429,6 +435,7 @@ async function loadCurrentPage() {
 function applyCurrentPage(result, generation) {
   if (generation !== loadGeneration) return;
   currentItem = { ...result, title: result.title || result.url };
+  syncCurrentTabItem(currentItem.url);
   document.querySelector("#currentTitle").textContent = currentItem.title;
   document.querySelector("#currentSource").textContent = currentItem.source;
   if (currentItem.image) setCurrentThumb(currentItem.image);
@@ -462,6 +469,46 @@ function fallbackMetadata(tab) {
     favicon: tab.favIconUrl || "",
     source
   };
+}
+
+// 当前标签页和收藏条目用同一套网址归一化规则比较：忽略 www、末尾斜杠、追踪参数和 hash，
+// 避免同一篇文章因为分享链接参数不同而匹配不上。
+function normalizePanelUrl(url) {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.host.toLowerCase().replace(/^www\./, "");
+    const path = parsed.pathname.replace(/\/+$/, "") || "/";
+    const keep = [...parsed.searchParams.entries()]
+      .filter(([key]) => !/^(utm_|fbclid|gclid|mc_|ref|spm|igshid)/i.test(key))
+      .sort(([a], [b]) => a.localeCompare(b));
+    const search = keep.length
+      ? "?" + keep.map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join("&")
+      : "";
+    return `${parsed.protocol}//${host}${path}${search}`;
+  } catch {
+    return String(url || "").trim().toLowerCase();
+  }
+}
+
+function syncCurrentTabItem(url) {
+  const normalized = normalizePanelUrl(url);
+  const matched = normalized
+    ? items.find((item) => normalizePanelUrl(item.url) === normalized)
+    : null;
+  const nextId = matched?.id || null;
+  currentItemId = nextId;
+
+  if (nextId) {
+    // render() 之后会由 applyCurrentAndLocate 负责定位；这里先把高亮同步到已存在的卡片。
+    applyCurrentAndLocate();
+    return;
+  }
+
+  // 当前页面从未收藏过：取消旧的“正在阅读”高亮并回到侧栏顶部，方便直接收藏。
+  pendingLocate = false;
+  clearTimeout(locateTimer);
+  for (const article of itemMap.values()) article.classList.remove("is-current");
+  window.scrollTo({ top: 0, behavior: "auto" });
 }
 
 saveButton.addEventListener("click", async () => {
