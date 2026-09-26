@@ -473,27 +473,11 @@ function fallbackMetadata(tab) {
 
 // 当前标签页和收藏条目用同一套网址归一化规则比较：忽略 www、末尾斜杠、追踪参数和 hash，
 // 避免同一篇文章因为分享链接参数不同而匹配不上。
-function normalizePanelUrl(url) {
-  try {
-    const parsed = new URL(url);
-    const host = parsed.host.toLowerCase().replace(/^www\./, "");
-    const path = parsed.pathname.replace(/\/+$/, "") || "/";
-    const keep = [...parsed.searchParams.entries()]
-      .filter(([key]) => !/^(utm_|fbclid|gclid|mc_|ref|spm|igshid)/i.test(key))
-      .sort(([a], [b]) => a.localeCompare(b));
-    const search = keep.length
-      ? "?" + keep.map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join("&")
-      : "";
-    return `${parsed.protocol}//${host}${path}${search}`;
-  } catch {
-    return String(url || "").trim().toLowerCase();
-  }
-}
-
 function syncCurrentTabItem(url) {
-  const normalized = normalizePanelUrl(url);
+  const normalize = globalThis.LaterOnUrl?.normalize || ((value) => String(value || "").trim().toLowerCase());
+  const normalized = normalize(url);
   const matched = normalized
-    ? items.find((item) => normalizePanelUrl(item.url) === normalized)
+    ? items.find((item) => normalize(item.url) === normalized)
     : null;
   const nextId = matched?.id || null;
   currentItemId = nextId;

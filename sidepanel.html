@@ -100,12 +100,14 @@
     <!-- defer：不卡住 <body> 的解析（骨架屏因此能更早被浏览器读进来） -->
     <script src="theme.js" defer></script>
     <script src="i18n.js" defer></script>
-    <script src="dialog.js" defer></script>
+    <script src="url-utils.js" defer></script>
     <script src="sidepanel.js" defer></script>
+    <!-- 弹窗只在用户编辑 / 删除时需要，放到侧栏主逻辑之后，避免拖慢首屏执行。 -->
+    <script src="dialog.js" defer></script>
   </head>
   <body class="booting">
     <header>
-      <div class="brand"><span>↗</span>LaterOn</div>
+      <div class="brand"><img class="brand-icon" src="icon.svg" width="25" height="25" alt="" />LaterOn</div>
       <button id="openLibrary" class="icon-button" title="打开完整界面" aria-label="打开完整界面">
         <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M8 21H5a2 2 0 0 1-2-2v-3m18 0v3a2 2 0 0 1-2 2h-3"/></svg>
       </button>

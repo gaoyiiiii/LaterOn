@@ -1,3 +1,6 @@
+importScripts("url-utils.js");
+const normalizeUrl = LaterOnUrl.normalize;
+
 const STORAGE_KEY = "laterOnItems";
 const PROJECTS_KEY = "laterOnProjects";
 const SETTINGS_KEY = "laterOnSettings";
@@ -50,7 +53,12 @@ async function recordDiag(patch) {
 const MENU_SAVE_ALL = "lateron-save-all-tabs";
 const MENU_SAVE_PAGE = "lateron-save-page";
 
-function setupContextMenus() {
+async function setupContextMenus() {
+  const stored = await chrome.storage.local.get(SETTINGS_KEY).catch(() => ({}));
+  const language = stored[SETTINGS_KEY]?.language === "en" ? "en" : "zh-CN";
+  const titles = language === "en"
+    ? { page: "Save this page to LaterOn", all: "Save all tabs in this window to LaterOn" }
+    : { page: "收藏此页面到 LaterOn", all: "收藏本窗口所有标签页到 LaterOn" };
   chrome.contextMenus.removeAll(() => {
     const create = (options) => {
       try {
@@ -59,8 +67,8 @@ function setupContextMenus() {
         // 菜单已存在或权限未就绪时忽略。
       }
     };
-    create({ id: MENU_SAVE_PAGE, title: "收藏此页面到 LaterOn", contexts: ["page", "action"] });
-    create({ id: MENU_SAVE_ALL, title: "收藏本窗口所有标签页到 LaterOn", contexts: ["page", "action"] });
+    create({ id: MENU_SAVE_PAGE, title: titles.page, contexts: ["page", "action"] });
+    create({ id: MENU_SAVE_ALL, title: titles.all, contexts: ["page", "action"] });
   });
 }
 
@@ -79,6 +87,9 @@ async function setupSidePanelAction() {
 }
 
 setupContextMenus();
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes[SETTINGS_KEY]) setupContextMenus();
+});
 setupSidePanelAction();
 chrome.runtime.onInstalled.addListener(() => {
   setupContextMenus();
