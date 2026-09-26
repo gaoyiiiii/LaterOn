@@ -18,7 +18,7 @@ body {
   border-bottom: 1px solid var(--hairline);
   background: var(--topbar-bg); backdrop-filter: blur(22px) saturate(160%);
 }
-/* 品牌标识：字号、间距、圆角色块尺寸与全屏页完全一致（22px / gap 10 / 32px 方块）。
+/* 品牌标识：字号、间距、圆角色块尺寸与全屏页完全一致（22px / gap 10 / 40px 方块）。
    它现在是个链接（点了回全屏首页），所以把下划线去掉、光标给成手型。 */
 .settings-brand {
   display: flex; align-items: center; gap: 10px;
@@ -26,9 +26,8 @@ body {
   text-decoration: none; cursor: pointer;
 }
 .settings-brand .logo {
-  display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px;
-  background: linear-gradient(140deg, #ff7a52, #ff4f2e); color: #fff; font-size: 18px;
-  box-shadow: 0 6px 16px -6px rgba(255,80,50,.6);
+  display: block; width: 40px; height: 40px; border-radius: 11px;
+  box-shadow: 0 7px 16px -6px rgba(255,80,50,.6);
 }
 /* 返回按钮：挪到顶栏右侧，与品牌标识左右呼应；用和全屏页搜索框同款的玻璃胶囊。 */
 .settings-back {
