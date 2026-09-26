@@ -962,9 +962,12 @@ async function runBatchSave({ tabs, source = "shortcut", notifyTabId = null, pro
 // 选项目浮层不能跟着无限等待：到点就交回 false，让调用方重试网页内浮层。
 const PICKER_INJECT_TIMEOUT_MS = 1600;
 const PICKER_VERIFY_TIMEOUT_MS = 700;
+const pickerRunByTab = new Map();
 
 async function showPickerOverlay(tab, payload) {
   if (!tab?.id || !isWebUrl(tab.url)) return false;
+  const runId = (pickerRunByTab.get(tab.id) || 0) + 1;
+  pickerRunByTab.set(tab.id, runId);
   try {
     const stored = await chrome.storage.local.get([PROJECTS_KEY, STORAGE_KEY, SETTINGS_KEY, COVERS_KEY]);
     const projects = stored[PROJECTS_KEY] || [];
@@ -1023,17 +1026,20 @@ async function showPickerOverlay(tab, payload) {
       withTimeout(
         chrome.scripting.executeScript({
           target: { tabId: tab.id },
-          func: (value) => {
-            const id = "lateron-picker-payload-data";
-            document.getElementById(id)?.remove();
+          func: (value, id) => {
+            const previous = Number(globalThis.__laterOnPickerRunId || 0);
+            if (previous > id) return;
+            globalThis.__laterOnPickerRunId = id;
+            const nodeId = "lateron-picker-payload-data";
+            document.getElementById(nodeId)?.remove();
             const node = document.createElement("script");
-            node.id = id;
+            node.id = nodeId;
             node.type = "application/json";
             node.textContent = JSON.stringify(value);
             document.documentElement.appendChild(node);
             document.dispatchEvent(new CustomEvent("lateron-picker-payload-ready"));
           },
-          args: [pickerPayload]
+          args: [pickerPayload, runId]
         }),
         PICKER_INJECT_TIMEOUT_MS,
         null
@@ -1050,6 +1056,7 @@ async function showPickerOverlay(tab, payload) {
     ]);
     if (!Array.isArray(uiInjected)) return false;
     if (!Array.isArray(payloadInjected)) return false;
+    if (pickerRunByTab.get(tab.id) !== runId) return false;
 
     // executeScript 成功只代表文件执行完，不代表浮层一定留在页面上。
     // 页面恰好导航、DOM 被站点重建、共享 UI 初始化失败时，主动确认宿主确实存在；
@@ -1447,23 +1454,6 @@ async function readTabMetadata(tab) {
     return injection?.[0]?.result || null;
   } catch {
     return null;
-  }
-}
-
-function normalizeUrl(url) {
-  try {
-    const parsed = new URL(url);
-    const host = parsed.host.toLowerCase().replace(/^www\./, "");
-    const path = parsed.pathname.replace(/\/+$/, "") || "/";
-    const keep = [...parsed.searchParams.entries()]
-      .filter(([key]) => !/^(utm_|fbclid|gclid|mc_|ref|spm|igshid)/i.test(key))
-      .sort(([a], [b]) => a.localeCompare(b));
-    const search = keep.length
-      ? "?" + keep.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&")
-      : "";
-    return `${parsed.protocol}//${host}${path}${search}`;
-  } catch {
-    return (url || "").trim().toLowerCase();
   }
 }
 
