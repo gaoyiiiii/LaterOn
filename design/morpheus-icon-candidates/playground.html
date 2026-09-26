@@ -57,6 +57,14 @@ const icons = {
   bubbles: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="8" r="3"/><circle cx="16.5" cy="7" r="2.5"/><circle cx="8.5" cy="16.5" r="2.5"/><circle cx="17" cy="16" r="3"/><path d="m9.5 9.5 4.5 4"/><path d="m14.5 8.5-4 5.5"/></svg>`,
   capsule: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h10a3 3 0 0 1 0 6H5a3 3 0 0 1 0-6Z"/><path d="M9 15h10a3 3 0 0 1 0 6H9a3 3 0 0 1 0-6Z" transform="translate(0 -3)"/><path d="M8 11h4"/></svg>`,
   softstack: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6.5h14a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2Z"/><path d="M5 13h10a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2Z"/><path d="M8 9h4M8 15.5h4"/></svg>`
+  ,glyphInbox: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.2 4.4 9.7v8.1c0 1.7 1.3 3 3 3h9.2c1.7 0 3-1.3 3-3V9.7L12 3.2Zm-3.2 11h6.4c.2 1.2-.7 2.3-1.9 2.3h-2.6c-1.2 0-2.1-1.1-1.9-2.3Z"/></svg>`,
+  glyphGrid: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M12 4v16M12 12h8"/></svg>`,
+  outlineInbox: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 9 7.5-6 7.5 6v8.2A2.8 2.8 0 0 1 16.7 20H7.3a2.8 2.8 0 0 1-2.8-2.8Z"/><path d="M8.2 14.2h7.6"/></svg>`,
+  plusBox: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg>`,
+  slotInbox: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M5 7.2 12 3l7 4.2v9.5c0 1.2-1 2.2-2.2 2.2H7.2C6 18.9 5 17.9 5 16.7V7.2Z"/><path fill="#f8f5f1" d="M8 13.2h8v1.7H8z"/></svg>`,
+  dotField: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65"><rect x="4" y="4" width="16" height="16" rx="7"/><circle cx="8.5" cy="12" r=".9" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r=".9" fill="currentColor" stroke="none"/><circle cx="15.5" cy="12" r=".9" fill="currentColor" stroke="none"/></svg>`,
+  bookmarkGlyph: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M7 4.5A2.5 2.5 0 0 1 9.5 2H17a2 2 0 0 1 2 2v17l-6.5-3.7L6 21V5.5c0-.6.4-1 1-1Z"/></svg>`,
+  roundedTiles: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>`
 };
 const sets = [
   ['A · Soft Orbit','柔和托盘 + 环形内容层','tray','orbit'],
@@ -65,7 +73,11 @@ const sets = [
   ['D · Bookmark','书签收纳 + 波纹内容层','bookmark','waves'],
   ['E · Halo','光环收件 + 环形堆叠','halo','rings'],
   ['F · Soft Folder','软文件夹 + 气泡内容','softfolder','bubbles'],
-  ['G · Capsules','胶囊收纳 + 柔和层叠','capsule','softstack']
+  ['G · Capsules','胶囊收纳 + 柔和层叠','capsule','softstack'],
+  ['H · Glyph','实心字形 + 分栏方格','glyphInbox','glyphGrid'],
+  ['I · Outline','线框收纳 + 加号方格','outlineInbox','plusBox'],
+  ['J · Pocket','口袋字形 + 点阵内容','slotInbox','dotField'],
+  ['K · Bookmark','实心书签 + 圆角四格','bookmarkGlyph','roundedTiles']
 ];
 const cards = document.querySelector('#cards');
 function select(i) { document.querySelectorAll('.candidate').forEach((e,n)=>e.classList.toggle('active',n===i)); const s=sets[i]; document.querySelector('#previewTitle').textContent=s[0]; document.querySelector('#previewDesc').textContent=s[1]; document.querySelector('#previewInbox').innerHTML=icons[s[2]]; document.querySelector('#previewAll').innerHTML=icons[s[3]]; }
