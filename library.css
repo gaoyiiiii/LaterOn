@@ -296,8 +296,10 @@ select:hover { border-color: var(--card-line); }
 }
 @keyframes cardIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
 .card:hover { transform: translateY(-6px); box-shadow: var(--shadow-md); border-color: var(--card-line); }
-.card[draggable="true"] { cursor: grab; }
-.card[draggable="true"]:active { cursor: grabbing; }
+/* 整张卡片的普通点击会打开文章，因此静止时用点击指针；
+   只有真正进入拖拽后才变成抓取手势，避免“显示手掌却点了没反应”。 */
+.card[draggable="true"] { cursor: pointer; }
+.card.dragging { cursor: grabbing; }
 /* 被拖的那张：内容整个藏起来，只剩一个橙色的空虚线框滑到落点——
    真正的卡片画面由浏览器拖影（drag image）跟着鼠标走，
    原位置和落点看到的都只是「这里会被占住」的框。

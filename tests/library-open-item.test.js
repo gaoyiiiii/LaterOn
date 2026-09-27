@@ -117,6 +117,7 @@ const clickCapture = (el, init = {}) => {
 };
 const linkOf = (id) => document.querySelector(`.card[data-id="${id}"] .title-link`);
 const coverOf = (id) => document.querySelector(`.card[data-id="${id}"] .cover-link`);
+const descriptionOf = (id) => document.querySelector(`.card[data-id="${id}"] .description`);
 const itemOf = (id) => store.laterOnItems.find((item) => item.id === id);
 const toastText = () => document.querySelector("#toast").textContent;
 const resetLogs = () => {
@@ -149,6 +150,13 @@ window.eval(librarySource);
   await tick(40);
   check("封面点击也走同一套逻辑", event2.defaultPrevented === true && openedPanels.length === 1 && updatedTabs[0]?.url === "https://c.com/3", `update=${JSON.stringify(updatedTabs[0])}`);
   check("未读的那篇被自动标记为在读", itemOf("i3").status === "reading", `status=${itemOf("i3").status}`);
+
+  console.log("\n── 第 2.5 步：点卡片中部摘要 → 不再是无反应死区 ──");
+  resetLogs();
+  const event2b = clickCapture(descriptionOf("i1"));
+  await tick(40);
+  check("卡片中部点击也由我们接管", event2b.defaultPrevented === true);
+  check("摘要区点击会打开对应文章", openedPanels.length === 1 && updatedTabs[0]?.url === "https://a.com/1", `update=${JSON.stringify(updatedTabs[0])}`);
 
   console.log("\n── 第 3 步：按住 ⌘/Ctrl 点击 → 保留浏览器默认行为 ──");
   resetLogs();

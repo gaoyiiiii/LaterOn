@@ -402,6 +402,10 @@ grid.addEventListener("click", (event) => {
   else if (event.target.closest(".delete")) deleteItem(item.id);
   else if (event.target.closest(".edit")) editItem(item);
   else if (event.target.closest(".title-link, .cover-link")) openItem(event, item);
+  // 来源、摘要和卡片留白也是用户自然会点的区域。卡片本身又能拖拽，
+  // 如果这些位置只显示操作光标却没有反应，就会形成误导性死区。
+  // 排除所有真正的交互控件后，其余卡片区域统一按“打开文章”处理。
+  else if (!event.target.closest("button, select, input, label, a")) openItem(event, item);
 });
 grid.addEventListener("change", (event) => {
   if (selectMode) {

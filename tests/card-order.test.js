@@ -354,6 +354,10 @@ async function dragCard({ window, grid, tick }, fromId, index) {
   check("老家虚线框是绝对定位浮层（不占格子，不引发重排）",
     /\.drag-home-frame\s*\{[^}]*position:\s*absolute/.test(LIBRARY_CSS) && /\.drag-home-frame\s*\{[^}]*pointer-events:\s*none/.test(LIBRARY_CSS));
   check("被拖的卡片内容藏起来、只剩虚线框", /\.card\.dragging > \*\s*\{\s*visibility:\s*hidden/.test(LIBRARY_CSS));
+  check("卡片静止时显示点击指针，不再误示为拖拽手掌",
+    /\.card\[draggable="true"\]\s*\{\s*cursor:\s*pointer/.test(LIBRARY_CSS));
+  check("只有真正拖起卡片后才显示抓取手势",
+    /\.card\.dragging\s*\{\s*cursor:\s*grabbing/.test(LIBRARY_CSS));
   check("排序下拉里多了「自定义顺序」选项", /value="custom"/.test(LIBRARY_HTML));
 
   console.log(failures ? `\n❌ 有 ${failures} 项没通过` : "\n🎉 全部通过");
