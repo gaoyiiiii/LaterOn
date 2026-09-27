@@ -45,7 +45,7 @@ let projects = [];
 let currentItem = null;
 let filter = DEFAULT_FILTER;
 let query = "";
-let activeProject = "all";
+let activeProject = "unfiled";
 let autoMarkRead = true;   // 点开文章是否自动标记为「在读」（与设置页同步）
 let sortMode = "newest";   // 全屏那边的排序方式（只有 custom 会影响这里的先后顺序）
 let orders = {};           // 用户拖出来的自定义顺序（与全屏共享：{ 范围: [收藏 id] }）
@@ -368,7 +368,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
   if (area === "local" && changes[PROJECTS_KEY]) {
     projects = changes[PROJECTS_KEY].newValue || [];
-    if (activeProject !== "all" && activeProject !== "unfiled" && !projects.some((project) => project.id === activeProject)) activeProject = "all";
+    if (activeProject !== "unfiled" && !projects.some((project) => project.id === activeProject)) activeProject = "unfiled";
     render();
     renderProjectFilters();
   }
@@ -783,15 +783,17 @@ function saveLocateDiag(record) {
 
 function renderProjectFilters() {
   const counts = new Map();
+  let unfiled = 0;
   for (const item of items) {
     if (item.projectId) counts.set(item.projectId, (counts.get(item.projectId) || 0) + 1);
+    else unfiled += 1;
   }
   const container = document.querySelector("#projectFilters");
   container.replaceChildren();
-  // 侧栏模式里不给「待整理」筛选项：这里是快速翻看的地方，整理这件事交给全屏页面
-  // （那边的「待整理」钉在左侧栏最上面）。真有待整理的收藏，在「全部项目」里照样看得到。
+  // 侧栏只保留「等待整理 + 具体项目」：它陪伴当前阅读范围，不承担全库总览。
+  // 「等待整理」和普通项目走完全相同的点击、存储与跨视图同步逻辑。
   const choices = [
-    { id: "all", name: tr("allProjects"), count: items.length },
+    { id: "unfiled", name: tr("inbox"), count: unfiled },
     ...projects.map((project) => ({ ...project, count: counts.get(project.id) || 0 }))
   ];
   choices.forEach((choice) => {
@@ -815,10 +817,10 @@ function renderProjectFilters() {
 }
 
 function normalizeProject(projectId) {
-  if (projectId === "all") return "all";
-  // 侧栏模式没有「待整理」筛选项，所以这个值在这里一律当成「全部项目」——
-  // 否则一个筛选项都不高亮，看着像卡住了。（全屏页面那边 unfiled 仍然有效。）
-  return projects.some((project) => project.id === projectId) ? projectId : "all";
+  if (projectId === "unfiled") return "unfiled";
+  // 「全部项目」只属于全屏图板总览；侧栏没有这个范围，收到 all 或失效项目时
+  // 回到「等待整理」，保证始终有一个真实可见的目录处于选中状态。
+  return projects.some((project) => project.id === projectId) ? projectId : "unfiled";
 }
 
 // 旧收藏只有 read 布尔、没有 status：按 read 推导成三档之一，兼容已有数据。

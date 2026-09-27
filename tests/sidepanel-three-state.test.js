@@ -144,16 +144,17 @@ window.eval(sidepanelSource);
   check("已读：c、d 两张（不受点开影响）", visibleItems().length === 2 && ids().sort().join() === "c,d", `可见 ${ids()}`);
   click(navOf("all")); await tick(10);
 
-  console.log("\n── 第 6 步：侧栏模式不给「等待整理」筛选项 ──");
-  // 这 4 篇全是 projectId: null（都没归项目），但侧栏不管整理这件事——
-  // 「等待整理」只在全屏页面的左侧栏最上面，那边才负责催人归位。
+  console.log("\n── 第 6 步：侧栏用「等待整理」替代全库入口 ──");
+  // 这 4 篇全是 projectId: null，所以「等待整理」应像普通项目一样被选中并筛出它们。
   const filterNames = [...document.querySelectorAll("#projectFilters .project-filter .project-name")].map((el) => el.textContent);
-  check("筛选项里没有「等待整理」", !filterNames.includes("等待整理"), filterNames.join(" / "));
-  check("「全部项目」还在，且没归项目的收藏照样看得见", filterNames[0] === "全部项目" && visibleItems().length === 4, `${filterNames.join("/")} · 可见 ${visibleItems().length}`);
-  // 万一首选项里存着 unfiled（老用户切过），这里也要当成「全部项目」，否则一个按钮都不高亮。
-  // 这条只能静态断言：本测试是单实例 jsdom，没法干净地重新初始化。
-  check("normalizeProject 不再把 unfiled 当合法范围（会退回全部项目）",
-    !/projectId === "all" \|\| projectId === "unfiled"/.test(sidepanelSource), "normalizeProject 里仍保留 unfiled");
+  check("第一个目录是「等待整理」，不再出现全库入口",
+    filterNames[0] === "等待整理" && !filterNames.includes("全部项目") && !filterNames.includes("全部内容"),
+    filterNames.join(" / "));
+  check("等待整理像普通项目一样高亮并筛出未归类收藏",
+    document.querySelector('#projectFilters .project-filter.active .project-name')?.textContent === "等待整理" && visibleItems().length === 4,
+    `${filterNames.join("/")} · 可见 ${visibleItems().length}`);
+  check("normalizeProject 把 unfiled 当作合法目录",
+    /projectId === "unfiled"/.test(sidepanelSource), "normalizeProject 没有接入 unfiled");
 
   console.log("\n── 第 7 步：全程没有未捕获的错误 ──");
   check("没有 jsdom 报错", errors.length === 0, errors.slice(0, 3).join(" | "));
