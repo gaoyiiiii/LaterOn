@@ -1,3 +1,6 @@
 .DS_Store
 .workbuddy/
 dist/
+tests/board-preview.html
+tests/dialog-preview.html
+tests/picker-preview.html

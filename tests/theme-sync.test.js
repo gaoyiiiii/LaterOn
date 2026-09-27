@@ -18,7 +18,7 @@ const check = (label, ok, extra = "") => {
 };
 
 console.log("── 第 1 步：每个界面都接了同一套主题 ──");
-// 这几个都是有完整界面的页面。popup.html 只是一个按钮条，不参与。
+// 这几个都是当前产品里有完整界面的页面。
 const surfaces = ["library.html", "settings.html", "sidepanel.html"];
 for (const page of surfaces) {
   const source = fs.readFileSync(`${ROOT}/${page}`, "utf8");

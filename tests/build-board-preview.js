@@ -97,9 +97,6 @@ const read = (name) => fs.readFileSync(path.join(ROOT, name), "utf8");
 const inlineStyle = (name) => `<style>\n/* ${name} */\n${read(name)}\n</style>`;
 // 脚本里如果出现 </script> 会提前闭合标签，转义掉。
 const inlineScript = (name) => `<script>\n/* ${name} */\n${read(name).replace(/<\/script>/g, "<\\/script>")}\n<\/script>`;
-const iconDataUri = () =>
-  "data:image/svg+xml;charset=utf-8," + encodeURIComponent(read("icon.svg"));
-
 const html = read("library.html");
 // ⚠️ 替换串一律用「函数」返回：直接传字符串时，被替换内容里的 $& / $` / $' 会被当成
 // 特殊模式展开（library.js 里就含这类序列），结果整段 HTML 被塞进 <script> 里，页面直接语法错。
@@ -108,8 +105,6 @@ const out = html
   .replace(/<link rel="stylesheet" href="dialog\.css" \/>/, () => inlineStyle("dialog.css"))
   .replace(/<link rel="stylesheet" href="onboarding\.css" \/>/, () => inlineStyle("onboarding.css"))
   .replace(/<link rel="stylesheet" href="library\.css" \/>/, () => inlineStyle("library.css"))
-  .replace(/src="icon\.svg"/g, () => `src="${iconDataUri()}"`)
-  .replace(/href="icon\.svg"/g, () => `href="${iconDataUri()}"`)
   // 假数据要赶在 theme.js 之前：theme.js 自己也会读存储（它比 library.js 先跑）。
   .replace('<script src="theme.js"></script>', () => `${script}\n    ${inlineScript("theme.js")}`)
   .replace('<script src="dialog.js"></script>', () => inlineScript("dialog.js"))

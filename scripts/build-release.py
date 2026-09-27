@@ -56,6 +56,9 @@ FORBIDDEN_NAMES = {
     "README.md",
     "CHANGELOG.md",
     "icon.svg",
+    "popup.css",
+    "popup.html",
+    "popup.js",
 }
 
 

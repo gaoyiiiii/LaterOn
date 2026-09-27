@@ -205,8 +205,8 @@ console.log("\n=== 七、封面降级链（maxresdefault 不存在时逐级降�
     nextCoverFallback("https://i.ytimg.com/vi/ABC123/maxresdefault.jpg?sqp=xyz")
   );
 
-  // 三个展示入口都要有这套降级，否则某一处仍会留白
-  for (const file of ["library.js", "sidepanel.js", "popup.js"]) {
+  // 两个展示入口都要有这套降级，否则某一处仍会留白
+  for (const file of ["library.js", "sidepanel.js"]) {
     const src = fs.readFileSync(path.join(ROOT, file), "utf8");
     check(`${file} 里接了封面降级`, /COVER_CHAIN/.test(src) && /i\.ytimg\.com/.test(src));
   }
@@ -214,7 +214,7 @@ console.log("\n=== 七、封面降级链（maxresdefault 不存在时逐级降�
 
 console.log("\n=== 八、只保留一份提取逻辑（不再各处复制）===");
 {
-  for (const file of ["popup.js", "sidepanel.js"]) {
+  for (const file of ["sidepanel.js"]) {
     const src = fs.readFileSync(path.join(ROOT, file), "utf8");
     check(`${file} 不再自带旧版提取函数`, !/function extractPageMetadata\s*\(/.test(src));
     check(`${file} 改为向后台请求提取`, /EXTRACT_METADATA/.test(src));
@@ -430,7 +430,7 @@ console.log("\n=== 十六、显示端：跨站图片防盗链（Referer）===");
 {
   // 已实测：小红书图片 CDN 对 Referer: chrome-extension:// 返回 403、不带 Referer 返回 200。
   // 所以收藏库 / 侧栏 / 弹窗 / 设置页必须声明「不发 Referer」，否则封面抓到了也显示不出来。
-  for (const page of ["library.html", "sidepanel.html", "popup.html", "settings.html"]) {
+  for (const page of ["library.html", "sidepanel.html", "settings.html"]) {
     const html = fs.readFileSync(path.join(ROOT, page), "utf8");
     check(`${page} 声明了整页不发 Referer`, /<meta name="referrer" content="no-referrer"/.test(html));
   }

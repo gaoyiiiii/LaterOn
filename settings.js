@@ -270,23 +270,8 @@ function relativeTime(timestamp) {
 }
 
 async function renderDiag() {
-  const stored = await chrome.storage.local.get(["laterOnDiag", "laterOnPanelDiag", "laterOnPopupDiag", "laterOnLocateDiag"]);
+  const stored = await chrome.storage.local.get(["laterOnDiag", "laterOnPanelDiag", "laterOnLocateDiag"]);
   const diag = stored.laterOnDiag || {};
-
-  // 点图标弹出的小窗口：「就绪」= 界面画出来用了多久（现在应该几十毫秒），
-  // 「详情」= 后台把封面摘要补回来用了多久（这段慢不影响用，只是封面晚点出现）。
-  const popupEl = document.querySelector("#diagPopupSpeed");
-  if (popupEl) {
-    const popup = stored.laterOnPopupDiag;
-    if (!popup?.at) {
-      popupEl.textContent = t("popupNever");
-    } else {
-      const parts = [relativeTime(popup.at), t("readyMs", { n: popup.ready ?? 0 })];
-      if (popup.detail != null) parts.push(t("detailMs", { n: popup.detail }));
-      if (popup.enhanced === false) parts.push(t("detailMissed"));
-      popupEl.textContent = parts.join(" · ");
-    }
-  }
 
   // 侧栏打开速度：分段耗时慢在哪一步，看这一行就知道（排查「打开慢」用）。
   const speedEl = document.querySelector("#diagPanelSpeed");
