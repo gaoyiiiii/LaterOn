@@ -6,7 +6,7 @@
     <!-- 小红书等站点的图片 CDN 会拒绝来自 chrome-extension:// 的 Referer（返回 403），
          整页统一不发 Referer，收藏的封面与站点图标才能正常显示。 -->
     <meta name="referrer" content="no-referrer" />
-    <title>LaterOn · 我的收藏</title>
+    <title>LaterOn - 没看完的网页，留到 LaterOn。</title>
     <link rel="icon" href="icon128.png" type="image/png" />
     <link rel="stylesheet" href="theme-vars.css" />
     <link rel="stylesheet" href="dialog.css" />
@@ -41,8 +41,19 @@
                仍然带 .project-nav，所以点击切换、拖收藏进来归类的行为都照旧。 -->
           <button class="project-nav inbox-card" data-project="unfiled">
             <span class="inbox-icon">
-              <!-- Playground candidate 18 · R Peek Box -->
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h16v8A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5Z"/><path d="M4 9.5 6 5h12l2 4.5"/><path d="M8 9.5c.8-1.8 2-2.7 3.5-2.7S14.2 7.7 15 9.5"/><circle cx="9.2" cy="14.2" r=".7" fill="currentColor" stroke="none"/><circle cx="14.8" cy="14.2" r=".7" fill="currentColor" stroke="none"/></svg>
+              <!-- 用户提供的收藏夹图标：重绘为真正的矢量路径，以便跟随 currentColor。 -->
+              <svg class="nav-art-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <defs>
+                  <mask id="lateron-favorites-front">
+                    <rect width="24" height="24" fill="#000"/>
+                    <path d="M3 10.4h5.1l1.55 1.75h9.1A2.25 2.25 0 0 1 21 14.4v4.15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18.55Z" fill="#fff"/>
+                    <path d="m12 13.2.94 1.9 2.1.3-1.52 1.48.36 2.1L12 18l-1.88.98.36-2.1-1.52-1.48 2.1-.3Z" fill="#000"/>
+                  </mask>
+                </defs>
+                <path d="M6.1 3.4h4.15l1.4 1.55h6.2a1.8 1.8 0 0 1 1.8 1.8v8.1H6.1Z" opacity=".28"/>
+                <path d="M4.45 6.7H8.7l1.45 1.6h6.7a1.9 1.9 0 0 1 1.9 1.9v7H4.45Z" opacity=".5"/>
+                <rect width="24" height="24" mask="url(#lateron-favorites-front)"/>
+              </svg>
             </span>
             <span class="inbox-body">
               <strong class="inbox-title" data-i18n="inbox">等待整理</strong>
@@ -52,13 +63,35 @@
           </button>
           <button class="project-nav top-entry" data-project="all">
             <span class="nav-icon all-icon">
-              <!-- Playground candidate 11 · K Bookmark / rounded tiles -->
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>
+              <!-- 用户提供的三列项目面板：保留层次明暗，颜色跟随 currentColor。 -->
+              <svg class="nav-art-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <defs>
+                  <mask id="lateron-project-columns">
+                    <rect width="24" height="24" fill="#000"/>
+                    <rect x="2.3" y="3" width="5.7" height="18" rx="1.8" fill="#fff"/>
+                    <rect x="9.15" y="3" width="5.7" height="18" rx="1.8" fill="#fff"/>
+                    <rect x="16" y="3" width="5.7" height="18" rx="1.8" fill="#fff"/>
+                    <rect x="3.45" y="5.15" width="3.4" height="1.55" rx=".78" fill="#000"/>
+                    <rect x="3.45" y="8.1" width="3.4" height="1.55" rx=".78" fill="#000"/>
+                    <rect x="3.55" y="12.2" width="3.2" height="5.9" rx="1.15" fill="#000" opacity=".42"/>
+                    <rect x="10.3" y="5.15" width="3.4" height="1.55" rx=".78" fill="#000"/>
+                    <rect x="10.3" y="8.1" width="3.4" height="1.55" rx=".78" fill="#000"/>
+                    <rect x="10.4" y="12.2" width="3.2" height="5.9" rx="1.15" fill="#000" opacity=".42"/>
+                    <rect x="17.15" y="5.15" width="3.4" height="1.55" rx=".78" fill="#000"/>
+                    <rect x="17.15" y="8.1" width="3.4" height="1.55" rx=".78" fill="#000"/>
+                    <rect x="17.25" y="12.2" width="3.2" height="5.9" rx="1.15" fill="#000" opacity=".42"/>
+                  </mask>
+                </defs>
+                <g mask="url(#lateron-project-columns)">
+                  <rect x="2.3" y="3" width="5.7" height="18" rx="1.8"/>
+                  <rect x="9.15" y="3" width="5.7" height="18" rx="1.8" opacity=".52"/>
+                  <rect x="16" y="3" width="5.7" height="18" rx="1.8" opacity=".3"/>
+                </g>
+              </svg>
             </span>
             <span data-i18n="allProjectsOverview">全部项目</span><strong class="nav-count" id="allCount">0</strong>
           </button>
-          <!-- 首页的图板已经列出所有项目，所以侧栏不再重复；进入具体项目后，
-               项目列表直接接在“全部项目”下方，方便快速切换。 -->
+          <!-- 项目列表始终接在“全部项目”下方，并通过缩进和较小尺寸表达从属关系。 -->
           <div class="projects-section">
             <div id="projectList" class="project-list"></div>
           </div>

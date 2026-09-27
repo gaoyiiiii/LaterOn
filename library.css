@@ -99,6 +99,8 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
 .inbox-card.has-items .inbox-icon { background: var(--accent-soft); color: var(--accent); }
 .inbox-card.active .inbox-icon { background: var(--accent); color: #fff; box-shadow: 0 5px 13px -6px rgba(255,92,53,.7); }
 .inbox-icon svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.inbox-icon svg.nav-art-icon,
+.all-icon svg.nav-art-icon { width: 25px; height: 25px; fill: currentColor; stroke: none; }
 .inbox-body { display: grid; min-width: 0; }
 /* 注意优先级：.project-nav strong 也会命中 .inbox-title，所以这里要写两级才盖得住 */
 .inbox-card .inbox-title { color: inherit; font-size: 13.5px; font-weight: 720; letter-spacing: -.15px; }

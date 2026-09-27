@@ -6,7 +6,7 @@
     <!-- 小红书等站点的图片 CDN 会拒绝来自 chrome-extension:// 的 Referer（返回 403），
          整页统一不发 Referer，收藏的封面与站点图标才能正常显示。 -->
     <meta name="referrer" content="no-referrer" />
-    <title>LaterOn · 我的收藏</title>
+    <title>LaterOn - 没看完的网页，留到 LaterOn。</title>
     <link rel="icon" href="icon128.png" type="image/png" />
     <style>
 /* theme-vars.css */
@@ -481,6 +481,8 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
 .inbox-card.has-items .inbox-icon { background: var(--accent-soft); color: var(--accent); }
 .inbox-card.active .inbox-icon { background: var(--accent); color: #fff; box-shadow: 0 5px 13px -6px rgba(255,92,53,.7); }
 .inbox-icon svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.inbox-icon svg.nav-art-icon,
+.all-icon svg.nav-art-icon { width: 25px; height: 25px; fill: currentColor; stroke: none; }
 .inbox-body { display: grid; min-width: 0; }
 /* 注意优先级：.project-nav strong 也会命中 .inbox-title，所以这里要写两级才盖得住 */
 .inbox-card .inbox-title { color: inherit; font-size: 13.5px; font-weight: 720; letter-spacing: -.15px; }
@@ -2509,8 +2511,19 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
                仍然带 .project-nav，所以点击切换、拖收藏进来归类的行为都照旧。 -->
           <button class="project-nav inbox-card" data-project="unfiled">
             <span class="inbox-icon">
-              <!-- Playground candidate 18 · R Peek Box -->
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h16v8A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5Z"/><path d="M4 9.5 6 5h12l2 4.5"/><path d="M8 9.5c.8-1.8 2-2.7 3.5-2.7S14.2 7.7 15 9.5"/><circle cx="9.2" cy="14.2" r=".7" fill="currentColor" stroke="none"/><circle cx="14.8" cy="14.2" r=".7" fill="currentColor" stroke="none"/></svg>
+              <!-- 用户提供的收藏夹图标：重绘为真正的矢量路径，以便跟随 currentColor。 -->
+              <svg class="nav-art-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <defs>
+                  <mask id="lateron-favorites-front">
+                    <rect width="24" height="24" fill="#000"/>
+                    <path d="M3 10.4h5.1l1.55 1.75h9.1A2.25 2.25 0 0 1 21 14.4v4.15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18.55Z" fill="#fff"/>
+                    <path d="m12 13.2.94 1.9 2.1.3-1.52 1.48.36 2.1L12 18l-1.88.98.36-2.1-1.52-1.48 2.1-.3Z" fill="#000"/>
+                  </mask>
+                </defs>
+                <path d="M6.1 3.4h4.15l1.4 1.55h6.2a1.8 1.8 0 0 1 1.8 1.8v8.1H6.1Z" opacity=".28"/>
+                <path d="M4.45 6.7H8.7l1.45 1.6h6.7a1.9 1.9 0 0 1 1.9 1.9v7H4.45Z" opacity=".5"/>
+                <rect width="24" height="24" mask="url(#lateron-favorites-front)"/>
+              </svg>
             </span>
             <span class="inbox-body">
               <strong class="inbox-title" data-i18n="inbox">等待整理</strong>
@@ -2520,13 +2533,35 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
           </button>
           <button class="project-nav top-entry" data-project="all">
             <span class="nav-icon all-icon">
-              <!-- Playground candidate 11 · K Bookmark / rounded tiles -->
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>
+              <!-- 用户提供的三列项目面板：保留层次明暗，颜色跟随 currentColor。 -->
+              <svg class="nav-art-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <defs>
+                  <mask id="lateron-project-columns">
+                    <rect width="24" height="24" fill="#000"/>
+                    <rect x="2.3" y="3" width="5.7" height="18" rx="1.8" fill="#fff"/>
+                    <rect x="9.15" y="3" width="5.7" height="18" rx="1.8" fill="#fff"/>
+                    <rect x="16" y="3" width="5.7" height="18" rx="1.8" fill="#fff"/>
+                    <rect x="3.45" y="5.15" width="3.4" height="1.55" rx=".78" fill="#000"/>
+                    <rect x="3.45" y="8.1" width="3.4" height="1.55" rx=".78" fill="#000"/>
+                    <rect x="3.55" y="12.2" width="3.2" height="5.9" rx="1.15" fill="#000" opacity=".42"/>
+                    <rect x="10.3" y="5.15" width="3.4" height="1.55" rx=".78" fill="#000"/>
+                    <rect x="10.3" y="8.1" width="3.4" height="1.55" rx=".78" fill="#000"/>
+                    <rect x="10.4" y="12.2" width="3.2" height="5.9" rx="1.15" fill="#000" opacity=".42"/>
+                    <rect x="17.15" y="5.15" width="3.4" height="1.55" rx=".78" fill="#000"/>
+                    <rect x="17.15" y="8.1" width="3.4" height="1.55" rx=".78" fill="#000"/>
+                    <rect x="17.25" y="12.2" width="3.2" height="5.9" rx="1.15" fill="#000" opacity=".42"/>
+                  </mask>
+                </defs>
+                <g mask="url(#lateron-project-columns)">
+                  <rect x="2.3" y="3" width="5.7" height="18" rx="1.8"/>
+                  <rect x="9.15" y="3" width="5.7" height="18" rx="1.8" opacity=".52"/>
+                  <rect x="16" y="3" width="5.7" height="18" rx="1.8" opacity=".3"/>
+                </g>
+              </svg>
             </span>
             <span data-i18n="allProjectsOverview">全部项目</span><strong class="nav-count" id="allCount">0</strong>
           </button>
-          <!-- 首页的图板已经列出所有项目，所以侧栏不再重复；进入具体项目后，
-               项目列表直接接在“全部项目”下方，方便快速切换。 -->
+          <!-- 项目列表始终接在“全部项目”下方，并通过缩进和较小尺寸表达从属关系。 -->
           <div class="projects-section">
             <div id="projectList" class="project-list"></div>
           </div>
@@ -2661,6 +2696,8 @@ let query = "";
 let sort = "newest";
 let orders = {};
 let activeProject = "all";
+// 首页用品牌 slogan；用户明确进入某个导航范围后，标签页改成对应范围名称。
+let pageTitleMode = "home";
 let autoMarkRead = true;
 // 视图：全部项目 = 图板（一个类目一张），待整理 / 某个项目 = 卡片列表。
 // 不再提供手动切换——图板只在「全部项目」总览下有意义，钻进某个项目就是卡片。
@@ -2711,10 +2748,25 @@ const tr = (key, vars) => {
     noMatchesHint: "换个关键词，或切换顶部的阅读状态筛选。", quiet: "这里还很安静",
     quietHint: "打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。",
     noBoard: "没有匹配的类目", noBoardHint: "换个关键词，或切换顶部的阅读状态筛选。",
-    boardCount: "{groups} 个类目 · 共 {total} 篇收藏 · {unfinished} 篇没看完", notFinished: "没看完"
+    boardCount: "{groups} 个类目 · 共 {total} 篇收藏 · {unfinished} 篇没看完", notFinished: "没看完",
+    slogan: "没看完的网页，留到 LaterOn。", inbox: "等待整理", allProjectsOverview: "全部项目"
   };
   return String(fallback[key] || key).replace(/\{(\w+)\}/g, (_, k) => vars?.[k] ?? `{${k}}`);
 };
+
+function syncDocumentTitle() {
+  let pageName = "";
+  if (pageTitleMode === "home") {
+    pageName = tr("slogan");
+  } else if (activeProject === "unfiled") {
+    pageName = tr("inbox");
+  } else if (activeProject === "all") {
+    pageName = tr("allProjectsOverview");
+  } else {
+    pageName = projects.find((project) => project.id === activeProject)?.name || tr("allProjectsOverview");
+  }
+  document.title = `LaterOn - ${pageName}`;
+}
 
 // 在全屏收藏库里按 Alt+1 / Alt+2 时，后台不能对这个扩展页面执行网页收藏或翻译。
 // 直接复用本页 toast 解释原因，避免用户只看到工具栏图标上的「!」却不知道发生了什么。
@@ -2833,7 +2885,6 @@ async function setFilter(value) {
 async function init() {
   await window.LaterOnI18n?.getLanguage();
   window.LaterOnI18n?.applyStatic();
-  document.title = document.documentElement.lang === "en" ? "LaterOn · My saves" : "LaterOn · 我的收藏";
   const [result, activeTabs] = await Promise.all([
     chrome.storage.local.get([STORAGE_KEY, PROJECTS_KEY, ACTIVE_PROJECT_KEY, SETTINGS_KEY, CURRENT_ITEM_KEY, FILTER_KEY, FILTER_CHOSEN_KEY, ORDER_KEY, COVERS_KEY]),
     chrome.tabs.query({ active: true, currentWindow: true })
@@ -2849,6 +2900,7 @@ async function init() {
   projects = sortPinnedFirst(result[PROJECTS_KEY] || []);
   orders = result[ORDER_KEY] || {};
   activeProject = normalizeProject(result[ACTIVE_PROJECT_KEY]);
+  pageTitleMode = activeProject === "all" ? "home" : "section";
   currentItemId = result[CURRENT_ITEM_KEY] || null;
   const userSettings = result[SETTINGS_KEY] || {};
   sort = userSettings.defaultSort || "newest";
@@ -2879,9 +2931,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
     renderProjects();
   }
   if (area === "local" && changes[ACTIVE_PROJECT_KEY]) {
-    activeProject = normalizeProject(changes[ACTIVE_PROJECT_KEY].newValue);
-    renderProjects();
-    render();
+    const nextProject = normalizeProject(changes[ACTIVE_PROJECT_KEY].newValue);
+    // 自己点击导航时本地状态已经先更新；别让随后到达的 storage 回声把首页标题
+    // 从 slogan 又改回「全部项目」。只有另一个视图真正切换了范围才接管。
+    if (nextProject !== activeProject) {
+      activeProject = nextProject;
+      pageTitleMode = "section";
+      renderProjects();
+      render();
+    }
   }
   if (area === "local" && changes[SETTINGS_KEY]) {
     const s = changes[SETTINGS_KEY].newValue || {};
@@ -2912,8 +2970,9 @@ document.querySelectorAll(".project-nav").forEach((button) => {
 const projectsSection = document.querySelector(".projects-section");
 
 function syncProjectsVisibility() {
-  const insideProject = activeProject !== "all" && activeProject !== "unfiled";
-  projectsSection?.classList.toggle("is-visible", insideProject);
+  // 项目列表始终可见：现在它已经通过缩进和更小的行高明确从属于「全部项目」，
+  // 首页不会再被误认成重复入口，同时任何视图下都能直接切换或拖拽归类。
+  projectsSection?.classList.add("is-visible");
 }
 
 document.querySelector("#openSettings")?.addEventListener("click", async (event) => {
@@ -2979,7 +3038,7 @@ searchInput.addEventListener("input", () => {
 function goHome() {
   clearSearch();
   setFilter("unread");
-  selectProject("all");
+  selectProject("all", { asHome: true });
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -4086,9 +4145,10 @@ async function editItem(item) {
   showToast(tr("changesSaved"));
 }
 
-function selectProject(projectId) {
+function selectProject(projectId, { asHome = false } = {}) {
   clearSearch();
   activeProject = normalizeProject(projectId);
+  pageTitleMode = asHome ? "home" : "section";
   renderProjects();
   render();
   chrome.storage.local.set({ [ACTIVE_PROJECT_KEY]: activeProject });
@@ -4142,6 +4202,7 @@ async function toggleProjectPin(id) {
 }
 
 function renderProjects() {
+  syncDocumentTitle();
   const counts = new Map();
   let unfiled = 0;
   for (const item of items) {

@@ -31,6 +31,8 @@ let query = "";
 let sort = "newest";
 let orders = {};
 let activeProject = "all";
+// 首页用品牌 slogan；用户明确进入某个导航范围后，标签页改成对应范围名称。
+let pageTitleMode = "home";
 let autoMarkRead = true;
 // 视图：全部项目 = 图板（一个类目一张），待整理 / 某个项目 = 卡片列表。
 // 不再提供手动切换——图板只在「全部项目」总览下有意义，钻进某个项目就是卡片。
@@ -81,10 +83,25 @@ const tr = (key, vars) => {
     noMatchesHint: "换个关键词，或切换顶部的阅读状态筛选。", quiet: "这里还很安静",
     quietHint: "打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。",
     noBoard: "没有匹配的类目", noBoardHint: "换个关键词，或切换顶部的阅读状态筛选。",
-    boardCount: "{groups} 个类目 · 共 {total} 篇收藏 · {unfinished} 篇没看完", notFinished: "没看完"
+    boardCount: "{groups} 个类目 · 共 {total} 篇收藏 · {unfinished} 篇没看完", notFinished: "没看完",
+    slogan: "没看完的网页，留到 LaterOn。", inbox: "等待整理", allProjectsOverview: "全部项目"
   };
   return String(fallback[key] || key).replace(/\{(\w+)\}/g, (_, k) => vars?.[k] ?? `{${k}}`);
 };
+
+function syncDocumentTitle() {
+  let pageName = "";
+  if (pageTitleMode === "home") {
+    pageName = tr("slogan");
+  } else if (activeProject === "unfiled") {
+    pageName = tr("inbox");
+  } else if (activeProject === "all") {
+    pageName = tr("allProjectsOverview");
+  } else {
+    pageName = projects.find((project) => project.id === activeProject)?.name || tr("allProjectsOverview");
+  }
+  document.title = `LaterOn - ${pageName}`;
+}
 
 // 在全屏收藏库里按 Alt+1 / Alt+2 时，后台不能对这个扩展页面执行网页收藏或翻译。
 // 直接复用本页 toast 解释原因，避免用户只看到工具栏图标上的「!」却不知道发生了什么。
@@ -203,7 +220,6 @@ async function setFilter(value) {
 async function init() {
   await window.LaterOnI18n?.getLanguage();
   window.LaterOnI18n?.applyStatic();
-  document.title = document.documentElement.lang === "en" ? "LaterOn · My saves" : "LaterOn · 我的收藏";
   const [result, activeTabs] = await Promise.all([
     chrome.storage.local.get([STORAGE_KEY, PROJECTS_KEY, ACTIVE_PROJECT_KEY, SETTINGS_KEY, CURRENT_ITEM_KEY, FILTER_KEY, FILTER_CHOSEN_KEY, ORDER_KEY, COVERS_KEY]),
     chrome.tabs.query({ active: true, currentWindow: true })
@@ -219,6 +235,7 @@ async function init() {
   projects = sortPinnedFirst(result[PROJECTS_KEY] || []);
   orders = result[ORDER_KEY] || {};
   activeProject = normalizeProject(result[ACTIVE_PROJECT_KEY]);
+  pageTitleMode = activeProject === "all" ? "home" : "section";
   currentItemId = result[CURRENT_ITEM_KEY] || null;
   const userSettings = result[SETTINGS_KEY] || {};
   sort = userSettings.defaultSort || "newest";
@@ -249,9 +266,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
     renderProjects();
   }
   if (area === "local" && changes[ACTIVE_PROJECT_KEY]) {
-    activeProject = normalizeProject(changes[ACTIVE_PROJECT_KEY].newValue);
-    renderProjects();
-    render();
+    const nextProject = normalizeProject(changes[ACTIVE_PROJECT_KEY].newValue);
+    // 自己点击导航时本地状态已经先更新；别让随后到达的 storage 回声把首页标题
+    // 从 slogan 又改回「全部项目」。只有另一个视图真正切换了范围才接管。
+    if (nextProject !== activeProject) {
+      activeProject = nextProject;
+      pageTitleMode = "section";
+      renderProjects();
+      render();
+    }
   }
   if (area === "local" && changes[SETTINGS_KEY]) {
     const s = changes[SETTINGS_KEY].newValue || {};
@@ -282,8 +305,9 @@ document.querySelectorAll(".project-nav").forEach((button) => {
 const projectsSection = document.querySelector(".projects-section");
 
 function syncProjectsVisibility() {
-  const insideProject = activeProject !== "all" && activeProject !== "unfiled";
-  projectsSection?.classList.toggle("is-visible", insideProject);
+  // 项目列表始终可见：现在它已经通过缩进和更小的行高明确从属于「全部项目」，
+  // 首页不会再被误认成重复入口，同时任何视图下都能直接切换或拖拽归类。
+  projectsSection?.classList.add("is-visible");
 }
 
 document.querySelector("#openSettings")?.addEventListener("click", async (event) => {
@@ -349,7 +373,7 @@ searchInput.addEventListener("input", () => {
 function goHome() {
   clearSearch();
   setFilter("unread");
-  selectProject("all");
+  selectProject("all", { asHome: true });
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -1456,9 +1480,10 @@ async function editItem(item) {
   showToast(tr("changesSaved"));
 }
 
-function selectProject(projectId) {
+function selectProject(projectId, { asHome = false } = {}) {
   clearSearch();
   activeProject = normalizeProject(projectId);
+  pageTitleMode = asHome ? "home" : "section";
   renderProjects();
   render();
   chrome.storage.local.set({ [ACTIVE_PROJECT_KEY]: activeProject });
@@ -1512,6 +1537,7 @@ async function toggleProjectPin(id) {
 }
 
 function renderProjects() {
+  syncDocumentTitle();
   const counts = new Map();
   let unfiled = 0;
   for (const item of items) {

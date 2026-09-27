@@ -142,11 +142,13 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   await tick(30);
 
   console.log("── 全部项目默认就是图板视图 ──");
+  check("首次打开标签页显示品牌名和 slogan", document.title === "LaterOn - 没看完的网页，留到 LaterOn。", document.title);
   check("打开就是图板视图（全部项目 = 图板）", !boardGrid().hidden && cardGrid().hidden);
   check("已经没有手动切换的视图按钮", !document.querySelector("#viewSwitch") && !document.querySelector(".view-btn"));
   check("排序下拉在图板视图下收起（顺序对图板没意义）", document.querySelector("#sortSelect").hidden);
-  // 首页的主内容已经是项目图板，左侧不再重复显示项目列表，也没有第二套标题与加号。
-  check("默认（全部项目）下不显示左侧项目列表", !document.querySelector(".projects-section").classList.contains("is-visible"));
+  // 子项目已有明确的缩进层级，所以首页也常显，方便直接切换和接收拖拽。
+  check("默认（全部项目）下也显示左侧项目列表", document.querySelector(".projects-section").classList.contains("is-visible"));
+  check("等待整理和全部项目使用新版矢量图标", !!document.querySelector('.inbox-icon svg.nav-art-icon mask') && !!document.querySelector('.all-icon svg.nav-art-icon mask'));
   check("侧栏不再出现项目标题与加号", !document.querySelector("#toggleProjects") && !document.querySelector("#showProjectForm"));
   check("图板末尾提供虚线新建入口", boardGrid().lastElementChild?.classList.contains("board-create"));
 
@@ -166,6 +168,17 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   check("篇数写在右侧的圆形角标里", inbox.querySelector("#unfiledCount").textContent === "1", inbox.querySelector("#unfiledCount").textContent);
   const topNavs = [...document.querySelectorAll(".project-sidebar > .project-nav")];
   check("侧栏顶层只有「等待整理 + 全部项目」两项（平级）", topNavs.length === 2 && topNavs[0].dataset.project === "unfiled" && topNavs[1].dataset.project === "all", topNavs.map((n) => n.dataset.project).join(","));
+
+  console.log("\n── 等待整理可直接拖进项目 ──");
+  click(inbox);
+  await tick(30);
+  check("等待整理使用卡片视图", cardGrid().hidden === false && boardGrid().hidden);
+  check("进入等待整理后标签页显示对应名称", document.title === "LaterOn - 等待整理", document.title);
+  check("等待整理中显示项目列表，卡片可以直接拖拽归类", document.querySelector(".projects-section").classList.contains("is-visible"));
+  click(document.querySelector('.project-nav[data-project="all"]'));
+  await tick(30);
+  check("进入全部项目后标签页显示对应名称", document.title === "LaterOn - 全部项目", document.title);
+  check("回到全部项目后列表继续显示", document.querySelector(".projects-section").classList.contains("is-visible"));
 
   console.log("\n── 组合封面 ──");
   const workCover = boardOf("work").querySelector(".board-cover");
@@ -244,16 +257,17 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   click(boardOf("work"));
   await tick(30);
   check("切到了「工作」项目", store.laterOnActiveProject === "work", store.laterOnActiveProject);
+  check("进入具体项目后标签页显示项目名", document.title === "LaterOn - 工作", document.title);
   check("进类目后回到卡片视图", cardGrid().hidden === false && boardGrid().hidden);
   check("卡片只剩这个类目里的 4 篇", cardGrid().querySelectorAll(".card").length === 4, String(cardGrid().querySelectorAll(".card").length));
-  check("钻进项目后，项目列表才出现", document.querySelector(".projects-section").classList.contains("is-visible"));
+  check("进入具体项目后，项目列表保持显示", document.querySelector(".projects-section").classList.contains("is-visible"));
   check("列表里有这个项目", !!document.querySelector('#projectList .project-row[data-id="work"]'));
 
   console.log("\n── 回到全部项目还是图板 ──");
   click(document.querySelector('.project-nav[data-project="all"]'));
   await tick(30);
   check("又是图板视图", !boardGrid().hidden && cardGrid().hidden);
-  check("回到全部项目后，左侧项目列表消失", !document.querySelector(".projects-section").classList.contains("is-visible"));
+  check("回到全部项目后，左侧项目列表仍然显示", document.querySelector(".projects-section").classList.contains("is-visible"));
 
   console.log("\n── 顶部筛选照样生效 ──");
   click(document.querySelector('.nav-item[data-filter="done"]'));
@@ -287,6 +301,7 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   click(brand);
   await tick(60);
   check("回到「全部项目」", store.laterOnActiveProject === "all", String(store.laterOnActiveProject));
+  check("点 Logo 回首页后标签页恢复品牌名和 slogan", document.title === "LaterOn - 没看完的网页，留到 LaterOn。", document.title);
   check("视图跟着变回图板", !boardGrid().hidden && cardGrid().hidden);
   check("筛选复到「全部」", store.laterOnFilter === "all", String(store.laterOnFilter));
   check("搜索词被清空", searchBox.value === "");
