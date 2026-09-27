@@ -7,20 +7,22 @@
          整页统一不发 Referer，收藏的封面与站点图标才能正常显示。 -->
     <meta name="referrer" content="no-referrer" />
     <title>LaterOn · 我的收藏</title>
-    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="icon" href="icon128.png" type="image/png" />
     <link rel="stylesheet" href="theme-vars.css" />
     <link rel="stylesheet" href="dialog.css" />
+    <link rel="stylesheet" href="onboarding.css" />
     <link rel="stylesheet" href="library.css" />
     <script src="theme.js"></script>
     <script src="i18n.js"></script>
     <script src="dialog.js"></script>
     <script src="picker-ui.js"></script>
+    <script src="onboarding.js" defer></script>
   </head>
   <body>
     <div class="shell">
       <header class="topbar">
-        <a class="brand" id="homeBrand" href="#" aria-label="LaterOn 首页" title="回到首页"><img class="brand-icon" src="icon.svg" width="40" height="40" alt="" />LaterOn</a>
-        <nav aria-label="筛选">
+        <a class="brand" id="homeBrand" href="#" data-i18n-aria-label="home" data-i18n-title="home" aria-label="LaterOn 首页" title="回到首页"><img class="brand-icon" src="icon128.png" width="40" height="40" alt="" />LaterOn</a>
+        <nav data-i18n-aria-label="filterNav" aria-label="筛选">
           <button class="nav-item active" data-filter="unread" data-i18n="unread">未读</button>
           <button class="nav-item" data-filter="done" data-i18n="read">已读</button>
           <button class="nav-item" data-filter="all" data-i18n="all">全部</button>
@@ -33,7 +35,7 @@
       </header>
 
       <div class="workspace">
-        <aside class="project-sidebar" aria-label="项目导航">
+        <aside class="project-sidebar" data-i18n-aria-label="projectNav" aria-label="项目导航">
           <!-- 「待整理」单独占一块，钉在侧栏最上面：它不是一个普通筛选项，
                而是一个待办——有东西堆在这里就该去归位。有内容时整块高亮。
                仍然带 .project-nav，所以点击切换、拖收藏进来归类的行为都照旧。 -->
@@ -53,19 +55,11 @@
               <!-- Playground candidate 11 · K Bookmark / rounded tiles -->
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>
             </span>
-            <span data-i18n="allProjects">全部内容</span><strong class="nav-count" id="allCount">0</strong>
+            <span data-i18n="allProjectsOverview">全部项目</span><strong class="nav-count" id="allCount">0</strong>
           </button>
-          <!-- 项目列表：始终显示。不管当前在「全部项目」「待整理」还是某个项目里，
-               左侧都列出所有项目——想换到哪个项目直接点，不用先退回全部项目。 -->
+          <!-- 首页的图板已经列出所有项目，所以侧栏不再重复；进入具体项目后，
+               项目列表直接接在“全部项目”下方，方便快速切换。 -->
           <div class="projects-section">
-            <div class="projects-heading">
-              <p class="sidebar-label" data-i18n="projects">项目</p>
-              <button id="showProjectForm" class="add-project" title="新建项目" aria-label="新建项目">＋</button>
-            </div>
-            <form id="projectForm" class="project-form" hidden>
-              <input id="projectName" maxlength="28" data-i18n-placeholder="projectName" placeholder="项目名称" autocomplete="off" />
-              <button type="submit" data-i18n="create">创建</button>
-            </form>
             <div id="projectList" class="project-list"></div>
           </div>
           <div class="sidebar-footer">
@@ -73,6 +67,7 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               <span data-i18n="settings">设置</span>
             </button>
+            <p class="sidebar-slogan" data-i18n="slogan">没看完的网页，留到 LaterOn。</p>
           </div>
         </aside>
 
@@ -84,7 +79,7 @@
           </div>
           <div class="collection-right">
             <!-- 全部项目固定是图板视图，待整理 / 单个项目是卡片视图，不再需要手动切换 -->
-            <select id="sortSelect" aria-label="排序方式">
+            <select id="sortSelect" data-i18n-aria-label="sortAria" aria-label="排序方式">
               <option value="newest" data-i18n="sortNewest">最新收藏</option>
               <option value="oldest" data-i18n="sortOldest">最早收藏</option>
               <option value="source" data-i18n="sortSource">按来源</option>
@@ -94,9 +89,9 @@
         </section>
 
         <section id="emptyState" class="empty" hidden>
-          <img class="empty-icon" src="icon.svg" alt="" />
-          <h2>这里还很安静</h2>
-          <p>打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。</p>
+          <img class="empty-icon" src="icon128.png" alt="" />
+          <h2 data-i18n="quiet">这里还很安静</h2>
+          <p data-i18n="quietHint">打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。</p>
         </section>
         <section id="cardGrid" class="grid" aria-live="polite"></section>
         <section id="boardGrid" class="board-grid" aria-live="polite" hidden></section>
@@ -107,13 +102,13 @@
 
     <template id="cardTemplate">
       <article class="card">
-        <label class="select-badge" aria-label="选择此收藏"><input type="checkbox" class="select-check" /></label>
+        <label class="select-badge" data-i18n-aria-label="selectItem" aria-label="选择此收藏"><input type="checkbox" class="select-check" /></label>
         <a class="cover-link" target="_blank" rel="noreferrer">
           <div class="cover">
-            <div class="cover-placeholder"><img class="cover-logo" src="icon.svg" alt="" /></div>
+            <div class="cover-placeholder"><img class="cover-logo" src="article-cover-placeholder.png" alt="" /></div>
           </div>
         </a>
-        <button class="edit" title="编辑标题和摘要" aria-label="编辑标题和摘要">
+        <button class="edit" data-i18n-title="editItemAria" data-i18n-aria-label="editItemAria" title="编辑标题和摘要" aria-label="编辑标题和摘要">
           <svg viewBox="0 0 24 24"><path d="M4 20h4L20 8l-4-4L4 16zM14 6l4 4"/></svg>
         </button>
         <div class="card-body">
@@ -121,9 +116,9 @@
           <a class="title-link" target="_blank" rel="noreferrer"><h2></h2></a>
           <p class="description"></p>
           <footer>
-            <button class="read-toggle" title="切换阅读状态"></button>
-            <select class="project-select" aria-label="所属项目"></select>
-            <button class="delete" title="删除收藏" aria-label="删除收藏">
+            <button class="read-toggle" data-i18n-title="readStateAria" title="切换阅读状态"></button>
+            <select class="project-select" data-i18n-aria-label="projectMembership" aria-label="所属项目"></select>
+            <button class="delete" data-i18n-title="deleteSave" data-i18n-aria-label="deleteSave" title="删除收藏" aria-label="删除收藏">
               <svg viewBox="0 0 24 24"><path d="M4 7h16m-10 4v6m4-6v6M9 7l1-3h4l1 3m3 0-1 13H7L6 7"/></svg>
             </button>
           </footer>
@@ -136,7 +131,7 @@
     <template id="boardTemplate">
       <article class="board-card">
         <div class="board-cover" data-count="0"></div>
-        <button class="board-edit" type="button" title="编辑类目简介" aria-label="编辑类目简介">
+        <button class="board-edit" type="button" data-i18n-title="editProjectAria" data-i18n-aria-label="editProjectAria" title="编辑类目简介" aria-label="编辑类目简介">
           <svg viewBox="0 0 24 24"><path d="M4 20h4L20 8l-4-4L4 16zM14 6l4 4"/></svg>
         </button>
         <div class="board-body">
@@ -153,7 +148,7 @@
         <button id="bulkSelectAll" type="button" data-i18n="selectAll">全选</button>
         <button id="bulkRead" type="button" data-i18n="markDone">标完成</button>
         <button id="bulkUnread" type="button" data-i18n="markUnread">标未读</button>
-        <button id="bulkProject" class="bulk-project" type="button" aria-label="移动到项目" aria-haspopup="dialog">
+        <button id="bulkProject" class="bulk-project" type="button" data-i18n-aria-label="moveTo" aria-label="移动到项目" aria-haspopup="dialog">
           <span data-i18n="moveTo">移动到…</span>
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
         </button>

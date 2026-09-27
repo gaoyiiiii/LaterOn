@@ -1,0 +1,8 @@
+{
+  "extensionName": { "message": "LaterOn · Read Later" },
+  "extensionDescription": { "message": "Save the current page in one click and return to it later in a clean, focused library." },
+  "actionTitle": { "message": "Open the LaterOn side panel" },
+  "commandSavePage": { "message": "Save the current page to LaterOn" },
+  "commandTranslatePage": { "message": "Translate the current page or restore the original" },
+  "commandSaveAllTabs": { "message": "Save every tab in the current window to LaterOn" }
+}

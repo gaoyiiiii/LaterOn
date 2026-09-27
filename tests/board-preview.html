@@ -7,7 +7,7 @@
          整页统一不发 Referer，收藏的封面与站点图标才能正常显示。 -->
     <meta name="referrer" content="no-referrer" />
     <title>LaterOn · 我的收藏</title>
-    <link rel="icon" href="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%0A%20%20%3Cdefs%3E%0A%20%20%20%20%3ClinearGradient%20id%3D%22lateronGrad%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23ff7a45%22%20%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23ff5c35%22%20%2F%3E%0A%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%3C%2Fdefs%3E%0A%20%20%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22url(%23lateronGrad)%22%20%2F%3E%0A%20%20%3Cpath%20d%3D%22M11%2021%20L21%2011%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.8%22%20stroke-linecap%3D%22round%22%20%2F%3E%0A%20%20%3Cpath%20d%3D%22M13.5%2011%20H21%20V18.5%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20%2F%3E%0A%3C%2Fsvg%3E%0A" type="image/svg+xml" />
+    <link rel="icon" href="icon128.png" type="image/png" />
     <style>
 /* theme-vars.css */
 :root {
@@ -153,6 +153,10 @@
   transform: translateY(12px) scale(.97);
   transition: opacity .24s ease, transform .3s cubic-bezier(.2,.8,.3,1);
   outline: none;
+  /* 内容多起来（图板编辑里有名称 / 简介 / 封面 / 封面组合四块）也不能顶出屏幕，
+     超出就自己滚，别让底部的「保存」跑到视窗外。 */
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
 }
 .lod-root.is-in .lod-backdrop { opacity: 1; }
 .lod-root.is-in .lod-panel { opacity: 1; transform: none; }
@@ -249,6 +253,53 @@
 .lod-cover-btn.is-plain { background: transparent; }
 .lod-cover-note { margin: 0; color: var(--lod-subtle); font-size: 11px; line-height: 1.5; }
 
+/* ── 封面组合：从项目里已抓到的封面中点选几张，拖拽决定顺序 ── */
+.lod-picks { display: grid; gap: 7px; }
+.lod-picks[hidden] { display: none; }
+/* 缩略图可能很多（一个项目几十篇），给它一个高度上限自己滚，
+   别让弹窗被一排排图片撑到屏幕外面去。 */
+.lod-pick-strip {
+  position: relative;               /* 指示线靠它定位 */
+  display: flex; flex-wrap: wrap; gap: 7px; align-content: flex-start;
+  max-height: 150px; overflow-y: auto; overscroll-behavior: contain;
+}
+.lod-pick {
+  position: relative; flex: none; width: 54px; height: 38px; padding: 0;
+  border: 1px solid var(--lod-line); border-radius: 9px; overflow: hidden;
+  background: var(--lod-soft); cursor: pointer; font: inherit;
+  transition: border-color .15s, box-shadow .15s, opacity .15s;
+}
+/* 没挑的暗一档：一眼能分清「已经在封面里」和「备选」。 */
+.lod-pick img { display: block; width: 100%; height: 100%; object-fit: cover; opacity: .58; transition: opacity .15s; }
+.lod-pick:hover { border-color: var(--accent, #ff5c35); }
+.lod-pick:hover img { opacity: 1; }
+.lod-pick.is-on { border-color: var(--accent, #ff5c35); box-shadow: 0 0 0 2px rgba(255,92,53,.2); }
+.lod-pick.is-on img { opacity: 1; }
+.lod-pick.is-dragging { opacity: .3; }
+.lod-pick:focus-visible { outline: 2px solid var(--accent, #ff5c35); outline-offset: 2px; }
+.lod-pick-order {
+  position: absolute; left: 3px; top: 3px;
+  display: grid; place-items: center; width: 15px; height: 15px;
+  border-radius: 50%; background: var(--accent, #ff5c35); color: #fff;
+  font-size: 9.5px; font-weight: 800; line-height: 1;
+}
+.lod-pick-x {
+  position: absolute; right: 2px; top: 2px;
+  display: grid; place-items: center; width: 15px; height: 15px;
+  border-radius: 50%; background: rgba(20,18,14,.68); color: #fff;
+  font-size: 11px; font-weight: 700; line-height: 1;
+}
+.lod-pick-x:hover { background: var(--lod-danger); }
+/* 插入位置的指示线：绝对定位（不参与排版），拖动中挪它不会让缩略图跟着动 */
+.lod-pick-line {
+  position: absolute; width: 2px; border-radius: 2px;
+  background: var(--accent, #ff5c35);
+  box-shadow: 0 0 0 1px var(--lod-card);
+  pointer-events: none;
+}
+.lod-picks.is-muted .lod-pick-strip { opacity: .5; }
+.lod-pick-note.is-warn { color: var(--lod-danger); }
+
 .lod-hint { margin: 0; color: var(--lod-subtle); font-size: 11.5px; text-align: center; }
 .lod-hint[hidden] { display: none; }
 
@@ -300,6 +351,34 @@
 
 </style>
     <style>
+/* onboarding.css */
+.lon-guide { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 20px; opacity: 0; transition: opacity .18s ease; }
+.lon-guide.is-visible { opacity: 1; }
+.lon-guide.is-leaving { opacity: 0; }
+.lon-guide-backdrop { position: absolute; inset: 0; background: rgba(20,18,15,.46); backdrop-filter: blur(7px); }
+.lon-guide-card { position: relative; width: min(420px, 100%); border: 1px solid var(--card-line); border-radius: 24px; padding: 24px; background: var(--card); color: var(--ink); box-shadow: 0 30px 80px -24px rgba(0,0,0,.55); outline: none; transform: translateY(10px) scale(.98); transition: transform .22s cubic-bezier(.2,.8,.3,1); }
+.lon-guide.is-visible .lon-guide-card { transform: none; }
+.lon-guide-brand { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; }
+.lon-guide-brand img { width: 28px; height: 28px; border-radius: 8px; }
+.lon-guide-progress { display: flex; gap: 6px; margin: 22px 0 18px; }
+.lon-guide-progress span { width: 22px; height: 4px; border-radius: 9px; background: var(--line); transition: width .18s, background .18s; }
+.lon-guide-progress span.active { width: 38px; background: var(--accent); }
+.lon-guide-page { min-height: 276px; opacity: 1; transform: translateX(0); transition: opacity .15s ease, transform .18s cubic-bezier(.4,0,.2,1); }
+.lon-guide-page.is-leaving { opacity: 0; transform: translateX(-18px); }
+.lon-guide-page.is-entering { opacity: 0; transform: translateX(18px); }
+.lon-guide-icon { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 17px; background: var(--accent-soft); color: var(--accent); font-size: 25px; font-weight: 800; }
+.lon-guide-card h2 { margin: 18px 0 8px; font-size: 23px; line-height: 1.25; letter-spacing: -.4px; }
+.lon-guide-body { margin: 0; color: var(--field-text); font-size: 14px; line-height: 1.7; }
+.lon-guide-hint { margin: 14px 0 0; padding: 10px 12px; border-radius: 11px; background: var(--field-soft); color: var(--muted); font-size: 12px; line-height: 1.6; }
+.lon-guide-card footer { display: flex; justify-content: space-between; gap: 10px; margin-top: 24px; }
+.lon-guide-card button { min-height: 40px; border: 0; border-radius: 12px; padding: 0 18px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.lon-guide-skip { background: transparent; color: var(--muted); }
+.lon-guide-next { margin-left: auto; background: var(--accent); color: #fff; box-shadow: 0 8px 20px -9px rgba(255,80,50,.75); }
+.lon-guide-card button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .lon-guide, .lon-guide-card, .lon-guide-page { transition: none; } }
+
+</style>
+    <style>
 /* library.css */
 * { box-sizing: border-box; }
 /* scrollbar-gutter: stable —— 给滚动条**永远**留出那条槽位。
@@ -327,11 +406,7 @@ button, select { cursor: pointer; }
   backdrop-filter: blur(22px) saturate(160%);
 }
 .brand { display: flex; gap: 10px; align-items: center; color: var(--ink); font-size: 22px; font-weight: 850; letter-spacing: -.8px; text-decoration: none; }
-.brand span {
-  display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px;
-  background: linear-gradient(140deg, #ff7a52, #ff4f2e); color: #fff; font-size: 18px;
-  box-shadow: 0 6px 16px -6px rgba(255,80,50,.6);
-}
+.brand-icon { display: block; width: 40px; height: 40px; border-radius: 11px; box-shadow: 0 7px 16px -6px rgba(255,80,50,.6); }
 nav { display: flex; gap: 4px; padding: 4px; border-radius: 99px; background: var(--chip); border: 1px solid var(--hairline-2); box-shadow: var(--shadow-sm); }
 .nav-item { border: 0; border-radius: 99px; padding: 8px 18px; background: transparent; color: var(--chip-text); font-size: 13px; font-weight: 650; transition: color .15s, background .15s; }
 .nav-item:hover { color: var(--ink); }
@@ -354,11 +429,13 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
   background: color-mix(in srgb, var(--paper) 54%, transparent);
 }
 .sidebar-section + .sidebar-section { margin-top: 28px; }
-.projects-section { display: flex; flex-direction: column; flex: 1; min-height: 0; margin-top: 18px; padding-top: 17px; border-top: 1px solid var(--hairline-2); }
-/* 项目列表现在是常显的（不靠 hidden 收起），但这条留着当保险：
-   自己写 display 就必须自己管 hidden——浏览器自带的 [hidden]{display:none} 敌不过作者样式，
-   将来谁再给它加 hidden 却忘了这条，就会「设了属性却没藏起来」。 */
-.projects-section[hidden] { display: none; }
+.projects-section { display: none; flex-direction: column; flex: 1; min-height: 0; }
+/* 具体项目不是第三个顶层入口，而是「全部项目」展开后的子级。
+   用缩进与更紧凑的行高建立父子关系，保持侧栏干净，不额外画树状连接线。 */
+.projects-section.is-visible {
+  position: relative; display: flex;
+  margin: 4px 0 0 27px; padding: 5px 0 4px 14px;
+}
 .sidebar-label { margin: 0 10px 9px; color: var(--muted); font-size: 11px; font-weight: 720; letter-spacing: .04em; }
 .project-nav {
   /* 第一列 = 缩略图宽度；列间距必须显式写：缩略图是实心方块，
@@ -370,7 +447,6 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
 }
 .project-nav:hover { background: var(--glass-strong); color: var(--ink); }
 .project-nav:focus-visible,
-.add-project:focus-visible,
 .sidebar-setting:focus-visible,
 .project-more:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 72%, transparent); outline-offset: 2px; }
 /* 自己写了 display 就得自己管 hidden：浏览器自带的 [hidden]{display:none} 敌不过作者样式。
@@ -404,7 +480,7 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
 }
 .inbox-card.has-items .inbox-icon { background: var(--accent-soft); color: var(--accent); }
 .inbox-card.active .inbox-icon { background: var(--accent); color: #fff; box-shadow: 0 5px 13px -6px rgba(255,92,53,.7); }
-.inbox-icon svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.inbox-icon svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .inbox-body { display: grid; min-width: 0; }
 /* 注意优先级：.project-nav strong 也会命中 .inbox-title，所以这里要写两级才盖得住 */
 .inbox-card .inbox-title { color: inherit; font-size: 13.5px; font-weight: 720; letter-spacing: -.15px; }
@@ -424,7 +500,8 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
 .nav-icon { display: grid; place-items: center; color: var(--subtle); font-size: 14px; }
 /* 项目行左侧：不是文件夹图标，而是这个项目的封面缩略图
    （和「选项目」浮层里每行那张小图同一套外观：圆角方块 + 首字占位色块） */
-.project-thumb { display: block; flex: none; width: 36px; height: 36px; border: 2px solid color-mix(in srgb, var(--card) 88%, transparent); border-radius: 11px; overflow: hidden; background: var(--field-soft); box-shadow: 0 2px 7px -4px rgba(20,18,14,.32); }
+/* position 是为了让「已置顶」的图钉角标能贴在缩略图右下角 */
+.project-thumb { position: relative; display: block; flex: none; width: 36px; height: 36px; border: 2px solid color-mix(in srgb, var(--card) 88%, transparent); border-radius: 11px; overflow: hidden; background: var(--field-soft); box-shadow: 0 2px 7px -4px rgba(20,18,14,.32); }
 .project-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
 /* 没有封面时的占位：项目名首字 + 暖色底 */
 .project-ph {
@@ -440,7 +517,7 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
 /* 图标方块 36px，栅格第一列也得是 36px，否则图标会挤出去、和「待整理」对不齐 */
 .top-entry { padding: 6px 9px; grid-template-columns: 36px minmax(0,1fr) auto; gap: 11px; font-weight: 680; letter-spacing: -.1px; }
 .all-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: var(--field-soft); color: var(--muted); transition: background .15s, color .15s, box-shadow .15s; }
-.all-icon svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.all-icon svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .project-nav:hover .all-icon { background: var(--field-soft); color: var(--ink); }
 .project-nav.active .all-icon { background: var(--accent); color: #fff; box-shadow: 0 5px 13px -6px rgba(255,92,53,.7); }
 /* 侧栏里所有篇数都用同一个小圆标（顶部两个入口 + 项目行） */
@@ -450,6 +527,17 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
 .project-nav strong { color: var(--subtle); font-size: 9px; font-weight: 600; }
 /* 项目行：主体按钮 + 右侧「⋯」更多按钮 */
 .project-row { position: relative; display: flex; align-items: center; }
+/* 子级项目略小、略轻：保留封面识别度，但不再和顶层入口争层级。 */
+.projects-section .project-nav {
+  position: relative; z-index: 1;
+  grid-template-columns: 32px minmax(0,1fr) auto; column-gap: 9px;
+  min-height: 44px; border-radius: 13px; padding: 5px 7px;
+  font-size: 12.75px; font-weight: 610;
+}
+.projects-section .project-row .project-nav { padding-right: 28px; }
+.projects-section .project-thumb { width: 32px; height: 32px; border-radius: 10px; }
+.projects-section .project-ph { font-size: 12px; }
+.projects-section .project-more { z-index: 2; right: 5px; }
 /* 右侧要给「⋯」留位（它是绝对定位的），但不能留太多——侧栏本来就窄，
    缩略图 + 列间距已经吃掉一截名字空间了。⋯ 20px 宽、贴右 6px，留 28px 正好够。 */
 .project-row .project-nav { padding-right: 31px; }
@@ -486,6 +574,24 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
 /* 选中项目里的更多按钮沿用强调色，避免和缩略图争抢视觉焦点。 */
 .project-row:has(.project-nav.active) .project-more { color: var(--accent); }
 .project-row:has(.project-nav.active) .project-more:hover { background: rgba(255,92,53,.12); color: var(--accent); }
+/* ── 置顶：缩略图右下角一枚图钉 + 置顶区和其余项目之间一条细分隔线 ──
+   加上这个标记之后，「排在最上面」才读得出来是「被钉住的」，而不是「名字刚好排第一」。 */
+.project-pin-badge {
+  position: absolute; right: -1px; bottom: -1px;
+  display: grid; place-items: center; width: 17px; height: 17px;
+  border-radius: 50%; background: var(--card); color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 80%, transparent);
+}
+/* 实心图钉：fill 走 currentColor（角标用强调色，菜单里跟着文字色），描边关掉——
+   十几像素的尺寸下描边款会糊成一团，认不出是什么。
+   ⚠️ 菜单那条要写成「.folder-menu-item svg.pin-icon」：上面已有的
+   `.folder-menu-item svg { fill:none; stroke:currentColor }` 是「类+元素」，
+   只写 .pin-icon（单个类）压不过它，图钉会被重新描边、又糊回去。 */
+.project-pin-badge svg { width: 11px; height: 11px; fill: currentColor; stroke: none; }
+.folder-menu-item svg.pin-icon { fill: currentColor; stroke: none; }
+/* 「取消置顶」在图钉上叠的那道斜杠，得单独描边 */
+.pin-icon .pin-slash { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.project-pin-sep { height: 1px; margin: 5px 12px 6px; background: var(--hairline-2); }
 /* 就地改名 */
 .project-nav.is-renaming strong { display: none; }
 .project-rename {
@@ -494,16 +600,6 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
   font-family: inherit; font-size: 12.5px; outline: none;
   box-shadow: 0 0 0 3px rgba(255,92,53,.16);
 }
-/* 「项目 ＋」这一行和下面第一行项目之间要留出明显的空隙：
-   间距写在容器上（不是 label 上），这样「项目」两个字和右边的 ＋ 是同一个基线，
-   下面的空隙也一样高——写在 label 上会让 ＋ 贴住第一行，两边不等高。 */
-.projects-heading { display: flex; align-items: center; justify-content: space-between; min-height: 28px; margin: 0 7px 9px 0; }
-.projects-heading .sidebar-label { margin: 0 0 0 10px; }
-.add-project { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 19px; line-height: 1; transition: background .15s, color .15s, transform .15s; }
-.add-project:hover { background: var(--field-soft); color: var(--ink); transform: scale(1.04); }
-.project-form { margin: 2px 4px 8px; padding: 8px; border: 1px solid var(--hairline-2); border-radius: 11px; background: var(--field); box-shadow: var(--shadow-sm); }
-.project-form input { width: 100%; border: 0; outline: 0; padding: 3px; background: transparent; font-size: 11px; color: var(--ink); }
-.project-form button { width: 100%; margin-top: 6px; border: 0; border-radius: 7px; padding: 5px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; }
 .project-list { display: flex; flex-direction: column; gap: 3px; flex: 1; min-height: 0; overflow-y: auto; padding-right: 3px; }
 .project-list::-webkit-scrollbar { width: 6px; }
 .project-list::-webkit-scrollbar-thumb { background: var(--hairline-2); border-radius: 3px; }
@@ -511,9 +607,10 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
 .sidebar-setting { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 44px; border: 0; border-radius: 14px; padding: 6px 12px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 640; text-align: left; transition: background .15s, color .15s; }
 .sidebar-setting:hover { background: var(--glass-strong); color: var(--ink); }
 .sidebar-setting svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.sidebar-slogan { margin: 7px 12px 0; color: var(--subtle); font-size: 10.5px; font-weight: 500; line-height: 1.55; letter-spacing: .01em; opacity: .72; }
 
 @media (prefers-reduced-motion: reduce) {
-  .project-nav, .inbox-icon, .all-icon, .add-project, .project-more, .sidebar-setting { transition: none; }
+  .project-nav, .inbox-icon, .all-icon, .project-more, .sidebar-setting, .board-create { transition: none; }
 }
 
 /* 项目的右键 / 「⋯」菜单 */
@@ -610,7 +707,10 @@ select:hover { border-color: var(--card-line); }
 .cover img { width: 100%; height: 100%; object-fit: cover; transition: transform .45s ease; }
 .card:hover .cover img { transform: scale(1.04); }
 .cover-placeholder { display: grid; height: 100%; place-items: center; background: var(--cover-ph); }
-.cover-logo { width: 54px; height: 54px; border-radius: 16px; opacity: .92; box-shadow: var(--cover-ph-shadow); }
+.cover-logo { width: 54px; height: 54px; border-radius: 0; opacity: .92; box-shadow: var(--cover-ph-shadow); }
+/* 箭头版封面源图自带一圈圆角；放大到卡片边缘外，由 .cover 的裁切只留下卡片这一层圆角。 */
+.cover-placeholder .cover-logo { width: 100%; height: 100%; transform: scale(1.12); }
+.card:hover .cover-placeholder .cover-logo { transform: scale(1.12); }
 .card-body { padding: 15px 15px 13px; }
 .source-row { display: grid; grid-template-columns: 17px minmax(0,1fr) auto auto; align-items: center; column-gap: 5px; min-width: 0; width: 100%; color: var(--muted); font-size: 11px; white-space: nowrap; }
 .favicon { width: 17px; height: 17px; border-radius: 50%; background: var(--cover-bg); object-fit: cover; }
@@ -682,6 +782,18 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
   /* 和卡片一样只用 backwards：forwards 会盖掉行内 transform（见 .card 的注释） */
   animation: cardIn .4s ease backwards;
 }
+.board-create {
+  align-self: start; display: grid; place-items: center; align-content: center; gap: 10px;
+  width: 100%; aspect-ratio: 1.42; border: 1.5px dashed var(--hairline-2); border-radius: 14px;
+  background: color-mix(in srgb, var(--card) 38%, transparent); color: var(--muted);
+  font: inherit; cursor: pointer; animation: cardIn .4s ease backwards;
+  transition: border-color .2s, background .2s, color .2s, transform .2s cubic-bezier(.2,.7,.3,1);
+}
+.board-create:hover { border-color: color-mix(in srgb, var(--accent) 62%, var(--hairline-2)); background: var(--accent-soft); color: var(--accent); transform: translateY(-2px); }
+.board-create:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 72%, transparent); outline-offset: 3px; }
+.board-create-plus { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--field-soft); color: currentColor; font-size: 27px; font-weight: 350; line-height: 1; transition: transform .2s, background .2s; }
+.board-create:hover .board-create-plus { background: color-mix(in srgb, var(--accent) 12%, var(--card)); transform: scale(1.06); }
+.board-create strong { font-size: 12px; font-weight: 680; letter-spacing: .01em; }
 /* 拖拽中：让位要跟手，默认 .2s 会显得拖沓；animation:none 是双保险——
    万一某块的入场动画还没播完，动画仍在覆盖 transform，这里直接掐断。 */
 .board-grid.is-reordering .board-card { animation: none; transition: transform .16s cubic-bezier(.2,.8,.2,1); }
@@ -720,9 +832,11 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
 .board-body { padding: 11px 2px 0; }
 /* 标题是 Pinterest 那种「紧贴封面下方、字号偏大」的写法 */
 .board-name { overflow: hidden; margin: 0; font-size: 14.5px; font-weight: 770; letter-spacing: -.28px; text-overflow: ellipsis; white-space: nowrap; }
-/* 简介：手写的用正常灰，自动生成的再淡一档，暗示「这只是概览，可以自己写一句」 */
+/* 简介：手写的用正常灰，自动生成的再淡一档，暗示「这只是概览，可以自己写一句」。
+   高度跟着内容走：一句就占一行，别为了「整排对齐」硬撑成两行——
+   那是留白，不是对齐（一份简介往往就一行，下面空一行看着像没写完）。 */
 .board-note {
-  display: -webkit-box; overflow: hidden; min-height: 32px; margin: 6px 0 0;
+  display: -webkit-box; overflow: hidden; margin: 6px 0 0;
   color: var(--muted); font-size: 11px; line-height: 1.52;
   -webkit-box-orient: vertical; -webkit-line-clamp: 2;
 }
@@ -746,7 +860,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
 @media (hover: none) { .board-edit { opacity: 1; transform: none; pointer-events: auto; } }
 
 .empty { max-width: 440px; margin: 90px auto; text-align: center; }
-.empty-icon { display: grid; place-items: center; width: 76px; height: 76px; margin: auto; border-radius: 24px; background: linear-gradient(145deg, var(--card), var(--field-soft)); color: var(--accent); font-size: 36px; box-shadow: var(--shadow-sm); }
+.empty-icon { display: block; width: 76px; height: 76px; margin: auto; padding: 0; border-radius: 24px; object-fit: cover; background: transparent; box-shadow: var(--shadow-sm); }
 .empty h2 { margin: 20px 0 8px; font-family: Georgia, "Songti SC", serif; font-size: 28px; font-weight: 500; }
 .empty p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
 .toast { position: fixed; right: 25px; bottom: 25px; transform: translateY(20px); border-radius: 14px; padding: 12px 16px; background: var(--toast-bg); color: var(--active-text); font-size: 12px; box-shadow: var(--shadow-md); opacity: 0; pointer-events: none; transition: .25s; }
@@ -785,8 +899,10 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
   .workspace { display: block; }
   .project-sidebar { position: static; align-self: stretch; height: auto; display: block; padding: 14px 18px; border-right: 0; border-bottom: 1px solid var(--line); }
   .projects-section { flex: none; }
+  .projects-section.is-visible { margin-left: 27px; padding-left: 12px; }
   .project-list { flex: none; overflow: visible; padding-right: 0; }
   .sidebar-footer { margin-top: 14px; }
+  .sidebar-slogan { display: none; }
   .sidebar-section:first-child { display: flex; gap: 5px; }
   .sidebar-section + .sidebar-section { margin-top: 12px; }
   .sidebar-label { display: none; }
@@ -819,7 +935,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
 /* 当前正在阅读的这篇：两个视图都用「橙圈 + 左上角『正在读』」标出来，让你一眼知道自己在哪。 */
 .card.is-current { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,92,53,.5), var(--shadow-md); }
 .card.is-current::after {
-  content: "正在读";
+  content: attr(data-current-label);
   position: absolute; top: 12px; left: 12px; z-index: 4;
   padding: 3px 9px; border-radius: 99px;
   background: var(--accent); color: #fff;
@@ -907,7 +1023,9 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
       onChanged: { addListener(fn) { listeners.push(fn); } }
     },
     tabs: { query: () => Promise.resolve([{ id: 1, windowId: 1 }]) },
-    runtime: { getURL: (p) => `chrome-extension://lateron/${p}` }
+    // library.js 一开头就挂了 runtime.onMessage（全屏页收到通知时弹 toast），
+    // 这里必须给出空实现，否则预览页在初始化第一步就抛 addListener of undefined、整页空白。
+    runtime: { getURL: (p) => `chrome-extension://lateron/${p}`, onMessage: { addListener() {} } }
   };
   const listeners = [];
   const store = {
@@ -925,11 +1043,15 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
     ],
     laterOnProjects: [
       { id: "eff", name: "工作效率", note: "关于怎么把时间花在真正重要的事上。", createdAt: 1 },
-      { id: "insp", name: "设计灵感", createdAt: 2 },
-      { id: "long", name: "读不完的长文", createdAt: 3 },
+      // 「设计灵感」带着 coverPick：预览页一打开就能看到「自己挑的封面组合」长什么样
+      // （i3 最新排第一，i1 第二 —— 挑的顺序说了算，不是按时间）。
+      { id: "insp", name: "设计灵感", createdAt: 2, coverPick: ["i3", "i1"] },
+      // 「读不完的长文」带着 pinned：预览页一打开就能看到侧栏的置顶（图钉角标 + 分隔线）长什么样。
+      { id: "long", name: "读不完的长文", createdAt: 3, pinned: true },
       { id: "later", name: "稍后整理", createdAt: 4 }
     ],
     laterOnActiveProject: "all",
+    laterOnOnboardingSeen: true,
     // 打开就落在图板视图；深色背景看拼图更清楚（theme.js 会读这份设置）
     laterOnSettings: { libraryView: "boards", theme: "dark" }
   };
@@ -947,9 +1069,10 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
     defaultSort: "newest",     // newest | oldest | source
     autoMarkRead: true,
     askFolderOnBatch: true,    // 一键收藏所有标签前，先弹窗选项目
-    askFolderOnSingle: false,  // 收藏当前这一篇前，是否也先弹窗选项目（默认关：直接收进「待整理」）
-    newTabPage: true,          // 新标签（含浏览器启动首页）自动打开 LaterOn 全屏收藏墙
+    askFolderOnSingle: false,  // 收藏当前这一篇前，是否先弹窗选项目（默认关；主动打开才先选项目）
+    askFolderOnSingleOptIn: false, // 迁移标记：旧版默认 true 不算用户主动开启
     autoCleanDays: 30          // 标为已读后多少天自动清除（30–180 天）
+    ,language: "zh-CN"         // zh-CN | en
   };
 
   function resolveTheme(theme) {
@@ -966,12 +1089,21 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
 
   async function get() {
     const result = await chrome.storage.local.get(KEY);
-    return { ...DEFAULTS, ...(result[KEY] || {}) };
+    const stored = result[KEY] || {};
+    const merged = { ...DEFAULTS, ...stored };
+    if (stored.askFolderOnSingleOptIn !== true) merged.askFolderOnSingle = false;
+    return merged;
   }
 
   function set(patch) {
     return get().then((current) =>
-      chrome.storage.local.set({ [KEY]: { ...current, ...patch } })
+      chrome.storage.local.set({
+        [KEY]: {
+          ...current,
+          ...patch,
+          ...(Object.prototype.hasOwnProperty.call(patch, "askFolderOnSingle") ? { askFolderOnSingleOptIn: true } : {})
+        }
+      })
     );
   }
 
@@ -997,6 +1129,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
 })();
 
 </script>
+    <script src="i18n.js"></script>
     <script>
 /* dialog.js */
 // 共享的自定义弹窗：取代浏览器原生 confirm / alert，视觉与「选项目」浮层一致。
@@ -1021,10 +1154,21 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
 //   // result.values.cover 是 data URL（用户上传）、""（用户移除/本来没封面），或与传入的 value 相同（没动过）
 //   // 如果传入的 value 不是「用户自己的封面」而是按内容自动取的一张（项目图板就是这样），
 //   // 传 cover.derived = true：移除按钮会先禁用（没有自定义封面可移除），上传后自动放开。
+//   // 图板的「封面组合」再传 candidates + picks：
+//   const result = await LaterOnDialog.prompt({
+//     title: "编辑项目",
+//     cover: {
+//       name: "cover", label: "封面", value: 当前在用的那张, candidates: [{ id, src, title }],
+//       picks: ["收藏id1", "收藏id2"], picksName: "coverPick", maxPicks: 3
+//     }
+//   });
+//   // result.values.coverPick 是有序的收藏 id 数组（[] = 全部取消，回到按内容自动拼封面）。
+//   // 没传 candidates（或备选都不合法）时不会出现这个键，调用方据此保持原值。
 // 也支持字符串简写：LaterOnDialog.confirm("确定删除吗？")
 // 交互：回车确认（多行输入框里 ⌘/Ctrl + 回车）、Esc 取消、点遮罩取消；
 // 同一时刻只显示一个弹窗（自动排队，不会互相叠加）。
 (function () {
+  const t = (key, vars) => window.LaterOnI18n?.t(key, vars) || key;
   const ICONS = {
     question: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.3 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.9 2.3-2.9 4.2M12 17.2h.01"/></svg>',
     danger: '<svg viewBox="0 0 24 24"><path d="M10.3 3.9 2.5 17.4A2 2 0 0 0 4.2 20.4h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9.4v4.4M12 17h.01"/></svg>',
@@ -1042,10 +1186,10 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
   function compressImage(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onerror = () => reject(new Error("这张图读取失败，换一张试试"));
+      reader.onerror = () => reject(new Error(t("imageReadFailed")));
       reader.onload = () => {
         const image = new Image();
-        image.onerror = () => reject(new Error("这个文件不是能显示的图片"));
+        image.onerror = () => reject(new Error(t("invalidImage")));
         image.onload = () => {
           const scale = Math.min(1, COVER_MAX_EDGE / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height, 1));
           const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
@@ -1054,7 +1198,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
           canvas.width = width;
           canvas.height = height;
           const context = canvas.getContext && canvas.getContext("2d");
-          if (!context) { reject(new Error("当前环境不支持处理图片")); return; }
+          if (!context) { reject(new Error(t("imageUnsupported"))); return; }
           // 先铺白底：PNG 透明区域转成 JPEG 后会变黑。
           context.fillStyle = "#ffffff";
           context.fillRect(0, 0, width, height);
@@ -1075,6 +1219,18 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
   let fieldsEl = null;
   let coverEl = null;
   let coverValue = "";       // 封面区当前的值：data URL（上传了）或 ""（没封面/已移除）
+  let picksEl = null;        // 封面组合区（只有调用方给了备选封面才显示）
+  let pickStrip = null;
+  let pickNoteEl = null;
+  let pickIds = [];          // 已挑的封面（收藏 id，按顺序 = 拼图顺序）
+  let pickCandidates = [];    // 备选封面：{ id, src, title }
+  let pickLimit = 3;
+  let pickBaseNote = "";
+  let pickMuted = false;     // 上面那张自定义封面正生效 → 下面的组合暂时不参与
+  let pickNoteTimer = 0;
+  let pickDragId = null;     // 正在拖的封面 id（为空 = 没在拖）
+  let pickDropIndex = 0;
+  let pickLine = null;       // 插入位置的指示线
   let fieldInputs = [];
   let hintEl = null;
   let okBtn = null;
@@ -1104,6 +1260,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
       '  </div>',
       '  <div class="lod-fields" hidden></div>',
       '  <div class="lod-cover" hidden></div>',
+      '  <div class="lod-picks" hidden></div>',
       '  <p class="lod-hint"></p>',
       '  <div class="lod-foot">',
       '    <button type="button" class="lod-cancel">取消</button>',
@@ -1119,6 +1276,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
     messageEl = host.querySelector(".lod-message");
     fieldsEl = host.querySelector(".lod-fields");
     coverEl = host.querySelector(".lod-cover");
+    picksEl = host.querySelector(".lod-picks");
     hintEl = host.querySelector(".lod-hint");
     okBtn = host.querySelector(".lod-ok");
     cancelBtn = host.querySelector(".lod-cancel");
@@ -1140,7 +1298,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
       settleWith(false);
       return;
     }
-    const focusables = [...fieldInputs.map((entry) => entry.el), cancelBtn, okBtn]
+    const focusables = [...fieldInputs.map((entry) => entry.el), ...pickButtons(), cancelBtn, okBtn]
       .filter((element) => element && !element.hidden);
     if (event.key === "Tab") {
       if (!focusables.length) return;
@@ -1153,9 +1311,10 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
       return;
     }
     if (event.key === "Enter") {
-      // 焦点已经在按钮上时交给按钮自己处理，避免触发两次。
+      // 焦点已经在按钮上时交给按钮自己处理，避免触发两次
+      // （封面区的「上传图片 / 移除封面」、封面组合里的每张缩略图都是按钮）。
       const active = document.activeElement;
-      if (active === okBtn || active === cancelBtn) return;
+      if (active?.tagName === "BUTTON") return;
       // 多行输入框里回车 = 换行（写摘要时要分段）；想直接保存按 ⌘/Ctrl + 回车。
       if (active?.tagName === "TEXTAREA" && !(event.metaKey || event.ctrlKey)) return;
       event.preventDefault();
@@ -1194,8 +1353,10 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
   // derived = true 表示 value 是「按内容自动取的门面图」（项目图板用的就是这个），
   // 不是用户自己传的那张 —— 这种封面没有「移除」的概念，所以移除按钮先禁用，
   // 等用户真的上传了一张自己的图，才让它变得可点。
+  // 再传 candidates + picks（图板专用）就会多出「封面组合」一块，见 setupPicks。
   function renderCover(config) {
     coverEl.replaceChildren();
+    resetPicks();
     coverValue = config?.value || "";
     if (!config) { coverEl.hidden = true; return; }
     coverEl.hidden = false;
@@ -1203,7 +1364,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
 
     const label = document.createElement("span");
     label.className = "lod-field-label";
-    label.textContent = config.label || "封面";
+    label.textContent = config.label || t("cover");
 
     const row = document.createElement("div");
     row.className = "lod-cover-row";
@@ -1216,16 +1377,16 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
     const pickBtn = document.createElement("button");
     pickBtn.type = "button";
     pickBtn.className = "lod-cover-btn";
-    pickBtn.textContent = "上传图片";
+    pickBtn.textContent = t("uploadImage");
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className = "lod-cover-btn is-plain";
-    removeBtn.textContent = "移除封面";
+    removeBtn.textContent = t("removeCover");
     actions.append(pickBtn, removeBtn);
 
     const note = document.createElement("p");
     note.className = "lod-cover-note";
-    note.textContent = config.note || "选一张本地图片，会自动压缩后保存（约 50–80KB）";
+    note.textContent = config.note || t("coverDefaultNote");
 
     const fileInput = document.createElement("input");
     fileInput.type = "file";
@@ -1241,12 +1402,16 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
         preview.append(img);
         preview.classList.remove("is-empty");
       } else {
-        preview.textContent = "无封面";
+        preview.textContent = t("noCover");
         preview.classList.add("is-empty");
       }
       // derived 的封面（按内容自动取的那张）没有「移除」的概念：
       // 移除之后还是它，按钮会骗人，所以那种情况直接禁用。
       removeBtn.disabled = !coverValue || !custom;
+      // 有自定义封面时，下面「封面组合」那几张暂时说了不算 —— 把这一点在界面上标出来。
+      pickMuted = custom;
+      picksEl?.classList.toggle("is-muted", custom);
+      paintPickNote();
     }
 
     pickBtn.addEventListener("click", () => fileInput.click());
@@ -1255,20 +1420,20 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
       // 清空 value，这样连续选同一个文件也会再次触发 change。
       fileInput.value = "";
       if (!file) return;
-      if (file.size > COVER_MAX_BYTES) { note.textContent = "这张图太大了（超过 20MB），换一张小点的"; return; }
+      if (file.size > COVER_MAX_BYTES) { note.textContent = t("imageTooLarge"); return; }
       pickBtn.disabled = true;
-      pickBtn.textContent = "处理中…";
-      note.textContent = "正在压缩…";
+      pickBtn.textContent = t("processing");
+      note.textContent = t("compressing");
       try {
         coverValue = await compressImage(file);
         custom = true;
         paint();
-        note.textContent = "已就绪，点「保存」生效";
+        note.textContent = t("coverReady");
       } catch (error) {
-        note.textContent = error?.message || "这张图没能处理，换一张试试";
+        note.textContent = error?.message || t("imageProcessFailed");
       } finally {
         pickBtn.disabled = false;
-        pickBtn.textContent = "上传图片";
+        pickBtn.textContent = t("uploadImage");
       }
     });
     removeBtn.addEventListener("click", () => {
@@ -1277,12 +1442,212 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
       paint();
       // 移除之后会退回到什么，收藏条目和项目图板不一样：前者回到 Logo 占位，
       // 后者回到「按项目里的收藏自动取一张」，所以文案交给调用方定。
-      note.textContent = config.removedNote || "已移除，点「保存」生效（会显示 LaterOn 图标占位）";
+      note.textContent = config.removedNote || t("coverRemoved");
     });
 
     row.append(preview, actions);
     coverEl.append(label, row, note, fileInput);
+    setupPicks(config);
     paint();
+  }
+
+  // ── 封面组合（图板专用）────────────────────────────────
+  // 调用方给一份「备选封面」（一般是这个项目里已抓到的那些图），这里让用户点选最多 3 张、
+  // 再拖动缩略图决定顺序，结果是一个有序的 id 数组（空数组 = 恢复「按内容自动拼」）。
+  // 拖动和项目列表一样不改 DOM：只挪一条绝对定位的指示线，松手落地才重排。
+  function pickButtons() {
+    return pickStrip ? [...pickStrip.querySelectorAll(".lod-pick")] : [];
+  }
+
+  function resetPicks() {
+    pickStrip = null;
+    pickNoteEl = null;
+    pickIds = [];
+    pickCandidates = [];
+    pickDragId = null;
+    pickDropIndex = 0;
+    pickLine = null;
+    pickMuted = false;
+    window.clearTimeout(pickNoteTimer);
+    pickNoteTimer = 0;
+    picksEl.replaceChildren();
+    picksEl.hidden = true;
+    picksEl.classList.remove("is-muted");
+  }
+
+  function setupPicks(config) {
+    const candidates = (Array.isArray(config?.candidates) ? config.candidates : [])
+      .filter((one) => one && one.id && one.src);
+    if (!candidates.length) return;
+    pickCandidates = candidates;
+    pickLimit = Math.max(1, Number(config.maxPicks) || 3);
+    pickIds = (Array.isArray(config.picks) ? config.picks : [])
+      .filter((id) => candidates.some((one) => one.id === id))
+      .slice(0, pickLimit);
+    pickBaseNote = config.picksNote
+      || t("pickDefaultNote", { n: pickLimit });
+
+    const label = document.createElement("span");
+    label.className = "lod-field-label";
+    label.textContent = config.picksLabel || t("coverPicksLimit", { n: pickLimit });
+    const note = document.createElement("p");
+    note.className = "lod-cover-note lod-pick-note";
+
+    const strip = document.createElement("div");
+    strip.className = "lod-pick-strip";
+    // 格子每次重画，strip 本身不换 —— 所以监听挂在这里，一次就够。
+    strip.addEventListener("dragstart", (event) => {
+      const cell = event.target.closest?.(".lod-pick.is-on");
+      if (!cell) { event.preventDefault(); return; }
+      pickDragId = cell.dataset.pick;
+      pickDropIndex = pickIds.indexOf(pickDragId);
+      cell.classList.add("is-dragging");
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", pickDragId);
+      }
+    });
+    strip.addEventListener("dragend", endPickDrag);
+    strip.addEventListener("dragover", (event) => {
+      if (!pickDragId) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+      movePickLine(Number.isFinite(event.clientX) ? event.clientX : 0);
+    });
+    strip.addEventListener("drop", (event) => {
+      if (!pickDragId) return;
+      event.preventDefault();
+      commitPickDrop();
+    });
+
+    pickStrip = strip;
+    pickNoteEl = note;
+    picksEl.append(label, strip, note);
+    pickIds = pickIds.slice();
+    renderPickStrip();
+    picksEl.hidden = false;
+  }
+
+  function pickCell(candidate, order) {
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = order >= 0 ? "lod-pick is-on" : "lod-pick";
+    cell.dataset.pick = candidate.id;
+    const img = document.createElement("img");
+    img.alt = "";
+    img.referrerPolicy = "no-referrer";
+    img.src = candidate.src;
+    cell.append(img);
+    const name = candidate.title || t("itemFallback");
+    if (order >= 0) {
+      // 已挑的：左上角是序号（1 = 封面左边那张大图），右上角是取消。
+      cell.draggable = true;
+      cell.title = t("pickSelectedTitle", { n: order + 1, name });
+      const badge = document.createElement("span");
+      badge.className = "lod-pick-order";
+      badge.textContent = String(order + 1);
+      const close = document.createElement("span");
+      close.className = "lod-pick-x";
+      close.textContent = "×";
+      cell.append(badge, close);
+      cell.addEventListener("click", (event) => {
+        // 点身体不做事（怕手滑删掉刚排好的），只有这个 × 才取消。
+        if (event.target.closest?.(".lod-pick-x")) removePick(candidate.id);
+      });
+    } else {
+      cell.title = t("pickAddTitle", { name });
+      cell.addEventListener("click", () => addPick(candidate.id));
+    }
+    return cell;
+  }
+
+  function renderPickStrip() {
+    if (!pickStrip) return;
+    const chosen = pickIds.map((id) => pickCandidates.find((one) => one.id === id)).filter(Boolean);
+    const rest = pickCandidates.filter((one) => !pickIds.includes(one.id));
+    pickStrip.replaceChildren();
+    pickLine = null;
+    chosen.forEach((one, index) => pickStrip.append(pickCell(one, index)));
+    rest.forEach((one) => pickStrip.append(pickCell(one, -1)));
+    paintPickNote();
+  }
+
+  function paintPickNote() {
+    if (!pickNoteEl) return;
+    const parts = [];
+    if (pickMuted) parts.push(t("customCoverActive"));
+    else if (!pickIds.length) parts.push(t("noCoverPicked"));
+    else if (pickIds.length >= pickLimit) parts.push(t("coverPicksFull", { n: pickLimit }));
+    parts.push(pickBaseNote);
+    pickNoteEl.textContent = parts.join(" ");
+    pickNoteEl.classList.remove("is-warn");
+  }
+
+  function flashPickNote(message) {
+    if (!pickNoteEl) return;
+    pickNoteEl.textContent = message;
+    pickNoteEl.classList.add("is-warn");
+    window.clearTimeout(pickNoteTimer);
+    pickNoteTimer = window.setTimeout(() => { pickNoteTimer = 0; paintPickNote(); }, 1800);
+  }
+
+  function addPick(id) {
+    if (pickIds.includes(id)) return;
+    if (pickIds.length >= pickLimit) { flashPickNote(t("coverPickLimitError", { n: pickLimit })); return; }
+    pickIds = [...pickIds, id];
+    renderPickStrip();
+  }
+
+  function removePick(id) {
+    pickIds = pickIds.filter((one) => one !== id);
+    renderPickStrip();
+  }
+
+  // 指示线画在「要插进去的那道缝」上：绝对定位，不参与排版，
+  // 所以挪它不会让任何缩略图跟着动，也就不会把下一次判定带歪。
+  function movePickLine(clientX) {
+    if (!pickDragId || !pickStrip) return;
+    const rest = pickIds.filter((one) => one !== pickDragId);
+    let index = rest.length;
+    let before = null;
+    for (const id of rest) {
+      const cell = pickButtons().find((el) => el.dataset.pick === id);
+      if (!cell) continue;
+      const rect = cell.getBoundingClientRect();
+      if (clientX < rect.left + rect.width / 2) { index = rest.indexOf(id); before = cell; break; }
+    }
+    pickDropIndex = index;
+    const last = pickButtons().filter((el) => el.dataset.pick !== pickDragId).at(-1);
+    const reference = before || last || null;
+    if (!reference) return;
+    if (!pickLine) {
+      pickLine = document.createElement("div");
+      pickLine.className = "lod-pick-line";
+    }
+    const left = before
+      ? reference.offsetLeft - 4
+      : reference.offsetLeft + reference.offsetWidth + 3;
+    pickLine.style.left = `${Math.max(0, left)}px`;
+    pickLine.style.top = `${reference.offsetTop + 3}px`;
+    pickLine.style.height = `${Math.max(8, reference.offsetHeight - 6)}px`;
+    if (pickLine.parentNode !== pickStrip) pickStrip.append(pickLine);
+  }
+
+  function endPickDrag() {
+    pickDragId = null;
+    pickLine?.remove();
+    pickLine = null;
+    pickButtons().forEach((cell) => cell.classList.remove("is-dragging"));
+  }
+
+  function commitPickDrop() {
+    const id = pickDragId;
+    if (!id) { endPickDrag(); return; }
+    const rest = pickIds.filter((one) => one !== id);
+    rest.splice(Math.max(0, Math.min(pickDropIndex, rest.length)), 0, id);
+    pickIds = rest;
+    endPickDrag();
+    renderPickStrip();
   }
 
   // 把表单里的当前内容收成一个 { 字段名: 值 } 对象。
@@ -1310,7 +1675,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
     // 表单类弹窗（编辑标题/摘要、编辑项目等）默认不再显示底部快捷键提示，
     // 让界面更简洁；只有确认类弹窗保留「回车确认 · Esc 取消」。
     const isForm = !!(current?.fields || current?.cover);
-    const fallback = isForm ? "" : (config.cancelable ? "回车确认 · Esc 取消" : "回车确认");
+    const fallback = isForm ? "" : (config.cancelable ? t("enterEsc") : t("enterConfirm"));
     hintEl.textContent = config.hint || fallback;
     hintEl.hidden = !hintEl.textContent;
 
@@ -1338,6 +1703,13 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
     if (resolved?.fields || resolved?.cover) values = result === true ? readFields() : null;
     // 封面不在输入框里，单独塞进结果：值是 data URL 或 ""（移除封面）。
     if (values && resolved?.cover) values[resolved.cover.name || "cover"] = coverValue;
+    // 封面组合同理单独塞：有序的收藏 id 数组（空数组 = 全部取消，回到自动拼封面）。
+    // 只有真的渲染出这一块（有合法备选）时才返回这个键，否则调用方会以为用户清空了。
+    if (values && pickCandidates.length) {
+      values[resolved?.cover?.picksName || "coverPick"] = pickIds.slice();
+    }
+    window.clearTimeout(pickNoteTimer);
+    pickNoteTimer = 0;
     const value = (resolved?.fields || resolved?.cover)
       ? { ok: result === true, values }
       : result;
@@ -1359,8 +1731,8 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
       tone: "question",
       title: "",
       message: "",
-      confirmText: "确定",
-      cancelText: "取消",
+      confirmText: t("confirm"),
+      cancelText: t("cancel"),
       cancelable: true,
       hint: "",
       fields: null,
@@ -1390,11 +1762,11 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
 
   window.LaterOnDialog = {
     confirm: (input) => open(normalize(input, { tone: "question" })),
-    alert: (input) => open(normalize(input, { tone: "info", cancelable: false, confirmText: "知道了" })),
+    alert: (input) => open(normalize(input, { tone: "info", cancelable: false, confirmText: t("gotIt") })),
     // 带输入框的弹窗。返回 { ok, values }：ok 表示点了确认，values 是 { 字段名: 内容 }。
     prompt: (input) => open(normalize(input, {
       tone: "info",
-      confirmText: "保存"
+      confirmText: t("save")
     })),
     close: () => settleWith(false),
     isOpen: () => !!settle
@@ -1429,6 +1801,28 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
   function openFolderPicker(options) {
     const data = options || {};
     const isPopover = !!data.anchor;
+    const language = data.language === "en" || (!data.language && document.documentElement.lang === "en") ? "en" : "zh-CN";
+    const copy = language === "en" ? {
+      projects: "Choose a project", newProject: "New project name", cancel: "Cancel", moveTitle: "Move this save to which project?",
+      saveTitle: "Save to which project?", saveSingleTitle: "Save this page to which project?",
+      singleSaved: "This page is already saved — confirming will move it to the selected project", singleNew: "Choose a project to save this page",
+      batchSaved: (total, saved) => `${total} tabs, including ${saved} already saved — confirming will move them to the selected project`,
+      batchNew: (total) => `${total} tabs — choose a project to start saving them one by one`, pages: (n) => `View the ${n} pages to be saved`,
+      newMove: "Type a new project name and press Enter to move", newSave: "Type a new project name and press Enter to save", inbox: "Inbox",
+      processing: "Working…", createMove: (name) => `Create “${name}” and move`, createSave: (name) => `Create “${name}” and save`,
+      moveTo: (name) => `Move to “${name}”`, saveTo: (name) => `Save to “${name}”`, createFailed: "Couldn’t create the project. Try again.",
+      failed: "Something went wrong. Try again."
+    } : {
+      projects: "选择项目", newProject: "新建项目名称", cancel: "取消", moveTitle: "把这篇放到哪个项目？",
+      saveTitle: "收藏到哪个项目？", saveSingleTitle: "把这篇收藏到哪个项目？",
+      singleSaved: "这篇已经收藏过——确认后会一并移进你选的项目", singleNew: "选好项目后就会收藏这一篇",
+      batchSaved: (total, saved) => `共 ${total} 个标签页，其中 ${saved} 个已经收藏过——确认后会一并移进你选的项目`,
+      batchNew: (total) => `共 ${total} 个标签页，选好项目后就会开始逐个收藏`, pages: (n) => `查看将要收藏的 ${n} 个页面`,
+      newMove: "输入新项目名，回车直接移入", newSave: "输入新项目名，回车直接收藏进去", inbox: "等待整理",
+      processing: "正在处理…", createMove: (name) => `新建「${name}」并移入`, createSave: (name) => `新建「${name}」并收藏`,
+      moveTo: (name) => `移动到「${name}」`, saveTo: (name) => `收藏到「${name}」`, createFailed: "新建项目失败，请重试。",
+      failed: "操作失败，请重试。"
+    };
 
     const HOST_ID = "lateron-folder-picker";
     const stale = document.getElementById(HOST_ID);
@@ -1462,7 +1856,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
     // 人已经在收藏库里了，顶部再写一遍品牌纯属重复，还把项目列表往下挤了一截。
     const brandHtml = isPopover
       ? ""
-      : `<div class="lon-brand"><span class="lon-logo">↗</span>LaterOn</div>`;
+      : `<div class="lon-brand"><img class="lon-logo" src="${chrome.runtime.getURL("icon128.png")}" width="34" height="34" alt="" />LaterOn</div>`;
 
     const root = document.createElement("div");
     root.className = "lon-root" + (isPopover ? " lon-popover" : "");
@@ -1480,13 +1874,13 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
           <ul class="lon-page-list"></ul>
         </details>
         <div class="lon-box">
-          <div class="lon-folders" role="radiogroup" aria-label="选择项目">
+          <div class="lon-folders" role="radiogroup" aria-label="${copy.projects}">
             <div class="lon-folder-list"></div>
-            <input class="lon-new-input" maxlength="28" placeholder="" aria-label="新建项目名称" />
+            <input class="lon-new-input" maxlength="28" placeholder="" aria-label="${copy.newProject}" />
           </div>
         </div>
         <footer class="lon-foot">
-          <button type="button" class="lon-ghost">取消</button>
+          <button type="button" class="lon-ghost">${copy.cancel}</button>
           <button type="button" class="lon-primary"></button>
         </footer>
       </div>
@@ -1507,26 +1901,22 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
 
     // 标题 / 摘要 / 页面清单：浮层（改卡片项目）和整屏弹窗（收藏网页）文案不同。
     if (isPopover) {
-      $(".lon-title").textContent = data.titleText || "把这篇放到哪个项目？";
+      $(".lon-title").textContent = data.titleText || copy.moveTitle;
       summaryEl.textContent = "";
       $(".lon-pages").hidden = true;
     } else {
       const single = pages.length <= 1;
       // 整屏弹窗的默认标题；单篇收藏时再换成更具体的那句。
-      $(".lon-title").textContent = "收藏到哪个项目？";
+      $(".lon-title").textContent = copy.saveTitle;
       if (single) {
-        $(".lon-title").textContent = "把这篇收藏到哪个项目？";
-        summaryEl.textContent = savedCount > 0
-          ? "这篇已经收藏过——确认后会一并移进你选的项目"
-          : "选好项目后就会收藏这一篇";
+        $(".lon-title").textContent = copy.saveSingleTitle;
+        summaryEl.textContent = savedCount > 0 ? copy.singleSaved : copy.singleNew;
         $(".lon-pages").hidden = true;
       } else {
-        summaryEl.textContent = savedCount > 0
-          ? `共 ${pages.length} 个标签页，其中 ${savedCount} 个已经收藏过——确认后会一并移进你选的项目`
-          : `共 ${pages.length} 个标签页，选好项目后就会开始逐个收藏`;
+        summaryEl.textContent = savedCount > 0 ? copy.batchSaved(pages.length, savedCount) : copy.batchNew(pages.length);
       }
     }
-    pagesLabel.textContent = `查看将要收藏的 ${pages.length} 个页面`;
+    pagesLabel.textContent = copy.pages(pages.length);
     pages.forEach((page, index) => {
       const li = document.createElement("li");
       const no = document.createElement("span");
@@ -1540,26 +1930,24 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
       pageList.append(li);
     });
 
-    newInput.placeholder = isPopover
-      ? "输入新项目名，回车直接移入"
-      : "输入新项目名，回车直接收藏进去";
+    newInput.placeholder = isPopover ? copy.newMove : copy.newSave;
 
     // 输入框里写下的新项目名（空 = 用上面选中的那个项目）。
     const pendingNewName = () => newInput.value.trim();
     const selectedName = () => {
-      if (!selected) return "待整理";
-      return folders.find((folder) => folder.id === selected)?.name || "待整理";
+      if (!selected) return copy.inbox;
+      return folders.find((folder) => folder.id === selected)?.name || copy.inbox;
     };
     const applyLabel = () => {
       const name = pendingNewName();
       if (name) {
         confirmBtn.textContent = busy
-          ? "正在处理…"
-          : (isPopover ? `新建「${name}」并移入` : `新建「${name}」并收藏`);
+          ? copy.processing
+          : (isPopover ? copy.createMove(name) : copy.createSave(name));
       } else {
         confirmBtn.textContent = busy
-          ? "正在处理…"
-          : (isPopover ? `移动到「${selectedName()}」` : `收藏到「${selectedName()}」`);
+          ? copy.processing
+          : (isPopover ? copy.moveTo(selectedName()) : copy.saveTo(selectedName()));
       }
     };
 
@@ -1569,6 +1957,22 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
       span.className = "lon-folder-ph";
       span.textContent = (name || "·").trim().slice(0, 1);
       return span;
+    }
+
+    // HTTPS 页面不能加载 HTTP 封面，尤其是 127.0.0.1 这类地址不会被浏览器自动升级。
+    // 先在创建 img 之前过滤掉不安全来源，避免触发 Mixed Content 请求和控制台告警。
+    function isSafeCoverSource(value) {
+      const source = String(value || "").trim();
+      if (!source) return false;
+      try {
+        const parsed = new URL(source, document.baseURI);
+        if (["https:", "data:", "blob:", "chrome-extension:", "moz-extension:"].includes(parsed.protocol)) {
+          return true;
+        }
+        return parsed.protocol === "http:" && window.location.protocol !== "https:";
+      } catch {
+        return false;
+      }
     }
 
     const renderFolders = () => {
@@ -1582,7 +1986,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
 
         const icon = document.createElement("span");
         icon.className = "lon-folder-icon";
-        if (folder.cover) {
+        if (isSafeCoverSource(folder.cover)) {
           const img = document.createElement("img");
           img.className = "lon-folder-thumb";
           img.src = folder.cover;
@@ -1684,7 +2088,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
       if (!name) return { ok: true, projectId: selected || null };
       const create = data.onCreateProject || defaultCreateProject;
       const project = await create(name);
-      if (!project || !project.id) return { ok: false, error: "新建项目失败，请重试。" };
+      if (!project || !project.id) return { ok: false, error: copy.createFailed };
       if (!folders.some((folder) => folder.id === project.id)) {
         folders = [...folders, { id: project.id, name: project.name, count: 0 }];
       }
@@ -1712,7 +2116,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
       try {
         result = data.onPick ? await data.onPick(target.projectId, selectedName()) : null;
       } catch (error) {
-        result = { ok: false, error: (error && error.message) || "操作失败，请重试。" };
+        result = { ok: false, error: (error && error.message) || copy.failed };
       }
       if (result && result.ok === false) {
         busy = false;
@@ -1871,10 +2275,9 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
       .lon-root.is-out .lon-backdrop { opacity: 0; }
       .lon-root.is-out .lon-panel { opacity: 0; transform: translateY(8px) scale(.98); }
 
-      .lon-brand { display: flex; align-items: center; gap: 8px; color: var(--lon-muted); font-size: 12px; font-weight: 700; letter-spacing: .2px; }
+      .lon-brand { display: flex; align-items: center; gap: 10px; color: var(--lon-muted); font-size: 13.5px; font-weight: 700; letter-spacing: .2px; }
       .lon-logo {
-        display: grid; place-items: center; width: 26px; height: 26px; border-radius: 9px;
-        background: linear-gradient(140deg, #ff7a52, #ff4f2e); color: #fff; font-size: 15px; line-height: 1;
+        display: block; width: 34px; height: 34px; border-radius: 9px;
         box-shadow: 0 6px 16px -6px rgba(255,80,50,.6);
       }
       .lon-title { margin: 12px 0 0; font-size: 20px; font-weight: 800; letter-spacing: -.4px; line-height: 1.3; color: var(--lon-ink); }
@@ -1971,62 +2374,168 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
 })();
 
 </script>
+    <script>
+/* onboarding.js */
+(function () {
+  "use strict";
+
+  const SEEN_KEY = "laterOnOnboardingSeen";
+
+  const t = (key, vars) => window.LaterOnI18n?.t(key, vars) || key;
+
+  function shouldForceOpen() {
+    try { return new URLSearchParams(window.location.search).get("guide") === "1"; }
+    catch { return false; }
+  }
+
+  async function markSeen() {
+    try { await chrome.storage.local.set({ [SEEN_KEY]: true }); } catch {}
+  }
+
+  function open() {
+    document.querySelector(".lon-guide")?.remove();
+    let step = 0;
+    let closing = false;
+    const steps = [
+      { icon: "+", title: "guideStepSaveTitle", body: "guideStepSaveBody", hint: "guideStepSaveHint" },
+      { icon: "◎", title: "guideStepInboxTitle", body: "guideStepInboxBody", hint: "guideStepInboxHint" },
+      { icon: "↗", title: "guideStepReadTitle", body: "guideStepReadBody", hint: "guideStepReadHint" }
+    ];
+
+    const root = document.createElement("div");
+    root.className = "lon-guide";
+    root.innerHTML = `
+      <div class="lon-guide-backdrop"></div>
+      <section class="lon-guide-card" role="dialog" aria-modal="true" aria-labelledby="lon-guide-title" tabindex="-1">
+        <div class="lon-guide-brand"><img src="icon128.png" alt="" />LaterOn</div>
+        <div class="lon-guide-progress" aria-hidden="true"></div>
+        <div class="lon-guide-page">
+          <div class="lon-guide-icon" aria-hidden="true"></div>
+          <h2 id="lon-guide-title"></h2>
+          <p class="lon-guide-body"></p>
+          <p class="lon-guide-hint"></p>
+        </div>
+        <footer>
+          <button type="button" class="lon-guide-skip"></button>
+          <button type="button" class="lon-guide-next"></button>
+        </footer>
+      </section>`;
+    document.body.append(root);
+
+    const card = root.querySelector(".lon-guide-card");
+    const page = root.querySelector(".lon-guide-page");
+    let transitioning = false;
+    const render = () => {
+      const current = steps[step];
+      root.querySelector(".lon-guide-icon").textContent = current.icon;
+      root.querySelector("h2").textContent = t(current.title);
+      root.querySelector(".lon-guide-body").textContent = t(current.body);
+      root.querySelector(".lon-guide-hint").textContent = t(current.hint);
+      root.querySelector(".lon-guide-skip").textContent = t("guideSkip");
+      root.querySelector(".lon-guide-next").textContent = step === steps.length - 1 ? t("guideFinish") : t("guideNext");
+      root.querySelector(".lon-guide-progress").replaceChildren(...steps.map((_, index) => {
+        const dot = document.createElement("span");
+        dot.className = index === step ? "active" : "";
+        return dot;
+      }));
+    };
+    const close = () => {
+      if (closing) return;
+      closing = true;
+      void markSeen();
+      root.classList.add("is-leaving");
+      window.setTimeout(() => root.remove(), 180);
+    };
+    root.querySelector(".lon-guide-skip").addEventListener("click", close);
+    root.querySelector(".lon-guide-next").addEventListener("click", () => {
+      if (transitioning) return;
+      if (step >= steps.length - 1) { close(); return; }
+      transitioning = true;
+      page.classList.add("is-leaving");
+      window.setTimeout(() => {
+        step += 1;
+        render();
+        page.classList.remove("is-leaving");
+        page.classList.add("is-entering");
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+          page.classList.remove("is-entering");
+          transitioning = false;
+        }));
+      }, 150);
+    });
+    root.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") close();
+      if (event.key === "Enter") root.querySelector(".lon-guide-next").click();
+    });
+    render();
+    window.requestAnimationFrame(() => root.classList.add("is-visible"));
+    card.focus({ preventScroll: true });
+  }
+
+  async function init() {
+    await window.LaterOnI18n?.ready;
+    let seen = false;
+    try { seen = !!(await chrome.storage.local.get(SEEN_KEY))[SEEN_KEY]; } catch {}
+    if (!seen || shouldForceOpen()) window.setTimeout(open, 220);
+  }
+
+  window.LaterOnOnboarding = { open, markSeen };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once: true });
+  else init();
+})();
+
+</script>
   </head>
   <body>
     <div class="shell">
       <header class="topbar">
-        <a class="brand" id="homeBrand" href="#" aria-label="LaterOn 首页" title="回到首页"><span>↗</span>LaterOn</a>
-        <nav aria-label="筛选">
-          <button class="nav-item active" data-filter="unread">未读</button>
-          <button class="nav-item" data-filter="done">已读</button>
-          <button class="nav-item" data-filter="all">全部</button>
+        <a class="brand" id="homeBrand" href="#" data-i18n-aria-label="home" data-i18n-title="home" aria-label="LaterOn 首页" title="回到首页"><img class="brand-icon" src="icon128.png" width="40" height="40" alt="" />LaterOn</a>
+        <nav data-i18n-aria-label="filterNav" aria-label="筛选">
+          <button class="nav-item active" data-filter="unread" data-i18n="unread">未读</button>
+          <button class="nav-item" data-filter="done" data-i18n="read">已读</button>
+          <button class="nav-item" data-filter="all" data-i18n="all">全部</button>
         </nav>
         <label class="search">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3m2.3-5.2a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z"/></svg>
-          <input id="searchInput" type="search" placeholder="搜索收藏" autocomplete="off" />
+          <input id="searchInput" type="search" data-i18n-placeholder="search" placeholder="搜索收藏" autocomplete="off" />
           <kbd>⌘ K</kbd>
         </label>
       </header>
 
       <div class="workspace">
-        <aside class="project-sidebar" aria-label="项目导航">
+        <aside class="project-sidebar" data-i18n-aria-label="projectNav" aria-label="项目导航">
           <!-- 「待整理」单独占一块，钉在侧栏最上面：它不是一个普通筛选项，
                而是一个待办——有东西堆在这里就该去归位。有内容时整块高亮。
                仍然带 .project-nav，所以点击切换、拖收藏进来归类的行为都照旧。 -->
           <button class="project-nav inbox-card" data-project="unfiled">
             <span class="inbox-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.7 8.2 7 5.6A3 3 0 0 1 9.7 4h4.6A3 3 0 0 1 17 5.6l1.3 2.6"/><path d="M4 8.5h16v8.8A2.7 2.7 0 0 1 17.3 20H6.7A2.7 2.7 0 0 1 4 17.3z"/><path d="M4 13h4l1.5 2h5L16 13h4"/></svg>
+              <!-- Playground candidate 18 · R Peek Box -->
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h16v8A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5Z"/><path d="M4 9.5 6 5h12l2 4.5"/><path d="M8 9.5c.8-1.8 2-2.7 3.5-2.7S14.2 7.7 15 9.5"/><circle cx="9.2" cy="14.2" r=".7" fill="currentColor" stroke="none"/><circle cx="14.8" cy="14.2" r=".7" fill="currentColor" stroke="none"/></svg>
             </span>
             <span class="inbox-body">
-              <strong class="inbox-title">待整理</strong>
-              <small class="inbox-hint">还没有要整理的</small>
+              <strong class="inbox-title" data-i18n="inbox">等待整理</strong>
+              <small class="inbox-hint" data-i18n="noInbox">还没有要整理的</small>
             </span>
             <span class="inbox-count" id="unfiledCount">0</span>
           </button>
           <button class="project-nav top-entry" data-project="all">
             <span class="nav-icon all-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>
+              <!-- Playground candidate 11 · K Bookmark / rounded tiles -->
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>
             </span>
-            <span>全部项目</span><strong class="nav-count" id="allCount">0</strong>
+            <span data-i18n="allProjectsOverview">全部项目</span><strong class="nav-count" id="allCount">0</strong>
           </button>
-          <!-- 项目列表：始终显示。不管当前在「全部项目」「待整理」还是某个项目里，
-               左侧都列出所有项目——想换到哪个项目直接点，不用先退回全部项目。 -->
+          <!-- 首页的图板已经列出所有项目，所以侧栏不再重复；进入具体项目后，
+               项目列表直接接在“全部项目”下方，方便快速切换。 -->
           <div class="projects-section">
-            <div class="projects-heading">
-              <p class="sidebar-label">项目</p>
-              <button id="showProjectForm" class="add-project" title="新建项目" aria-label="新建项目">＋</button>
-            </div>
-            <form id="projectForm" class="project-form" hidden>
-              <input id="projectName" maxlength="28" placeholder="项目名称" autocomplete="off" />
-              <button type="submit">创建</button>
-            </form>
             <div id="projectList" class="project-list"></div>
           </div>
           <div class="sidebar-footer">
             <button id="openSettings" class="sidebar-setting" type="button" title="设置" aria-label="设置">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              <span>设置</span>
+              <span data-i18n="settings">设置</span>
             </button>
+            <p class="sidebar-slogan" data-i18n="slogan">没看完的网页，留到 LaterOn。</p>
           </div>
         </aside>
 
@@ -2034,23 +2543,23 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
         <section class="collection-bar">
           <div class="collection-left">
             <p id="countText">正在读取你的收藏…</p>
-            <button id="selectMode" type="button" class="select-mode">选择</button>
+            <button id="selectMode" type="button" class="select-mode" data-i18n="select">选择</button>
           </div>
           <div class="collection-right">
             <!-- 全部项目固定是图板视图，待整理 / 单个项目是卡片视图，不再需要手动切换 -->
-            <select id="sortSelect" aria-label="排序方式">
-              <option value="newest">最新收藏</option>
-              <option value="oldest">最早收藏</option>
-              <option value="source">按来源</option>
-              <option value="custom">自定义顺序</option>
+            <select id="sortSelect" data-i18n-aria-label="sortAria" aria-label="排序方式">
+              <option value="newest" data-i18n="sortNewest">最新收藏</option>
+              <option value="oldest" data-i18n="sortOldest">最早收藏</option>
+              <option value="source" data-i18n="sortSource">按来源</option>
+              <option value="custom" data-i18n="sortCustom">自定义顺序</option>
             </select>
           </div>
         </section>
 
         <section id="emptyState" class="empty" hidden>
-          <div class="empty-icon">↗</div>
-          <h2>这里还很安静</h2>
-          <p>打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。</p>
+          <img class="empty-icon" src="icon128.png" alt="" />
+          <h2 data-i18n="quiet">这里还很安静</h2>
+          <p data-i18n="quietHint">打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。</p>
         </section>
         <section id="cardGrid" class="grid" aria-live="polite"></section>
         <section id="boardGrid" class="board-grid" aria-live="polite" hidden></section>
@@ -2061,13 +2570,13 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
 
     <template id="cardTemplate">
       <article class="card">
-        <label class="select-badge" aria-label="选择此收藏"><input type="checkbox" class="select-check" /></label>
+        <label class="select-badge" data-i18n-aria-label="selectItem" aria-label="选择此收藏"><input type="checkbox" class="select-check" /></label>
         <a class="cover-link" target="_blank" rel="noreferrer">
           <div class="cover">
-            <div class="cover-placeholder"><img class="cover-logo" src="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%0A%20%20%3Cdefs%3E%0A%20%20%20%20%3ClinearGradient%20id%3D%22lateronGrad%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23ff7a45%22%20%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23ff5c35%22%20%2F%3E%0A%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%3C%2Fdefs%3E%0A%20%20%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22url(%23lateronGrad)%22%20%2F%3E%0A%20%20%3Cpath%20d%3D%22M11%2021%20L21%2011%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.8%22%20stroke-linecap%3D%22round%22%20%2F%3E%0A%20%20%3Cpath%20d%3D%22M13.5%2011%20H21%20V18.5%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20%2F%3E%0A%3C%2Fsvg%3E%0A" alt="" /></div>
+            <div class="cover-placeholder"><img class="cover-logo" src="article-cover-placeholder.png" alt="" /></div>
           </div>
         </a>
-        <button class="edit" title="编辑标题和摘要" aria-label="编辑标题和摘要">
+        <button class="edit" data-i18n-title="editItemAria" data-i18n-aria-label="editItemAria" title="编辑标题和摘要" aria-label="编辑标题和摘要">
           <svg viewBox="0 0 24 24"><path d="M4 20h4L20 8l-4-4L4 16zM14 6l4 4"/></svg>
         </button>
         <div class="card-body">
@@ -2075,9 +2584,9 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
           <a class="title-link" target="_blank" rel="noreferrer"><h2></h2></a>
           <p class="description"></p>
           <footer>
-            <button class="read-toggle" title="切换阅读状态"></button>
-            <select class="project-select" aria-label="所属项目"></select>
-            <button class="delete" title="删除收藏" aria-label="删除收藏">
+            <button class="read-toggle" data-i18n-title="readStateAria" title="切换阅读状态"></button>
+            <select class="project-select" data-i18n-aria-label="projectMembership" aria-label="所属项目"></select>
+            <button class="delete" data-i18n-title="deleteSave" data-i18n-aria-label="deleteSave" title="删除收藏" aria-label="删除收藏">
               <svg viewBox="0 0 24 24"><path d="M4 7h16m-10 4v6m4-6v6M9 7l1-3h4l1 3m3 0-1 13H7L6 7"/></svg>
             </button>
           </footer>
@@ -2090,7 +2599,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
     <template id="boardTemplate">
       <article class="board-card">
         <div class="board-cover" data-count="0"></div>
-        <button class="board-edit" type="button" title="编辑类目简介" aria-label="编辑类目简介">
+        <button class="board-edit" type="button" data-i18n-title="editProjectAria" data-i18n-aria-label="editProjectAria" title="编辑类目简介" aria-label="编辑类目简介">
           <svg viewBox="0 0 24 24"><path d="M4 20h4L20 8l-4-4L4 16zM14 6l4 4"/></svg>
         </button>
         <div class="board-body">
@@ -2102,20 +2611,21 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
     </template>
 
     <div id="bulkBar" class="bulk-bar">
-      <span id="bulkCount" class="bulk-count">已选 0 篇</span>
+          <span id="bulkCount" class="bulk-count" data-i18n="selectCount">已选 0 篇</span>
       <div class="bulk-actions">
-        <button id="bulkSelectAll" type="button">全选</button>
-        <button id="bulkRead" type="button">标完成</button>
-        <button id="bulkUnread" type="button">标未读</button>
-        <button id="bulkProject" class="bulk-project" type="button" aria-label="移动到项目" aria-haspopup="dialog">
-          <span>移动到…</span>
+        <button id="bulkSelectAll" type="button" data-i18n="selectAll">全选</button>
+        <button id="bulkRead" type="button" data-i18n="markDone">标完成</button>
+        <button id="bulkUnread" type="button" data-i18n="markUnread">标未读</button>
+        <button id="bulkProject" class="bulk-project" type="button" data-i18n-aria-label="moveTo" aria-label="移动到项目" aria-haspopup="dialog">
+          <span data-i18n="moveTo">移动到…</span>
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
         </button>
-        <button id="bulkDelete" type="button" class="danger">删除</button>
-        <button id="bulkDone" type="button" class="primary">完成</button>
+        <button id="bulkDelete" type="button" class="danger" data-i18n="delete">删除</button>
+        <button id="bulkDone" type="button" class="primary" data-i18n="done">完成</button>
       </div>
     </div>
     <div id="toast" class="toast" role="status"></div>
+    <script src="url-utils.js"></script>
     <script>
 /* library.js */
 const STORAGE_KEY = "laterOnItems";
@@ -2128,6 +2638,7 @@ const CURRENT_ITEM_KEY = "laterOnCurrentItem";
 // 全屏与侧栏共享的「当前筛到哪一档」（全部 / 未读 / 已读）：
 // 一边切换筛选，另一边跟着切——不用两边各点一次。
 const FILTER_KEY = "laterOnFilter";
+const FILTER_CHOSEN_KEY = "laterOnFilterChosen";
 const DEFAULT_FILTER = "unread";
 // 「自定义顺序」：用户在一个项目里拖出来的阅读顺序。
 // 结构是 { 范围: [收藏 id, ...] }，范围是 "all" / "unfiled" / 某个项目 id——
@@ -2136,6 +2647,13 @@ const ORDER_KEY = "laterOnOrder";
 // 用户自己上传的封面（体积大）：单独放一个键，不和收藏列表混在一个数组里。
 // 否则每次读写列表都要「连图一起搬」，数据攒多了哪个页面打开都会卡很久。
 const COVERS_KEY = "laterOnCovers";
+// 图钉图标：菜单里的「置顶 / 取消置顶」和列表上的置顶角标共用这一个形状。
+// 路径是「实心」画法（Material 的 push_pin），因为角标只有十几像素——
+// 描边款在这个尺寸下会糊成一团黑，根本看不出是图钉。用实心 + currentColor 填充，
+// 小到 11px 也还认得出「钉子 + 针」的轮廓。
+// ⚠️ 放在文件最上面的常量区：renderProjects() 在页面初始化时就会用到它，
+// 声明在下面会踩到 const 的暂时性死区，整个页面直接白屏。
+const PIN_FILL_PATH = "M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z";
 let items = [];
 let projects = [];
 let filter = DEFAULT_FILTER;
@@ -2185,13 +2703,25 @@ const boardTemplate = document.querySelector("#boardTemplate");
 const searchInput = document.querySelector("#searchInput");
 const sortSelect = document.querySelector("#sortSelect");
 const toast = document.querySelector("#toast");
+const tr = (key, vars) => {
+  if (window.LaterOnI18n?.t) return window.LaterOnI18n.t(key, vars);
+  const fallback = {
+    noInbox: "还没有要整理的", searchCount: "在全部收藏里找到 {count} 篇 · {unfinished} 篇没看完",
+    scopedCount: "{count} 篇收藏 · {unfinished} 篇没看完", noMatches: "没有找到匹配的收藏",
+    noMatchesHint: "换个关键词，或切换顶部的阅读状态筛选。", quiet: "这里还很安静",
+    quietHint: "打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。",
+    noBoard: "没有匹配的类目", noBoardHint: "换个关键词，或切换顶部的阅读状态筛选。",
+    boardCount: "{groups} 个类目 · 共 {total} 篇收藏 · {unfinished} 篇没看完", notFinished: "没看完"
+  };
+  return String(fallback[key] || key).replace(/\{(\w+)\}/g, (_, k) => vars?.[k] ?? `{${k}}`);
+};
 
 // 在全屏收藏库里按 Alt+1 / Alt+2 时，后台不能对这个扩展页面执行网页收藏或翻译。
 // 直接复用本页 toast 解释原因，避免用户只看到工具栏图标上的「!」却不知道发生了什么。
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "SHOW_LIBRARY_NOTICE") return;
   if (message.tabId != null && libraryTabId != null && message.tabId !== libraryTabId) return;
-  showToast(message.message || "请先打开一个普通网页后再试", 3200, "pill");
+  showToast(message.message || tr("openRegularPage"), 3200, "pill");
   sendResponse({ shown: true });
 });
 
@@ -2267,7 +2797,7 @@ function nextStatus(status) {
 }
 // 标记按钮上的文字：已完成时提示「标为未读」，其余提示「标为已读」。
 function readToggleLabel(status) {
-  return status === "done" ? "标为未读" : "标为已读";
+  return status === "done" ? tr("unreadButton") : tr("readButton");
 }
 
 // 筛选只认这三档。第一次打开还没有偏好，或存入了异常值时，默认展示「未读」；
@@ -2275,6 +2805,13 @@ function readToggleLabel(status) {
 const FILTER_VALUES = new Set(["all", "unread", "done"]);
 function normalizeFilter(value) {
   return FILTER_VALUES.has(value) ? value : DEFAULT_FILTER;
+}
+
+// 搜索是临时查看状态；切换项目或移动收藏后离开搜索结果，避免旧关键词继续过滤新页面。
+function clearSearch() {
+  clearTimeout(searchTimer);
+  if (searchInput?.value) searchInput.value = "";
+  query = "";
 }
 // 把三个筛选按钮的高亮同步成当前的 filter。
 // 之前只有「点按钮」时才改高亮，另一边改了存储这边就对不上了，所以抽出来单独调。
@@ -2290,12 +2827,15 @@ async function setFilter(value) {
   filter = next;
   syncFilterButtons();
   render();
-  try { await chrome.storage.local.set({ [FILTER_KEY]: filter }); } catch { /* 存不下就算了，本地筛选照常用 */ }
+  try { await chrome.storage.local.set({ [FILTER_KEY]: filter, [FILTER_CHOSEN_KEY]: true }); } catch { /* 存不下就算了，本地筛选照常用 */ }
 }
 
 async function init() {
+  await window.LaterOnI18n?.getLanguage();
+  window.LaterOnI18n?.applyStatic();
+  document.title = document.documentElement.lang === "en" ? "LaterOn · My saves" : "LaterOn · 我的收藏";
   const [result, activeTabs] = await Promise.all([
-    chrome.storage.local.get([STORAGE_KEY, PROJECTS_KEY, ACTIVE_PROJECT_KEY, SETTINGS_KEY, CURRENT_ITEM_KEY, FILTER_KEY, ORDER_KEY, COVERS_KEY]),
+    chrome.storage.local.get([STORAGE_KEY, PROJECTS_KEY, ACTIVE_PROJECT_KEY, SETTINGS_KEY, CURRENT_ITEM_KEY, FILTER_KEY, FILTER_CHOSEN_KEY, ORDER_KEY, COVERS_KEY]),
     chrome.tabs.query({ active: true, currentWindow: true })
   ]);
   covers = result[COVERS_KEY] || {};
@@ -2306,7 +2846,7 @@ async function init() {
   if (items.some((item, i) => item.doneAt && !Number(rawItems[i]?.doneAt))) {
     chrome.storage.local.set({ [STORAGE_KEY]: items });
   }
-  projects = result[PROJECTS_KEY] || [];
+  projects = sortPinnedFirst(result[PROJECTS_KEY] || []);
   orders = result[ORDER_KEY] || {};
   activeProject = normalizeProject(result[ACTIVE_PROJECT_KEY]);
   currentItemId = result[CURRENT_ITEM_KEY] || null;
@@ -2314,7 +2854,8 @@ async function init() {
   sort = userSettings.defaultSort || "newest";
   sortSelect.value = sort;
   autoMarkRead = userSettings.autoMarkRead !== false;
-  filter = normalizeFilter(result[FILTER_KEY]);
+  // 旧版本会在回首页时写入 all，但那不是用户的筛选偏好；升级后首次打开回到未读。
+  filter = result[FILTER_CHOSEN_KEY] ? normalizeFilter(result[FILTER_KEY]) : DEFAULT_FILTER;
   syncFilterButtons();
   libraryTabId = activeTabs[0]?.id || null;
   libraryWindowId = activeTabs[0]?.windowId || null;
@@ -2333,7 +2874,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     render();
   }
   if (area === "local" && changes[PROJECTS_KEY]) {
-    projects = changes[PROJECTS_KEY].newValue || [];
+    projects = sortPinnedFirst(changes[PROJECTS_KEY].newValue || []);
     render();
     renderProjects();
   }
@@ -2368,35 +2909,12 @@ document.querySelectorAll(".project-nav").forEach((button) => {
   enableDropTarget(button);
 });
 
-const projectForm = document.querySelector("#projectForm");
-const projectNameInput = document.querySelector("#projectName");
+const projectsSection = document.querySelector(".projects-section");
 
-document.querySelector("#showProjectForm").addEventListener("click", () => {
-  if (projectForm.hidden) openProjectForm(); else closeProjectForm();
-});
-
-// 点输入框以外的任何地方 → 收起新建项目的输入框（点加号本身除外，交给上面的开关处理）。
-document.addEventListener("pointerdown", (event) => {
-  if (projectForm.hidden) return;
-  const target = event.target;
-  if (target?.closest?.("#projectForm") || target?.closest?.("#showProjectForm")) return;
-  closeProjectForm();
-});
-
-function openProjectForm() {
-  projectForm.hidden = false;
-  projectNameInput.value = "";
-  projectNameInput.focus();
+function syncProjectsVisibility() {
+  const insideProject = activeProject !== "all" && activeProject !== "unfiled";
+  projectsSection?.classList.toggle("is-visible", insideProject);
 }
-
-function closeProjectForm() {
-  projectForm.hidden = true;
-  projectNameInput.value = "";
-}
-
-projectNameInput.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") { event.preventDefault(); closeProjectForm(); }
-});
 
 document.querySelector("#openSettings")?.addEventListener("click", async (event) => {
   const url = chrome.runtime.getURL("settings.html");
@@ -2411,34 +2929,38 @@ document.querySelector("#openSettings")?.addEventListener("click", async (event)
   else chrome.tabs.create({ url });
 });
 
-projectForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const name = projectNameInput.value.trim();
-  if (!name) { closeProjectForm(); return; }
+async function createProject(nameValue) {
+  const name = String(nameValue || "").trim();
+  if (!name) return;
   // 同名就不重复建，直接跳到那个项目。
   const existing = projects.find((project) => project.name === name);
   if (existing) {
-    closeProjectForm();
     selectProject(existing.id);
-    showToast(`已有同名项目「${name}」`);
+    showToast(tr("projectExists", { name }));
     return;
   }
   const project = { id: crypto.randomUUID(), name, createdAt: Date.now() };
   projects = [...projects, project];
-  // 先把输入框收起来，再写存储 —— 这样无论成功与否输入框都会消失。
-  // （之前这里写的是 event.currentTarget.hidden = true，但 await 之后
-  //   event.currentTarget 已经变成 null，那行其实一直在报错、输入框就赖着不走。）
-  closeProjectForm();
   try {
     await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
   } catch {
     projects = projects.filter((entry) => entry.id !== project.id);
-    showToast("新建项目失败，请重试");
+    showToast(tr("createProjectFailed"));
     return;
   }
   selectProject(project.id);
-  showToast(`已新建项目「${name}」`);
-});
+  showToast(tr("projectCreated", { name }));
+}
+
+async function promptCreateProject() {
+  const result = await LaterOnDialog.prompt({
+    title: tr("newProject"),
+    message: tr("newProjectHint"),
+    fields: [{ name: "name", label: tr("projectNameLabel"), placeholder: tr("projectNamePlaceholder"), maxLength: 28 }],
+    confirmText: tr("create")
+  });
+  if (result?.ok) await createProject(result.values?.name);
+}
 
 document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => setFilter(button.dataset.filter));
@@ -2455,10 +2977,8 @@ searchInput.addEventListener("input", () => {
 // 之所以要一次性复位这么多：钻进某个项目或筛到「未读」之后，用户对「怎么退回去」是没有把握的，
 // 点品牌标识就是那个万能的后退——不用去猜自己刚才点过什么。
 function goHome() {
-  clearTimeout(searchTimer);
-  if (searchInput.value) searchInput.value = "";
-  query = "";
-  setFilter("all");
+  clearSearch();
+  setFilter("unread");
   selectProject("all");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -2503,8 +3023,23 @@ grid.addEventListener("change", (event) => {
   if (!select) return;
   const card = event.target.closest(".card");
   const item = items.find((entry) => entry.id === card.dataset.id);
-  if (item) updateItem(item.id, { projectId: select.value || null });
+  if (item) {
+    clearSearch();
+    updateItem(item.id, { projectId: select.value || null });
+  }
 });
+// 卡片上右键 = 这一篇的菜单（打开 / 标记已读 / 编辑 / 移动 / 多选 / 删除）。
+// 和多选模式不冲突：多选时右键照样出菜单，只是「多选」那一项变成「取消选择」。
+grid.addEventListener("contextmenu", (event) => {
+  const card = event.target.closest(".card");
+  if (!card) return;
+  const item = items.find((entry) => entry.id === card.dataset.id);
+  if (!item) return;
+  // 不拦掉默认行为的话，浏览器会把自己的原生菜单叠在我们那个上面。
+  event.preventDefault();
+  openItemMenu(item.id, event.clientX, event.clientY);
+});
+
 // ── 卡片上的「所属项目」：点一下弹出选项目浮层（和网页收藏时同一个窗口）────
 // 原生 <select> 的下拉我们不让它弹（mousedown 就拦掉），改成贴着这个按钮弹浮层。
 // 浮层里选中/新建项目后，直接改这篇的 projectId，不用再走原生下拉。
@@ -2546,10 +3081,12 @@ grid.addEventListener("keydown", (event) => {
 //
 // 参数：container 在哪个容器里拖 / selector 被拖的元素 / idAttr 元素上记 id 的
 // data 属性名（"id" → data-id、"project" → data-project）/ commit 松手时怎么存。
-function enableReorder({ container, selector, idAttr, commit }) {
+function enableReorder({ container, selector, idAttr, commit, dragImageHotspotX = null }) {
   container.addEventListener("dragstart", (event) => {
     const el = event.target.closest(selector);
     if (!el) return;
+    // 拖拽是另一种明确操作：离开多选状态，避免拖动后仍保留旧的勾选。
+    if (selectMode) setSelectMode(false);
     // 从按钮 / 下拉上按下的是想点它，不是想拖整块（图板上那个改简介的铅笔就是）。
     if (event.target.closest("button, select")) { event.preventDefault(); return; }
     const id = el.dataset[idAttr];
@@ -2567,7 +3104,13 @@ function enableReorder({ container, selector, idAttr, commit }) {
     dragPreview.style.width = `${bounds.width}px`;
     dragPreview.style.height = `${bounds.height}px`;
     document.body.append(dragPreview);
-    const offsetX = Math.max(0, Math.min(bounds.width, event.clientX - bounds.left));
+    const grabbedOffsetX = Math.max(0, Math.min(bounds.width, event.clientX - bounds.left));
+    // 收藏卡片拖向左侧项目时，用卡片左边缘作为横向触发基准：拖影的光标热点
+    // 固定在左边缘附近后，左边缘刚碰到项目行，真实指针也就进入了放置区。
+    // 纵向仍保留用户原本抓住的位置，避免目标项目上下错位。
+    const offsetX = Number.isFinite(dragImageHotspotX)
+      ? Math.max(0, Math.min(bounds.width, dragImageHotspotX))
+      : grabbedOffsetX;
     const offsetY = Math.max(0, Math.min(bounds.height, event.clientY - bounds.top));
     event.dataTransfer?.setDragImage?.(dragPreview, offsetX, offsetY);
     // 快照要在 setDragImage 之后拍，并且此时元素还没加 .dragging（那个类会改变外观）。
@@ -2611,7 +3154,7 @@ function enableReorder({ container, selector, idAttr, commit }) {
 }
 
 // 卡片：拖一张卡片到另一个位置 → 换阅读顺序（每个项目各存一份，互不影响）。
-enableReorder({ container: grid, selector: ".card", idAttr: "id", commit: commitCardOrder });
+enableReorder({ container: grid, selector: ".card", idAttr: "id", commit: commitCardOrder, dragImageHotspotX: 8 });
 // 图板：拖一块图板 → 换这个类目在图板墙上的位置。和拖卡片是同一套手感。
 enableReorder({ container: boardGrid, selector: ".board-card", idAttr: "project", commit: commitBoardOrder });
 
@@ -2757,10 +3300,10 @@ async function commitCardOrder(dropIndex) {
     sortSelect.value = "custom";
     render();
     saveSortSetting();
-    showToast("已切到「自定义顺序」，这次排序已保存");
+    showToast(tr("customSortEnabled"));
   } else {
     render();
-    showToast("顺序已保存");
+    showToast(tr("orderSaved"));
   }
   void grid.offsetHeight;   // 强制回流，让新位置立刻生效，再恢复过渡
   grid.classList.remove("no-transition");
@@ -2791,14 +3334,14 @@ async function commitBoardOrder(dropIndex) {
   for (const project of projects) if (!nextProjects.includes(project)) nextProjects.push(project);
   if (nextProjects.every((project, i) => project.id === projects[i]?.id)) return;   // 位置没变，不用写库
 
-  const name = projects.find((project) => project.id === draggedId)?.name || "这个类目";
+  const name = projects.find((project) => project.id === draggedId)?.name || tr("unnamedProject");
   boardGrid.classList.add("no-transition");
   clearReorderPreview();
   projects = nextProjects;
   await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
   render();
   renderProjects();   // 侧栏的项目列表跟着换，两边顺序始终一致
-  showToast(`已把「${name}」移到第 ${next.indexOf(draggedId) + 1} 个`);
+  showToast(tr("movedToPosition", { name, n: next.indexOf(draggedId) + 1 }));
   void boardGrid.offsetHeight;
   boardGrid.classList.remove("no-transition");
 }
@@ -2840,7 +3383,6 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     if (folderMenu) { closeFolderMenu(); return; }
     if (renamingId) { stopRename(); return; }
-    if (!projectForm.hidden) { closeProjectForm(); return; }
     if (selectMode) setSelectMode(false);
     return;
   }
@@ -2924,8 +3466,8 @@ function renderCardsView() {
   // 计数要说清是「在哪找的」：搜索时报命中数，并写明是在全部收藏里找的
   // ——否则人在某个项目里会以为顶上那个数字还是这个项目的。
   countText.textContent = query
-    ? `在全部收藏里找到 ${visible.length} 篇 · ${visible.filter((item) => item.status !== "done").length} 篇还没读完`
-    : `${scopedItems.length} 篇收藏 · ${scopedItems.filter((item) => item.status !== "done").length} 篇还没读完`;
+    ? tr("searchCount", { count: visible.length, unfinished: visible.filter((item) => item.status !== "done").length })
+    : tr("scopedCount", { count: scopedItems.length, unfinished: scopedItems.filter((item) => item.status !== "done").length });
 
   // 增量更新：只增删/重排发生变化的卡片，保留已有 DOM（不丢滚动、不重建监听）。
   const visibleIds = new Set(visible.map((item) => item.id));
@@ -2939,11 +3481,11 @@ function renderCardsView() {
 
   empty.hidden = visible.length > 0;
   if (!visible.length && items.length) {
-    empty.querySelector("h2").textContent = "没有找到匹配的收藏";
-    empty.querySelector("p").textContent = "换个关键词，或切换顶部的阅读状态筛选。";
+    empty.querySelector("h2").textContent = tr("noMatches");
+    empty.querySelector("p").textContent = tr("noMatchesHint");
   } else if (!items.length) {
-    empty.querySelector("h2").textContent = "这里还很安静";
-    empty.querySelector("p").textContent = "打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。";
+    empty.querySelector("h2").textContent = tr("quiet");
+    empty.querySelector("p").textContent = tr("quietHint");
   }
 }
 
@@ -2984,7 +3526,12 @@ function boardGroups() {
     name: project.name,
     note: project.note || "",
     cover: project.cover || "",
-    items: items.filter((item) => item.projectId === project.id && matchesReadFilter(item))
+    // 用户在图板设置里自己挑的封面组合（收藏 id，按顺序，最多 3 个）。
+    pick: Array.isArray(project.coverPick) ? project.coverPick : [],
+    items: items.filter((item) => item.projectId === project.id && matchesReadFilter(item)),
+    // 这个项目里的全部收藏（不管筛选）。只给「自己挑的封面」用：
+    // 那是用户明确指定的门面，不该因为切一下未读/已读就换一张脸。
+    own: items.filter((item) => item.projectId === project.id)
   }));
   // 按存下来的图板顺序排（拖过就有顺序，没拖过就是项目的创建顺序）。
   const byId = new Map(groups.map((group) => [group.id, group]));
@@ -2994,10 +3541,11 @@ function boardGroups() {
     if (group) ordered.push(group);
   }
   for (const group of groups) if (!ordered.includes(group)) ordered.push(group);
-  // 一个类目里没有收藏（空项目，或当前筛选下这个项目里一篇都不剩）就不显示图板。
+  // 真正的空项目也要显示：这里叫“全部项目”，而且用户刚从末尾加号创建的项目
+  // 返回首页后必须找得到。只有“本来有内容、但当前阅读筛选下一篇都不剩”的项目才隐藏。
   // 注意：搜索时根本不会走到这里——有搜索词时视图直接切到卡片列表（见 isBoardView），
   // 因为搜索要找的是「文章」，按类目名去筛图板是另一回事。
-  return ordered.filter((group) => group.items.length > 0);
+  return ordered.filter((group) => group.items.length > 0 || group.own.length === 0);
 }
 
 function renderBoards() {
@@ -3011,20 +3559,40 @@ function renderBoards() {
   // 没归到项目里的收藏不占图板，但得让人知道还有这么多没归位，
   // 否则顶上的篇数和卡片视图对不上，会以为收藏丢了。
   const loose = items.filter((item) => !item.projectId && matchesReadFilter(item)).length;
-  countText.textContent = `${groups.length} 个类目 · 共 ${total} 篇收藏 · ${unfinished} 篇还没读完`
-    + (loose ? ` · ${loose} 篇待整理` : "");
+  // 「全部项目」是项目总览，不把未归类收藏伪装成一个项目统计；
+  // 待整理数量只在左侧待整理入口显示。
+  countText.textContent = tr("boardCount", { groups: groups.length, total, unfinished });
 
   boardGrid.replaceChildren();
   for (const group of groups) boardGrid.append(createBoardCard(group));
+  boardGrid.append(createProjectBoard());
 
   empty.hidden = groups.length > 0;
   if (!groups.length && items.length) {
-    empty.querySelector("h2").textContent = "没有匹配的类目";
-    empty.querySelector("p").textContent = "换个关键词，或切换顶部的阅读状态筛选。";
+    empty.querySelector("h2").textContent = tr("noBoard");
+    empty.querySelector("p").textContent = tr("noBoardHint");
   } else if (!items.length) {
-    empty.querySelector("h2").textContent = "这里还很安静";
-    empty.querySelector("p").textContent = "打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。";
+    empty.querySelector("h2").textContent = tr("quiet");
+    empty.querySelector("p").textContent = tr("quietHint");
   }
+}
+
+function createProjectBoard() {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "board-create";
+  button.setAttribute("aria-label", tr("newProjectButton"));
+  button.title = tr("newProjectButton");
+
+  const plus = document.createElement("span");
+  plus.className = "board-create-plus";
+  plus.textContent = "+";
+  plus.setAttribute("aria-hidden", "true");
+  const label = document.createElement("strong");
+  label.textContent = tr("newProject");
+  button.append(plus, label);
+  button.addEventListener("click", () => { promptCreateProject().catch(() => showToast(tr("createProjectFailed"))); });
+  return button;
 }
 
 function createBoardCard(group) {
@@ -3065,8 +3633,16 @@ function createBoardCard(group) {
   return card;
 }
 
-// 拼封面用哪几篇：最新的优先，有封面的优先（没封面的只用来补空位）。
+// 拼封面用哪几篇：
+//   ① 用户在「编辑项目」里自己挑过 → 就照他挑的顺序来（那是他指定的门面，
+//      所以从「这个项目的全部收藏」里找，不受顶部未读/已读筛选影响）；
+//   ② 没挑过，或者挑的那几篇被删了 / 挪走了 / 封面没了 → 自动：最新的优先，有封面的优先
+//      （没封面的只用来补空位）。
 function boardCoverItems(group) {
+  const picked = (group.pick || [])
+    .map((id) => (group.own || group.items).find((item) => item.id === id))
+    .filter((item) => item && resolveImage(item));
+  if (picked.length) return picked.slice(0, 3);
   const sorted = [...group.items].sort((a, b) => b.savedAt - a.savedAt);
   const withCover = sorted.filter((item) => resolveImage(item));
   const withoutCover = sorted.filter((item) => !resolveImage(item));
@@ -3114,7 +3690,7 @@ function boardNote(group) {
   const written = (group.note || "").trim();
   if (written) return { text: written, auto: false };
   const list = group.items;
-  if (!list.length) return { text: "还没有收藏，存进来就会出现在封面上。", auto: true };
+  if (!list.length) return { text: tr("emptyBoardNote"), auto: true };
   const counts = new Map();
   for (const item of list) {
     const source = (item.source || "").trim();
@@ -3126,16 +3702,18 @@ function boardNote(group) {
     .map(([source]) => source);
   const latest = Math.max(...list.map((item) => Number(item.savedAt) || 0));
   const parts = [];
-  if (topSources.length) parts.push(`主要来自 ${topSources.join("、")}`);
-  if (latest) parts.push(`${formatTime(latest)}更新`);
-  return { text: parts.join(" · ") || `${list.length} 篇收藏`, auto: true };
+  if (topSources.length) parts.push(tr("mainlyFrom", { sources: topSources.join(document.documentElement.lang === "en" ? ", " : "、") }));
+  if (latest) parts.push(tr("updatedAt", { time: formatTime(latest) }));
+  return { text: parts.join(" · ") || tr("itemCount", { n: list.length }), auto: true };
 }
 
 function boardMeta(group) {
   const count = group.items.length;
-  if (!count) return "还没有收藏";
+  if (!count) return tr("emptyCollection");
   const unread = group.items.filter((item) => item.status !== "done").length;
-  return unread ? `${count} 篇 · ${unread} 篇还没读完` : `${count} 篇 · 都读完了`;
+  const english = document.documentElement.lang === "en";
+  return unread ? (english ? `${count} saves · ${unread} ${tr("notFinished")}` : `${count} 篇 · ${unread} ${tr("notFinished")}`)
+    : (english ? `${count} saves · ${tr("allRead")}` : `${count} 篇 · ${tr("allRead")}`);
 }
 
 boardGrid.addEventListener("click", (event) => {
@@ -3161,27 +3739,46 @@ async function editBoard(projectId) {
   // 比从前只能写一句简介更顺手。名称/封面留空就维持原样，简介留空则退回自动生成。
   //
   // 封面这里要显示「这个项目现在真正在用的那张」，而不是 project.cover（它常常是空的）：
-  //   自己传过 → 显示传的那张；没传过 → 显示项目里第一篇的封面（侧栏缩略图也是这张）。
-  // 两者用 derived 区分：自动取的那张没有「移除」的意义（移除后还是它），
-  // 所以弹窗里那一栏默认禁用「移除封面」，并说明这张是自动取的。
+  //   自己传过 → 显示传的那张；没传过 → 显示挑过的第一张 / 项目里第一篇的封面
+  //   （侧栏缩略图也是这张）。显示的不是自定义封面时用 derived 标出来：
+  //   那种封面没有「移除」的意义（移除后还是它），所以弹窗里禁用「移除封面」并说明来路。
   const storedCover = project.cover || "";
   const shownCover = projectCoverFor(projectId) || "";
-  const coverIsDerived = !storedCover && !!shownCover;
+
+  // 备选封面 = 这个项目里所有「能解析出图」的收藏，最新的排前面。
+  // 只给有图的：没图的挑上去也拼不出东西。（最多列 48 张，够挑的了。）
+  const candidates = items
+    .filter((item) => (item.projectId || "") === projectId && resolveImage(item))
+    .sort((a, b) => (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0))
+    .slice(0, 48)
+    .map((item) => ({ id: item.id, src: resolveImage(item), title: item.title || item.url || "" }));
+  // 已经挑过的（按顺序），顺手把已经不存在的收藏剔除——存储里别留着死 id。
+  const pickAlive = (list) => (Array.isArray(list) ? list : []).filter((id) => items.some((item) => item.id === id));
+  const storedPick = pickAlive(project.coverPick);
+  // 当前显示的那张到底是怎么来的，决定封面栏的说明文案。
+  const source = storedCover ? "custom" : storedPick.length ? "picked" : shownCover ? "auto" : "none";
+  const coverNotes = {
+    custom: [tr("coverDefaultNote"), tr("coverRemoved")],
+    picked: [tr("coverDefaultNote"), tr("coverReady")],
+    auto: [tr("coverDefaultNote"), tr("coverReady")],
+    none: [tr("coverDefaultNote"), tr("coverRemoved")]
+  }[source];
+
   const result = await LaterOnDialog.prompt({
-    title: `编辑「${project.name}」`,
+    title: tr("editProjectTitle", { name: project.name }),
     fields: [
       {
         name: "name",
-        label: "项目名称",
+        label: tr("projectNameLabel"),
         value: project.name,
-        placeholder: "这个类目叫什么",
+        placeholder: tr("projectNamePlaceholder"),
         maxLength: 28
       },
       {
         name: "note",
-        label: "简介",
+        label: tr("projectNoteLabel"),
         value: project.note || "",
-        placeholder: "这个类目是收集什么的？",
+        placeholder: tr("projectNotePlaceholder"),
         multiline: true,
         rows: 3,
         maxLength: 200
@@ -3189,17 +3786,21 @@ async function editBoard(projectId) {
     ],
     cover: {
       name: "cover",
-      label: "封面",
+      label: tr("cover"),
       value: shownCover,
-      derived: coverIsDerived,
-      note: coverIsDerived
-        ? "这张是按项目里的收藏自动取的；上传一张就会固定用它"
-        : "选一张本地图片，会自动压缩后保存（约 50–80KB）",
-      removedNote: coverIsDerived
-        ? "已改回自动取的封面，点「保存」生效"
-        : "已移除，点「保存」生效（会退回按项目内容自动取封面）"
+      derived: !storedCover,
+      note: coverNotes[0],
+      removedNote: coverNotes[1],
+      // 封面组合：从项目里已抓到的封面里点选最多 3 张，拖拽决定顺序。
+      // 传了 candidates 才会出现这一块（收藏条目的编辑弹窗不传，界面不变）。
+      candidates,
+      picks: storedPick,
+      picksName: "coverPick",
+      picksLabel: tr("coverPicks"),
+      maxPicks: 3,
+      picksNote: tr("coverPicksHint")
     },
-    confirmText: "保存"
+    confirmText: tr("save")
   });
   if (!result?.ok) return;
   const nextName = (result.values?.name ?? "").trim();
@@ -3210,31 +3811,43 @@ async function editBoard(projectId) {
   // 封面动没动，要跟「打开弹窗时看到的那张」比。关键是别把自动取的那张
   // 顺手写成项目自己的封面 —— 那样它就不再跟着项目里的新收藏变了。
   const coverChanged = nextCover !== shownCover && nextCover !== storedCover;
-  if (!nameChanged && !noteChanged && !coverChanged) return;
+  // 封面组合：弹窗里给了备选就一定会带回一个数组（可能是空数组 = 全部取消）。
+  // 没给备选（比如这个项目里还没有任何封面）时这份结果里没有这个键，那就维持原样。
+  const nextPick = pickAlive(result.values?.coverPick ?? storedPick);
+  const pickChanged = nextPick.join(",") !== storedPick.join(",");
+  if (!nameChanged && !noteChanged && !coverChanged && !pickChanged) return;
   // 名字若清空就沿用原来的，避免类目变成空白。
   const finalName = nameChanged ? nextName : project.name;
   if (nameChanged && projects.some((entry) => entry.id !== projectId && entry.name === finalName)) {
-    showToast("已经有个同名项目了");
+    showToast(tr("duplicateProject"));
     return;
   }
-  projects = projects.map((entry) => entry.id === projectId
-    ? {
+  projects = projects.map((entry) => {
+    if (entry.id !== projectId) return entry;
+    const updated = {
       ...entry,
       name: finalName,
       note: nextNote,
       // 没动过封面就原样保留（含「没有自定义封面」这个状态）。
       ...(coverChanged ? { cover: nextCover } : {})
+    };
+    if (pickChanged) {
+      // 全部取消 = 回到「按项目内容自动拼封面」，把字段删掉，别在存储里留个空壳。
+      if (nextPick.length) updated.coverPick = nextPick;
+      else delete updated.coverPick;
     }
-    : entry);
+    return updated;
+  });
   await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
   render();
   // 提示按实际改了什么来写，不啰嗦。
   const changed = [
-    nameChanged ? "名称" : "",
-    noteChanged ? "简介" : "",
-    coverChanged ? "封面" : ""
+    nameChanged ? tr("projectUpdateName") : "",
+    noteChanged ? tr("projectUpdateNote") : "",
+    coverChanged ? tr("projectUpdateCover") : "",
+    pickChanged ? tr("projectUpdateCollage") : ""
   ].filter(Boolean).join(" · ");
-  showToast(nameChanged ? `「${finalName}」已更新：${changed}` : `${changed}已保存`);
+  showToast(nameChanged ? tr("projectUpdated", { name: finalName, changes: changed }) : tr("projectChangesSaved", { changes: changed }));
 }
 
 function nextLibraryRender(fn) {
@@ -3280,6 +3893,7 @@ function nextCoverFallback(currentSrc) {
 // 把「正在读」那篇标出来（全屏与侧栏都会用到这个共享标记）。
 function applyCurrentHighlight() {
   for (const [id, card] of cardMap) {
+    card.dataset.currentLabel = tr("currentReading");
     card.classList.toggle("is-current", id === currentItemId);
   }
 }
@@ -3345,7 +3959,7 @@ function createCard(item) {
   // 因此 DOM 本身也只能放 http/https，不能把 javascript: 等协议留给浏览器执行。
   coverLink.href = titleLink.href = safeTarget(item.url) || "#";
   setText(fragment.querySelector(".title-link h2"), item.title);
-  setText(fragment.querySelector(".description"), item.description);
+  setText(fragment.querySelector(".description"), IS_EMPTY_SUMMARY.test(item.description) ? tr("noDescription") : item.description);
   fragment.querySelector(".source-name").textContent = item.source;
   fragment.querySelector("time").textContent = formatTime(item.savedAt);
   favicon.src = item.favicon;
@@ -3367,10 +3981,10 @@ function createCard(item) {
 // 但卡片 select 需要这个选项才能把 .value 设对，否则卡片上会显示成空白。
 function fillProjectSelect(select, ensureId, ensureName) {
   select.replaceChildren();
-  select.append(new Option("待整理", ""));
+  select.append(new Option(tr("inbox"), ""));
   projects.forEach((project) => select.append(new Option(project.name, project.id)));
   if (ensureId && !projects.some((project) => project.id === ensureId)) {
-    select.append(new Option(ensureName || "新项目", ensureId));
+    select.append(new Option(ensureName || tr("newProject"), ensureId));
   }
 }
 
@@ -3385,7 +3999,7 @@ function updateCard(card, item) {
   // 标题和摘要也能同步跟上：卡片是复用的 DOM（只在第一次出现时新建），
   // 不同步的话，改完标题、或重复收藏抓到更好的信息，卡片上会一直是旧文字。
   setText(card.querySelector(".title-link h2"), item.title);
-  setText(card.querySelector(".description"), item.description);
+  setText(card.querySelector(".description"), IS_EMPTY_SUMMARY.test(item.description) ? tr("noDescription") : item.description);
   const target = safeTarget(item.url) || "#";
   const titleLink = card.querySelector(".title-link");
   const coverLink = card.querySelector(".cover-link");
@@ -3409,28 +4023,28 @@ function setText(element, value) {
 // ── 编辑收藏的标题 / 摘要 ──────────────────────────────────
 // 没抓到摘要时存的就是「暂无摘要」这几个字，编辑时要把占位当成「空」显示给用户。
 const NO_SUMMARY = "暂无摘要";
-const IS_EMPTY_SUMMARY = new RegExp(`^\\s*(${NO_SUMMARY})?\\s*$`);
+const IS_EMPTY_SUMMARY = /^\s*(暂无摘要|No summary)?\s*$/i;
 // 自动抓取难免有偏差（标题带站名、摘要抓成导航文字），所以允许用户自己改。
 // 改过的会被标记为 titleEdited / descriptionEdited，
 // 之后再次收藏同一网址时，后台不会再拿自动抓取的结果覆盖掉用户手写的版本。
 async function editItem(item) {
   const result = await LaterOnDialog.prompt({
-    title: "编辑收藏",
-    message: IS_EMPTY_SUMMARY.test(item.description) ? "这篇没抓到摘要，可以自己补一句。" : "",
+    title: tr("editItem"),
+    message: IS_EMPTY_SUMMARY.test(item.description) ? tr("missingSummaryHint") : "",
     // 封面：可以自己上传一张本地图片（自动压缩后保存），也可以移除，显示回 Logo 占位。
-    cover: { name: "cover", label: "封面", value: resolveImage(item) },
+    cover: { name: "cover", label: tr("cover"), value: resolveImage(item) },
     fields: [
-      { name: "title", label: "标题", value: item.title, maxLength: 200 },
+      { name: "title", label: tr("title"), value: item.title, maxLength: 200 },
       {
         name: "description",
-        label: "摘要",
+        label: tr("summary"),
         value: IS_EMPTY_SUMMARY.test(item.description) ? "" : item.description,
-        placeholder: "留空就显示「暂无摘要」",
+        placeholder: tr("summaryPlaceholder"),
         multiline: true,
         maxLength: 500
       }
     ],
-    confirmText: "保存"
+    confirmText: tr("save")
   });
   if (!result?.ok) return;
 
@@ -3465,14 +4079,15 @@ async function editItem(item) {
     // 记一笔：这是用户自己定的封面，之后再收藏同一网址时别用自动抓取的把它盖掉。
     patch.imageEdited = true;
   }
-  if (!Object.keys(patch).length) { showToast("没有改动"); return; }
+  if (!Object.keys(patch).length) { showToast(tr("noChanges")); return; }
   await updateItem(item.id, patch);
   // 立刻重画一次：存储的变更广播不一定会回到自己这个页面，靠它会显得「改了没反应」。
   render();
-  showToast("已保存修改");
+  showToast(tr("changesSaved"));
 }
 
 function selectProject(projectId) {
+  clearSearch();
   activeProject = normalizeProject(projectId);
   renderProjects();
   render();
@@ -3484,6 +4099,48 @@ function normalizeProject(projectId) {
   return projects.some((project) => project.id === projectId) ? projectId : "all";
 }
 
+// ── 项目置顶 ────────────────────────────────────────────────
+// 置顶（project.pinned）的实现刻意做得很简单：**置顶的项目永远排在数组最前面**。
+// 这样「存储里的顺序」就是「侧栏看到的顺序」，拖拽排序按屏幕算出来的下标可以直接用，
+// 不用再做一次「显示顺序 ↔ 存储顺序」的换算（多一层换算就多一处会对不上的地方）。
+function sortPinnedFirst(list) {
+  const pinned = list.filter((project) => project.pinned);
+  const rest = list.filter((project) => !project.pinned);
+  return [...pinned, ...rest];
+}
+
+// 置顶 / 取消置顶（右键菜单和「⋯」菜单里的同一项）。
+// 取消时不去猜「它原来在第几个」（没人记得住），只让它从置顶那一拨里退出来，
+// 落到最后一个还置顶的项目后面——位置基本不动，用户再拖一下就能微调。
+async function toggleProjectPin(id) {
+  const project = projects.find((entry) => entry.id === id);
+  if (!project) return;
+  const next = projects.filter((entry) => entry.id !== id);
+  const moved = { ...project };
+  // 除了该项目之外，还置顶着几个、普通的有几个——两者夹出它能去的下标范围。
+  const plain = next.filter((entry) => !entry.pinned);
+  const pins = next.length - plain.length;
+  if (project.pinned) {
+    // 取消置顶：回到它在普通列表里原来的那个位置（置顶时记下的序号），
+    // 落在「还置顶着的那几个」之后。记不住（数据是别的界面写的）就排在置顶区之后。
+    const back = Number.isInteger(project.pinFrom) ? Math.max(0, Math.min(project.pinFrom, plain.length)) : 0;
+    delete moved.pinned;
+    delete moved.pinFrom;
+    next.splice(pins + back, 0, moved);
+  } else {
+    // 置顶：提到置顶那一拨的最后，并记下它原本排第几，取消时才能原样放回去。
+    // 序号要在「还没把自己摘出去」的列表上算——摘出去之后 findIndex 永远找不到自己。
+    const plainAll = projects.filter((entry) => !entry.pinned);
+    moved.pinned = true;
+    moved.pinFrom = Math.max(0, plainAll.findIndex((entry) => entry.id === id));
+    next.splice(pins, 0, moved);
+  }
+  projects = next;
+  renderProjects();
+  await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
+  showToast(tr(moved.pinned ? "pinDone" : "unpinDone", { name: project.name }));
+}
+
 function renderProjects() {
   const counts = new Map();
   let unfiled = 0;
@@ -3493,36 +4150,46 @@ function renderProjects() {
   }
   document.querySelector("#allCount").textContent = items.length;
   document.querySelector("#unfiledCount").textContent = unfiled;
+  syncProjectsVisibility();
   // 「待整理」那块：有内容就高亮，并把提示写成一句要去办的事。
   const inbox = document.querySelector(".inbox-card");
   if (inbox) {
     inbox.classList.toggle("has-items", unfiled > 0);
     inbox.querySelector(".inbox-hint").textContent = unfiled
-      ? `${unfiled} 篇还没归到项目`
-      : "还没有要整理的";
+      ? tr("inboxPending", { n: unfiled })
+      : tr("noInbox");
   }
   document.querySelectorAll(".project-nav").forEach((button) => button.classList.toggle("active", button.dataset.project === activeProject));
 
-  // 「项目列表」始终显示（用户需求）：不管当前在全部项目、待整理还是某个项目里，
-  // 左侧都列出所有项目，想换直接点——不用先退回全部项目。
+  // 项目列表的 DOM 始终维护完整，但只在具体项目里显示；首页已有图板，
+  // 等待整理也保持独立，避免同一批项目在左侧重复出现。
   const projectList = document.querySelector("#projectList");
   // 正在改名时，重建列表会打断输入；先记下焦点是否在改名输入框上，重建后再还回去。
   const hadRenameFocus = !!document.activeElement?.classList?.contains("project-rename");
   projectList.replaceChildren();
+  const pinCount = projects.filter((project) => project.pinned).length;
+  const divider = document.createElement("div");
+  divider.className = "project-pin-sep";
+  divider.setAttribute("role", "separator");
+  divider.setAttribute("aria-label", tr("pinnedProjects"));
 
-  projects.forEach((project) => {
+  projects.forEach((project, index) => {
     const row = document.createElement("div");
     row.className = "project-row";
     row.dataset.id = project.id;
     row.dataset.project = project.id; // 拖拽放下时要读它，缺了会把归属写成 undefined
 
+    row.classList.toggle("is-pinned", !!project.pinned);
     const button = document.createElement("button");
     button.type = "button";
     button.className = `project-nav${activeProject === project.id ? " active" : ""}`;
     button.dataset.project = project.id;
     // 每行左侧不是文件夹图标，而是该项目的缩略图（和选项目浮层里的一样）：
     // 项目自带封面就用封面，否则取项目里某篇的封面，都没有就用名字首字做占位色块。
-    button.append(projectThumb(project.name, projectCoverFor(project.id)));
+    const thumb = projectThumb(project.name, projectCoverFor(project.id));
+    // 置顶的项目在缩略图右下角挂一枚图钉：一眼能看出「它不是因为名字排第一，是钉住的」。
+    if (project.pinned) thumb.append(pinBadge());
+    button.append(thumb);
 
     if (project.id === renamingId) {
       // 改名中：名字位置换成输入框（回车保存、Esc 取消、点到别处自动保存）。
@@ -3532,7 +4199,7 @@ function renderProjects() {
       input.value = renameDraft;
       input.maxLength = 28;
       input.autocomplete = "off";
-      input.setAttribute("aria-label", "项目名称");
+      input.setAttribute("aria-label", tr("projectNameLabel"));
       input.addEventListener("input", () => { renameDraft = input.value; });
       input.addEventListener("click", (event) => event.stopPropagation());
       input.addEventListener("dblclick", (event) => event.stopPropagation());
@@ -3546,7 +4213,7 @@ function renderProjects() {
       const name = document.createElement("span");
       name.className = "project-name";
       name.textContent = project.name;
-      name.title = `${project.name}（双击改名 · 按住拖动可排序）`;
+      name.title = tr("projectTip", { name: project.name, pinned: project.pinned ? tr("pinnedPrefix") : "" });
       button.append(name);
     }
 
@@ -3569,8 +4236,8 @@ function renderProjects() {
     const more = document.createElement("button");
     more.type = "button";
     more.className = "project-more";
-    more.title = "更多操作";
-    more.setAttribute("aria-label", `「${project.name}」的更多操作`);
+    more.title = tr("moreActions");
+    more.setAttribute("aria-label", tr("projectAria", { name: project.name }));
     more.textContent = "⋯";
     more.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -3586,6 +4253,8 @@ function renderProjects() {
     // 拖拽收藏到项目：监听挂在外层行上，这样右侧「⋯」那一小块也能接收放下。
     enableDropTarget(row);
     projectList.append(row);
+    // 置顶区和其余项目之间画一条细线：告诉用户「上面这几个是钉住的，拖下来就是取消置顶」。
+    if (pinCount && index === pinCount - 1 && projects.length > pinCount) projectList.append(divider.cloneNode(true));
   });
 
   const renameInput = projectList.querySelector(".project-rename");
@@ -3608,7 +4277,7 @@ function refreshCardProjectOptions() {
     const select = card.querySelector(".project-select");
     if (!select) continue;
     const current = select.value;
-    select.replaceChildren(new Option("待整理", ""));
+    select.replaceChildren(new Option(tr("inbox"), ""));
     projects.forEach((project) => select.append(new Option(project.name, project.id)));
     if (select.value !== current) select.value = current;
   }
@@ -3633,11 +4302,11 @@ function enableDropTarget(target) {
     const itemId = event.dataTransfer.getData("text/plain");
     const destination = target.dataset.project;
     const projectId = destination === "unfiled" ? null : destination;
-    const projectName = projectId ? projects.find((project) => project.id === projectId)?.name : "待整理";
+    const projectName = projectId ? projects.find((project) => project.id === projectId)?.name : tr("inbox");
     clearDropHighlights();
     if (!itemId || !items.some((item) => item.id === itemId)) return;
     await updateItem(itemId, { projectId });
-    showToast(`已移入「${projectName || "项目"}」`);
+    showToast(tr("movedIntoProject", { name: projectName || tr("genericProject") }));
   });
 }
 
@@ -3692,12 +4361,19 @@ function moveFolderDropLine(pointerY) {
   const projectList = document.querySelector("#projectList");
   if (!projectList || !folderDragId) return;
   const rows = [...projectList.children].filter((element) => element.classList.contains("project-row"));
-  let before = null;
+  let target = null;
   for (const row of rows) {
     if (row.dataset.id === folderDragId) continue; // 被拖的那行不参与比较
     const bounds = row.getBoundingClientRect();
-    if (pointerY < bounds.top + bounds.height / 2) { before = row; break; }
+    if (pointerY < bounds.top + bounds.height / 2) { target = row; break; }
   }
+  // 先把「插到哪一行前面」换成下标（去掉被拖那项后，它前面还有几行），
+  // 夹到允许区间里，再换回行对象——这样指示线本身也只在合法的落点上出现，
+  // 用户看到的「会插到这里」和松手后的结果永远一致。
+  const others = rows.filter((row) => row.dataset.id !== folderDragId);
+  const index = target ? rows.slice(0, rows.indexOf(target)).filter((row) => row.dataset.id !== folderDragId).length : others.length;
+  const [min, max] = folderDropRange();
+  const before = others[Math.max(min, Math.min(max, index))] || null;
   if (!folderDropLine) {
     folderDropLine = document.createElement("div");
     folderDropLine.className = "folder-drop-line";
@@ -3724,11 +4400,25 @@ async function commitFolderOrder() {
   const dragged = projects.find((project) => project.id === folderDragId);
   if (index == null || !dragged) return;
   const rest = projects.filter((project) => project.id !== dragged.id);
-  rest.splice(Math.max(0, Math.min(index, rest.length)), 0, dragged);
+  const [min, max] = folderDropRange();
+  const at = Math.max(min, Math.min(max, index));
+  rest.splice(at, 0, dragged);
   if (rest.every((project, i) => project.id === projects[i].id)) return; // 位置没变，不用写库
   projects = rest;
   await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
-  showToast(`已把「${dragged.name}」移到第 ${rest.indexOf(dragged) + 1} 个`);
+  showToast(tr("movedToPosition", { name: dragged.name, n: rest.indexOf(dragged) + 1 }));
+}
+
+// 拖拽排序只在「自己那一区」里发生：置顶的项目只能在置顶那几个之间换位，
+// 普通项目只能在其余项目里换位。想把项目挪进 / 挪出置顶区请用右键菜单里的
+// 「置顶项目 / 取消置顶」——拖动的时候悄悄改掉置顶状态，会让「拖到第 1 个」
+// 这种动作的结果变得不可预测（拖上去就变成置顶，再拖下来就丢掉置顶）。
+// 返回值是允许的下标区间 [最小, 最大]，下标按「去掉被拖的那项之后」的列表算。
+function folderDropRange() {
+  const rest = projects.filter((project) => project.id !== folderDragId);
+  const pins = rest.filter((project) => project.pinned).length;
+  const dragged = projects.find((project) => project.id === folderDragId);
+  return dragged?.pinned ? [0, pins] : [pins, rest.length];
 }
 
 function endFolderDrag() {
@@ -3745,19 +4435,52 @@ function endFolderDrag() {
 
 // ── 项目：图标 / 改名 / 更多菜单 / 删除 ───────────────────
 
-// 项目封面：优先项目自己上传的封面（data URL），否则取该项目里某篇的封面。
+// 项目封面：优先项目自己上传的封面（data URL），其次用户在「编辑项目」里挑的
+// 封面组合里的第一张，否则取该项目里某篇的封面。
 // 侧栏项目行和卡片上的「所属项目」浮层共用这一个，两处的缩略图才永远一致。
 function projectCoverFor(projectId) {
   const project = projects.find((entry) => entry.id === projectId);
   if (project?.cover) return project.cover;
   const inProject = items.filter((entry) => (entry.projectId || "") === projectId);
   // resolveImage 兼容三种来源：本地上传的封面（local://<id> 指针）、旧的 data: 内联、远程 URL。
+  // 挑过的就按挑的顺序找第一张能用的——和图板上「第 1 张占大格」保持一致。
+  for (const id of (Array.isArray(project?.coverPick) ? project.coverPick : [])) {
+    const picked = inProject.find((entry) => entry.id === id);
+    const src = picked && resolveImage(picked);
+    if (src) return src;
+  }
   // 取第一篇「能解析出图」的收藏当这个项目的门面。
   for (const entry of inProject) {
     const src = resolveImage(entry);
     if (src) return src;
   }
   return null;
+}
+
+// 图钉图标（置顶 / 取消置顶共用）：slashed = true 时叠一道斜杠表示「取消」。
+function pinIconSvg(slashed = false) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("class", "pin-icon");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", PIN_FILL_PATH);
+  svg.append(path);
+  if (slashed) {
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    line.setAttribute("d", "M4 20 20 4");
+    line.setAttribute("class", "pin-slash");
+    svg.append(line);
+  }
+  return svg;
+}
+
+// 置顶角标：缩略图右下角的一枚小图钉。
+function pinBadge() {
+  const badge = document.createElement("span");
+  badge.className = "project-pin-badge";
+  badge.title = tr("pinned");
+  badge.append(pinIconSvg());
+  return badge;
 }
 
 // 没有封面时的占位：项目名首字 + 一块暖色底，看起来仍是「图板缩略图」。
@@ -3813,14 +4536,14 @@ async function commitRename(id, input) {
   if (!project) { renderProjects(); return; }
   if (!name || name === project.name) { renderProjects(); return; }
   if (projects.some((entry) => entry.id !== id && entry.name === name)) {
-    showToast(`已有同名项目「${name}」`);
+    showToast(tr("projectExists", { name }));
     renderProjects();
     return;
   }
   projects = projects.map((entry) => entry.id === id ? { ...entry, name } : entry);
   renderProjects();
   await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
-  showToast(`已重命名为「${name}」`);
+  showToast(tr("renamedTo", { name }));
 }
 
 async function deleteProject(id) {
@@ -3829,11 +4552,11 @@ async function deleteProject(id) {
   const affected = items.filter((item) => item.projectId === id).length;
   const confirmed = await LaterOnDialog.confirm({
     tone: "danger",
-    title: `删除项目「${project.name}」？`,
+    title: tr("deleteProjectTitle", { name: project.name }),
     message: affected
-      ? `里面的 ${affected} 篇收藏会移到「待整理」，不会被删除。`
-      : "这个项目里还没有收藏，删除后无法恢复。",
-    confirmText: "删除项目"
+      ? tr("deleteProjectMoveItems", { n: affected })
+      : tr("deleteEmptyProject"),
+    confirmText: tr("deleteProject")
   });
   if (!confirmed) return;
   projects = projects.filter((entry) => entry.id !== id);
@@ -3848,7 +4571,7 @@ async function deleteProject(id) {
   }
   renderProjects();
   render();
-  showToast(affected ? `已删除项目「${project.name}」，${affected} 篇已移到待整理` : `已删除项目「${project.name}」`);
+  showToast(tr(affected ? "projectDeletedMoved" : "projectDeleted", { name: project.name, n: affected }));
 }
 
 function openFolderMenu(projectId, x, y) {
@@ -3864,12 +4587,54 @@ function openFolderMenu(projectId, x, y) {
   title.title = project.name;
   menu.append(
     title,
-    folderMenuItem("重命名", "pencil", () => startRename(projectId, project.name)),
-    folderMenuItem("编辑简介", "note", () => editBoard(projectId)),
-    folderMenuItem("删除项目", "trash", () => deleteProject(projectId), true)
+    // 置顶放在第一项：这是最常用的一步操作（把常用的项目挪到手边），
+    // 也比「双击改名」更安全——点错了再点一次「取消置顶」就回来。
+    menuItem(project.pinned ? tr("unpinProject") : tr("pinProject"), project.pinned ? "unpin" : "pin", () => toggleProjectPin(projectId)),
+    menuItem(tr("rename"), "pencil", () => startRename(projectId, project.name)),
+    menuItem(tr("editNote"), "note", () => editBoard(projectId)),
+    menuItem(tr("deleteProject"), "trash", () => deleteProject(projectId), true)
   );
   document.body.append(menu);
-  // 贴边时自动往回收，保证菜单完整可见。
+  positionMenu(menu, x, y);
+  folderMenu = menu;
+  requestAnimationFrame(() => menu.classList.add("is-open"));
+}
+
+// ── 单篇收藏的右键菜单 ────────────────────────────────────
+// 卡片上右键 = 这一篇能做的所有事，样式和图板的「项目菜单」完全一致（同一个 .folder-menu）。
+// 这里刻意复用 folderMenu 这个变量：于是「点别处 / Esc / 滚动 / 窗口失焦自动关闭」全都白拿，
+// 不用再抄一遍关闭逻辑。
+function openItemMenu(itemId, x, y) {
+  closeFolderMenu();
+  const item = items.find((entry) => entry.id === itemId);
+  if (!item) return;
+  const card = cardMap.get(itemId) || grid.querySelector(`.card[data-id="${cssEscape(itemId)}"]`);
+  const menu = document.createElement("div");
+  menu.className = "folder-menu";
+  menu.setAttribute("role", "menu");
+  const title = document.createElement("p");
+  title.className = "folder-menu-title";
+  const heading = (item.title || "").trim() || item.source || tr("itemFallback");
+  title.textContent = heading.length > 20 ? `${heading.slice(0, 20)}…` : heading;
+  title.title = heading;   // 标题被截短了，悬停能看到全名
+  const picked = selectMode && selectedIds.has(item.id);
+  // 只放「卡片上不方便做 / 做不到」的几项：
+  // 「标为已读」和「移动到项目」在卡片上本来就有明显的按钮，不重复占用右键菜单。
+  menu.append(
+    title,
+    menuItem(tr("itemOpen"), "open", () => openItem({ preventDefault() {}, metaKey: false, ctrlKey: false }, item)),
+    menuItem(tr("itemEdit"), "pencil", () => editItem(item)),
+    menuItem(picked ? tr("itemDeselect") : tr("itemSelect"), picked ? "deselect" : "multi", () => startMultiSelect(item.id, card, !picked)),
+    menuItem(tr("delete"), "trash", () => deleteItem(item.id), true)
+  );
+  document.body.append(menu);
+  positionMenu(menu, x, y);
+  folderMenu = menu;
+  requestAnimationFrame(() => menu.classList.add("is-open"));
+}
+
+// 菜单贴边时自动往回收，保证整块完整可见（项目菜单和收藏菜单共用）。
+function positionMenu(menu, x, y) {
   const rect = menu.getBoundingClientRect();
   const width = rect.width || 180;
   const height = rect.height || 96;
@@ -3877,29 +4642,47 @@ function openFolderMenu(projectId, x, y) {
   const top = Math.min(Math.max(8, y), Math.max(8, window.innerHeight - height - 8));
   menu.style.left = `${left}px`;
   menu.style.top = `${top}px`;
-  folderMenu = menu;
-  requestAnimationFrame(() => menu.classList.add("is-open"));
 }
 
-function folderMenuItem(label, icon, onPick, danger = false) {
+function cssEscape(value) {
+  return typeof CSS !== "undefined" && CSS.escape ? CSS.escape(value) : String(value).replace(/["\\]/g, "\\$&");
+}
+
+// 从右键菜单里点「多选」：进入多选模式，并把这一篇先勾上（取消则勾掉）。
+// 已经选中时这项变成「取消选择」，方便在多选状态里直接反悔。
+function startMultiSelect(itemId, card, on) {
+  if (!selectMode) setSelectMode(true);
+  toggleSelect(itemId, card, on);
+}
+
+function menuItem(label, icon, onPick, danger = false) {
   const item = document.createElement("button");
   item.type = "button";
   item.className = `folder-menu-item${danger ? " danger" : ""}`;
   item.setAttribute("role", "menuitem");
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  // 铅笔（重命名）/ 带字的纸（简介）/ 垃圾桶（删除）
+  // 铅笔（重命名 / 编辑）/ 带字的纸（简介）/ 垃圾桶（删除）——都是描边图标（fill:none）。
+  // 置顶用另一套实心图钉（见 pinIconSvg），不在这里。
   const ICON_PATHS = {
     pencil: "M4 20h4L20 8l-4-4L4 16zM14 6l4 4",
     note: "M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h4",
-    trash: "M4 7h16m-10 4v6m4-6v6M9 7l1-3h4l1 3m3 0-1 13H7L6 7"
+    trash: "M4 7h16m-10 4v6m4-6v6M9 7l1-3h4l1 3m3 0-1 13H7L6 7",
+    // 下面几个是「单篇收藏菜单」用的：
+    open: "M14 5h5v5M19 5l-8 8M17 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h5",
+    multi: "M3.5 6.5h7v7h-7zM13.5 6.5h7v7h-7zM5 10l1.6 1.6L9 8",
+    deselect: "M3.5 6.5h7v7h-7zM5.5 8.6l3 2.8M8.5 8.6l-3 2.8M14 10h6"
   };
-  path.setAttribute("d", ICON_PATHS[icon] || ICON_PATHS.trash);
-  svg.append(path);
   const text = document.createElement("span");
   text.textContent = label;
-  item.append(svg, text);
+  if (icon === "pin" || icon === "unpin") {
+    item.append(pinIconSvg(icon === "unpin"), text);
+  } else {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", ICON_PATHS[icon] || ICON_PATHS.trash);
+    svg.append(path);
+    item.append(svg, text);
+  }
   item.addEventListener("click", (event) => {
     event.stopPropagation();
     closeFolderMenu();
@@ -3928,7 +4711,7 @@ async function openItem(event, item) {
   event.preventDefault();
 
   const target = safeTarget(item.url);
-  if (!target) { showToast("这条收藏的网址打不开"); return; }
+  if (!target) { showToast(tr("invalidUrlShort")); return; }
 
   // 记下「正在读这篇」——侧栏据此高亮并滚动定位到它，两个视图保持一致。
   chrome.storage.local.set({ [CURRENT_ITEM_KEY]: item.id });
@@ -3936,7 +4719,7 @@ async function openItem(event, item) {
   const windowId = await resolveWindowId();
   if (!(await openSidePanel(windowId))) {
     // 侧栏打不开（极少数情况）：至少别让这次点击落空。
-    showToast("侧栏打开失败，已在新标签页中打开");
+    showToast(tr("sidePanelFallback"));
     await chrome.tabs.create({ url: target, openerTabId: libraryTabId || undefined });
     return;
   }
@@ -4025,7 +4808,7 @@ function projectPickerFolders() {
   }
   // 每行左侧的封面缩略图用 projectCoverFor —— 和侧栏项目行是同一份逻辑，两处永远一致。
   return [
-    { id: "", name: "待整理", count: unfiled, cover: projectCoverFor("") },
+    { id: "", name: tr("inbox"), count: unfiled, cover: projectCoverFor("") },
     ...projects.map((project) => ({ id: project.id, name: project.name, count: counts.get(project.id) || 0, cover: projectCoverFor(project.id) }))
   ];
 }
@@ -4039,6 +4822,7 @@ function openCardProjectPicker(card, item, select) {
   window.openFolderPicker({
     anchor: select,
     theme: settings.theme || "system",
+    language: document.documentElement.lang,
     folders: projectPickerFolders(),
     selected: item.projectId || "",
     // 新建项目走后台的 CREATE_PROJECT（和网页浮层同一份逻辑），项目会写进存储、
@@ -4053,8 +4837,10 @@ function openCardProjectPicker(card, item, select) {
       }
       await updateItem(item.id, { projectId });
       const latest = items.find((entry) => entry.id === item.id);
+      clearSearch();
       updateCard(card, latest);
-      showToast(projectId ? `已移到「${name}」` : "已移回待整理");
+      render();
+      showToast(projectId ? tr("movedTo", { name }) : tr("movedToInbox"));
     }
   });
 }
@@ -4063,18 +4849,18 @@ async function deleteItem(id) {
   const target = items.find((entry) => entry.id === id);
   if (!target) return;
   // 删除是没法撤销的，删之前一定问一句。标题可能很长，截断免得把弹窗撑成一整段。
-  const raw = (target.title || "").trim() || "这篇收藏";
+  const raw = (target.title || "").trim() || tr("itemFallback");
   const title = raw.length > 26 ? `${raw.slice(0, 26)}…` : raw;
   const confirmed = await LaterOnDialog.confirm({
     tone: "danger",
-    title: `删除「${title}」？`,
-    message: "删除后无法恢复。",
-    confirmText: "删除"
+    title: tr("deleteItemTitle", { title }),
+    message: tr("deleteCannotUndo"),
+    confirmText: tr("delete")
   });
   if (!confirmed) return;
   items = items.filter((item) => item.id !== id);
   await chrome.storage.local.set({ [STORAGE_KEY]: items });
-  showToast("已删除收藏");
+  showToast(tr("itemDeleted"));
 }
 
 // ── 批量操作 ─────────────────────────────────────────────
@@ -4088,6 +4874,15 @@ function setSelectMode(on) {
   updateSelectionUI();
 }
 
+// 多选期间点击卡片以外的页面操作区，视为用户要离开多选；
+// 卡片本身、底部批量工具栏和“选择”按钮保留原有交互。
+document.addEventListener("pointerdown", (event) => {
+  if (!selectMode) return;
+  const target = event.target;
+  if (target?.closest?.(".card, #bulkBar, #selectMode")) return;
+  setSelectMode(false);
+}, true);
+
 function toggleSelect(id, card, force) {
   const willSelect = force !== undefined ? force : !selectedIds.has(id);
   if (willSelect) selectedIds.add(id); else selectedIds.delete(id);
@@ -4100,9 +4895,9 @@ function toggleSelect(id, card, force) {
 function updateSelectionUI() {
   const count = selectedIds.size;
   const countEl = document.querySelector("#bulkCount");
-  if (countEl) countEl.textContent = `已选 ${count} 篇`;
+  if (countEl) countEl.textContent = tr("selectCount", { count });
   const allBtn = document.querySelector("#bulkSelectAll");
-  if (allBtn) allBtn.textContent = count > 0 && count >= grid.children.length ? "取消全选" : "全选";
+  if (allBtn) allBtn.textContent = count > 0 && count >= grid.children.length ? tr("deselectAll") : tr("selectAll");
 }
 
 async function bulkUpdate(patch) {
@@ -4128,13 +4923,14 @@ function openBulkProjectPicker() {
   window.openFolderPicker({
     anchor,
     theme: settings.theme || "system",
+    language: document.documentElement.lang,
     folders: projectPickerFolders(),
     selected: selectedProjects.size === 1 ? [...selectedProjects][0] : "",
-    titleText: `把选中的 ${count} 篇放到哪个项目？`,
+    titleText: tr("bulkMoveTitle", { n: count }),
     onCreateProject: createProjectFromPicker,
     onPick: async (projectId, name) => {
       await bulkMove(projectId || null);
-      showToast(`已将 ${count} 篇移到「${name || "待整理"}」`);
+      showToast(tr("bulkMoved", { n: count, name: name || tr("inbox") }));
     }
   });
 }
@@ -4144,9 +4940,9 @@ async function bulkDelete() {
   const count = selectedIds.size;
   const confirmed = await LaterOnDialog.confirm({
     tone: "danger",
-    title: `删除选中的 ${count} 篇收藏？`,
-    message: "此操作无法撤销。",
-    confirmText: `删除 ${count} 篇`
+    title: tr("bulkDeleteTitle", { n: count }),
+    message: tr("cannotUndo"),
+    confirmText: tr("bulkDeleteButton", { n: count })
   });
   if (!confirmed) return;
   const ids = new Set(selectedIds);
@@ -4154,7 +4950,7 @@ async function bulkDelete() {
   await chrome.storage.local.set({ [STORAGE_KEY]: items });
   await removeCoversOf(ids);
   finishBulk();
-  showToast(`已删除 ${ids.size} 篇`);
+  showToast(tr("bulkDeleted", { n: ids.size }));
 }
 
 function finishBulk() {
@@ -4180,11 +4976,11 @@ document.querySelector("#bulkDone")?.addEventListener("click", () => setSelectMo
 function formatTime(timestamp) {
   const diff = Date.now() - timestamp;
   const day = 86400000;
-  if (diff < 60000) return "刚刚";
-  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
-  if (diff < day) return `${Math.floor(diff / 3600000)} 小时前`;
-  if (diff < day * 30) return `${Math.floor(diff / day)} 天前`;
-  return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric" }).format(timestamp);
+  if (diff < 60000) return tr("justNow");
+  if (diff < 3600000) return tr("minutesAgo", { n: Math.floor(diff / 60000) });
+  if (diff < day) return tr("hoursAgo", { n: Math.floor(diff / 3600000) });
+  if (diff < day * 30) return tr("daysAgo", { n: Math.floor(diff / day) });
+  return new Intl.DateTimeFormat(document.documentElement.lang === "en" ? "en" : "zh-CN", { month: "short", day: "numeric" }).format(timestamp);
 }
 
 let toastTimer = null;

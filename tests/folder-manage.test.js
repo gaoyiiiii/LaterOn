@@ -1,6 +1,6 @@
 // 把真实的 library.js 放进一个假 DOM 里跑一遍，检查「项目」的管理交互：
-//  1) 点加号弹出输入框、点别处自动收起
-//  2) 新建成功后输入框一定消失（这里曾经有个 await 之后 event.currentTarget 变 null 的 bug）
+//  1) 图板墙末尾的虚线加号打开新建项目弹窗
+//  2) 新建成功后自动进入项目，侧栏项目列表随之出现
 //  3) 重名不重复创建
 //  4) 双击改名 / 回车保存 / Esc 取消 / 点到别处自动保存 / 重名被拒绝
 //  5) 右键与「⋯」都能打开菜单，点别处或 Esc 关闭
@@ -47,7 +47,7 @@ const store = {
   laterOnProjects: [{ id: "work", name: "工作", createdAt: 1, cover: "data:image/gif;base64,R0lGODlhAQABAAAAACw=" }],
   laterOnActiveProject: "all",
   laterOnSettings: {},
-  laterOnFilter: "all"
+  laterOnFilter: "all",
   laterOnFilterChosen: true,
 };
 const changeListeners = [];
@@ -129,10 +129,6 @@ const cardFolderOptions = () => [...document.querySelectorAll(".card .project-se
 
 (async () => {
   await tick(20);
-  const form = document.querySelector("#projectForm");
-  const plus = document.querySelector("#showProjectForm");
-  const nameInput = document.querySelector("#projectName");
-
   console.log("── 初始状态 ──");
   check("侧栏列出了已有项目", projectRows().length === 1, projectRows().map((r) => r.dataset.id).join(", "));
   // 左侧改成项目缩略图（和「选项目」浮层同一套外观）：有封面就显示封面图，没有就首字色块占位。
@@ -141,21 +137,16 @@ const cardFolderOptions = () => [...document.querySelectorAll(".card .project-se
   check("行里显示名字与数量", rowOf("work")?.querySelector(".project-name").textContent === "工作" && rowOf("work")?.querySelector("strong").textContent === "2");
   check("行里带「⋯」更多按钮", !!rowOf("work")?.querySelector(".project-more"));
 
-  console.log("\n── 新建项目：加号弹出 / 点别处收起 ──");
-  check("默认不显示输入框", form.hidden === true);
-  click(plus);
-  check("点加号弹出输入框", form.hidden === false);
-  pointerdown(document.querySelector("main"));
-  check("点其它地方输入框自动收起", form.hidden === true);
-  click(plus);
-  check("再点加号又能打开", form.hidden === false);
-
+  console.log("\n── 新建项目：图板末尾虚线加号 ──");
+  const createBoard = document.querySelector(".board-create");
+  check("全部项目图板末尾有新建入口", !!createBoard && createBoard === document.querySelector("#boardGrid").lastElementChild);
+  click(createBoard);
+  const nameInput = document.querySelector('.lod-root:not([hidden]) [data-field="name"]');
+  check("点虚线加号打开应用内弹窗", !!nameInput);
   nameInput.value = "  设计灵感  ";
-  form.dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+  click(document.querySelector(".lod-root:not([hidden]) .lod-ok"));
   await tick(10);
   const design = folderByName("设计灵感");
-  check("新建成功后输入框消失（不再赖在原地）", form.hidden === true);
-  check("输入框内容已清空", nameInput.value === "");
   check("项目真的写进了存储，且名称去了空格", !!design, JSON.stringify(store.laterOnProjects.map((p) => p.name)));
   check("侧栏里多出这一行", projectRows().length === 2);
   // 新项目还没有任何封面：缩略图位置退回「项目名首字 + 暖色底」的占位块，不是空白。
@@ -168,12 +159,14 @@ const cardFolderOptions = () => [...document.querySelectorAll(".card .project-se
   check("收藏卡片上的「所属项目」下拉里也能选到新项目", cardFolderOptions().includes("设计灵感"), cardFolderOptions().join("/"));
 
   console.log("\n── 新建重名项目 ──");
-  click(plus);
-  nameInput.value = "工作";
-  form.dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+  click(document.querySelector('.project-nav[data-project="all"]'));
+  await tick(10);
+  click(document.querySelector(".board-create"));
+  const duplicateNameInput = document.querySelector('.lod-root:not([hidden]) [data-field="name"]');
+  duplicateNameInput.value = "工作";
+  click(document.querySelector(".lod-root:not([hidden]) .lod-ok"));
   await tick(10);
   check("重名不会再建一个", store.laterOnProjects.filter((p) => p.name === "工作").length === 1);
-  check("输入框照样收起", form.hidden === true);
   check("给出同名提示并跳到已有的那个", /已有同名项目/.test(toastText()) && store.laterOnActiveProject === "work", toastText());
 
   console.log("\n── 就地改名 ──");
@@ -226,7 +219,7 @@ const cardFolderOptions = () => [...document.querySelectorAll(".card .project-se
   rightClick(rowOf("work").querySelector(".project-nav"));
   await tick(10);
   check("右键弹出菜单", !!document.querySelector(".folder-menu"));
-  check("菜单里是「重命名 / 编辑简介 / 删除项目」", menuItems().map((item) => item.textContent).join(" / ") === "重命名 / 编辑简介 / 删除项目", menuItems().map((i) => i.textContent).join(" / "));
+  check("菜单里是「置顶项目 / 重命名 / 编辑简介 / 删除项目」", menuItems().map((item) => item.textContent).join(" / ") === "置顶项目 / 重命名 / 编辑简介 / 删除项目", menuItems().map((i) => i.textContent).join(" / "));
   check("菜单顶部标着项目名", document.querySelector(".folder-menu-title")?.textContent === "工作与灵感");
   pointerdown(document.body);
   await tick(10);
@@ -320,13 +313,15 @@ const cardFolderOptions = () => [...document.querySelectorAll(".card .project-se
   const moreRight = Number(/right:\s*(\d+)px/.exec(moreRule)?.[1] || 0);
   const moreW = Number(/width:\s*(\d+)px/.exec(moreRule)?.[1] || 0);
   check("「⋯」占的横向空间没超出给它的留白（不会压住篇数）", padRight > 0 && moreRight + moreW <= padRight, `留白=${padRight}px ⋯=${moreRight}+${moreW}=${moreRight + moreW}px`);
-  // 「项目 ＋」这一行不能贴住第一行项目。间距要写在容器（.projects-heading）上：
-  // 写在 label 上只有「项目」两个字往下挪，＋ 还贴着第一行，两边的空隙不等高。
-  const headingRule = ruleOf("\\.projects-heading");
-  const headingGap = Number(/margin:\s*0\s+\d+px\s+(\d+)px\s+0/.exec(headingRule)?.[1] || 0);
-  const labelInHeading = ruleOf("\\.projects-heading\\s+\\.sidebar-label");
-  check("「项目 ＋」和第一行项目之间留了空隙", headingGap >= 8, `margin-bottom=${headingGap}px`);
-  check("空隙写在容器上（label 不再自己留 bottom margin）", /margin:\s*0 0 0 10px/.test(labelInHeading), labelInHeading);
+  const createRule = ruleOf("\\.board-create");
+  check("新建项目图板使用虚线边框", /border:[^;]*dashed/.test(createRule), createRule);
+  check("新建项目图板与普通封面使用相同宽高比", /aspect-ratio:\s*1\.42/.test(createRule), createRule);
+  const nestedSection = ruleOf("\\.projects-section\\.is-visible");
+  const nestedNav = ruleOf("\\.projects-section\\s+\\.project-nav");
+  const nestedFirstCol = Number(/grid-template-columns:\s*(\d+)px/.exec(nestedNav)?.[1] || 0);
+  check("项目列表整体右缩，明确从属于全部项目", /margin:[^;]*0 0 0 (?:2[4-9]|[3-9]\d)px/.test(nestedSection), nestedSection);
+  check("子级列表不画树状竖线", !/\.projects-section\.is-visible::before/.test(libraryCss));
+  check("子级项目缩略图小于顶层入口", nestedFirstCol > 0 && nestedFirstCol < firstCol, "顶层=" + firstCol + "px 子级=" + nestedFirstCol + "px");
 
   console.log("\n── 页面错误 ──");
   check("整个过程没有出现任何未捕获的错误", errors.length === 0, errors.join(" | "));

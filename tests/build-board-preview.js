@@ -50,7 +50,9 @@ const mock = () => {
       onChanged: { addListener(fn) { listeners.push(fn); } }
     },
     tabs: { query: () => Promise.resolve([{ id: 1, windowId: 1 }]) },
-    runtime: { getURL: (p) => `chrome-extension://lateron/${p}` }
+    // library.js 一开头就挂了 runtime.onMessage（全屏页收到通知时弹 toast），
+    // 这里必须给出空实现，否则预览页在初始化第一步就抛 addListener of undefined、整页空白。
+    runtime: { getURL: (p) => `chrome-extension://lateron/${p}`, onMessage: { addListener() {} } }
   };
   const listeners = [];
   const store = {
@@ -68,11 +70,15 @@ const mock = () => {
     ],
     laterOnProjects: [
       { id: "eff", name: "工作效率", note: "关于怎么把时间花在真正重要的事上。", createdAt: 1 },
-      { id: "insp", name: "设计灵感", createdAt: 2 },
-      { id: "long", name: "读不完的长文", createdAt: 3 },
+      // 「设计灵感」带着 coverPick：预览页一打开就能看到「自己挑的封面组合」长什么样
+      // （i3 最新排第一，i1 第二 —— 挑的顺序说了算，不是按时间）。
+      { id: "insp", name: "设计灵感", createdAt: 2, coverPick: ["i3", "i1"] },
+      // 「读不完的长文」带着 pinned：预览页一打开就能看到侧栏的置顶（图钉角标 + 分隔线）长什么样。
+      { id: "long", name: "读不完的长文", createdAt: 3, pinned: true },
       { id: "later", name: "稍后整理", createdAt: 4 }
     ],
     laterOnActiveProject: "all",
+    laterOnOnboardingSeen: true,
     // 打开就落在图板视图；深色背景看拼图更清楚（theme.js 会读这份设置）
     laterOnSettings: { libraryView: "boards", theme: "dark" }
   };
@@ -100,6 +106,7 @@ const html = read("library.html");
 const out = html
   .replace(/<link rel="stylesheet" href="theme-vars\.css" \/>/, () => inlineStyle("theme-vars.css"))
   .replace(/<link rel="stylesheet" href="dialog\.css" \/>/, () => inlineStyle("dialog.css"))
+  .replace(/<link rel="stylesheet" href="onboarding\.css" \/>/, () => inlineStyle("onboarding.css"))
   .replace(/<link rel="stylesheet" href="library\.css" \/>/, () => inlineStyle("library.css"))
   .replace(/src="icon\.svg"/g, () => `src="${iconDataUri()}"`)
   .replace(/href="icon\.svg"/g, () => `href="${iconDataUri()}"`)
@@ -109,6 +116,7 @@ const out = html
   // 选项目浮层（卡片上点「所属项目」弹的那一个）也来自 picker-ui.js：
   // 不内联的话 file:// 下相对路径取不到，点卡片上的下拉毫无反应，浮层就没法在预览里看。
   .replace('<script src="picker-ui.js"></script>', () => inlineScript("picker-ui.js"))
+  .replace('<script src="onboarding.js" defer></script>', () => inlineScript("onboarding.js"))
   .replace('<script src="library.js"></script>', () => inlineScript("library.js"));
 
 if (!out.includes("laterOnPreview")) throw new Error("假数据没有注入成功，检查 library.html 里的 script 标签是否变了");

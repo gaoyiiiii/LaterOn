@@ -1,4 +1,9 @@
 const settings = window.LaterOnSettings;
+// 翻译助手：设置页的动态文字（拼出来的句子、对话框、诊断行）统一走 i18n 词典。
+// 兜底：个别环境（如测试）没加载 i18n.js 时，直接返回词条 key，不让页面崩掉。
+const t = (...args) => (window.LaterOnI18n ? window.LaterOnI18n.t(...args) : String(args[0] ?? ""));
+// 当前是不是英文界面（影响标点全角/半角和日期格式这类细节）。
+const isEn = () => document.documentElement.lang === "en";
 
 // 「已读收藏自动清除」的天数：最短 30 天、最长 180 天，默认 30 天。
 // 用户手打的数字可能是 5 或 999，这里统一夹回合法区间再存。
@@ -13,6 +18,8 @@ function clampDays(value) {
 async function init() {
   await window.LaterOnI18n?.getLanguage();
   window.LaterOnI18n?.applyStatic();
+  // 浏览器标签页的标题也跟着语言走（HTML 里的 <title> 只是中文默认值）。
+  document.title = `LaterOn · ${t("settings")}`;
   const current = await settings.get();
 
   // 还原控件当前值
@@ -64,23 +71,30 @@ async function init() {
     const commands = await chrome.commands.getAll();
     const save = commands.find((c) => c.name === "quick-save");
     const translate = commands.find((c) => c.name === "toggle-translation");
-    document.querySelector("#cmdSave").textContent = save?.shortcut ? `${save.shortcut}（默认 Alt+1）` : "未设置（默认 Alt+1）";
-    document.querySelector("#cmdTranslate").textContent = translate?.shortcut ? `${translate.shortcut}（默认 Alt+2）` : "未设置（默认 Alt+2）";
     const saveAll = commands.find((c) => c.name === "save-all-tabs");
-    document.querySelector("#cmdSaveAll").textContent = saveAll?.shortcut ? `${saveAll.shortcut}（默认 Alt+Shift+1）` : "未设置（默认 Alt+Shift+1）";
+    document.querySelector("#cmdSave").textContent = save?.shortcut ? t("shortcutDefault", { shortcut: save.shortcut, def: "Alt+1" }) : t("shortcutNotSet", { def: "Alt+1" });
+    document.querySelector("#cmdTranslate").textContent = translate?.shortcut ? t("shortcutDefault", { shortcut: translate.shortcut, def: "Alt+2" }) : t("shortcutNotSet", { def: "Alt+2" });
+    document.querySelector("#cmdSaveAll").textContent = saveAll?.shortcut ? t("shortcutDefault", { shortcut: saveAll.shortcut, def: "Alt+Shift+1" }) : t("shortcutNotSet", { def: "Alt+Shift+1" });
   } catch {
-    document.querySelector("#cmdSave").textContent = "默认 Alt+1";
-    document.querySelector("#cmdTranslate").textContent = "默认 Alt+2";
-    document.querySelector("#cmdSaveAll").textContent = "默认 Alt+Shift+1";
+    document.querySelector("#cmdSave").textContent = t("shortcutNotSet", { def: "Alt+1" });
+    document.querySelector("#cmdTranslate").textContent = t("shortcutNotSet", { def: "Alt+2" });
+    document.querySelector("#cmdSaveAll").textContent = t("shortcutNotSet", { def: "Alt+Shift+1" });
   }
 
   document.querySelector("#openShortcuts").addEventListener("click", () => {
     chrome.tabs.create({ url: "chrome://extensions/shortcuts" }).catch(() => {
       LaterOnDialog.alert({
-        title: "没能自动打开快捷键设置",
-        message: "请手动在地址栏输入：chrome://extensions/shortcuts"
+        title: t("openShortcutsFailTitle"),
+        message: t("openShortcutsFailMsg")
       });
     });
+  });
+
+  document.querySelector("#replayOnboarding")?.addEventListener("click", async () => {
+    const url = `${chrome.runtime.getURL("library.html")}?guide=1`;
+    const tab = await chrome.tabs.getCurrent().catch(() => null);
+    if (tab?.id) await chrome.tabs.update(tab.id, { url });
+    else window.location.href = url;
   });
 
   // 快捷键自检：实时刷新「最近一次触发」，方便判断按键有没有到达扩展。
@@ -155,7 +169,7 @@ async function init() {
     if (!file) return;
     try {
       const parsed = JSON.parse(await file.text());
-      if (!parsed || !Array.isArray(parsed.items)) throw new Error("文件格式不正确");
+      if (!parsed || !Array.isArray(parsed.items)) throw new Error(t("importBadFile"));
       const existing = await chrome.storage.local.get(["laterOnItems", "laterOnProjects", "laterOnCovers", "laterOnOrder"]);
       const byUrl = new Map((existing.laterOnItems || []).map((it) => [normalizeUrl(it.url), it]));
       let skipped = 0;
@@ -176,13 +190,13 @@ async function init() {
       });
       await LaterOnDialog.alert({
         tone: "success",
-        title: "导入完成",
-        message: `当前共 ${mergedItems.length} 篇收藏。${skipped ? `已跳过 ${skipped} 条无效记录。` : ""}`
+        title: t("importDoneTitle"),
+        message: t("importDoneMsg", { n: mergedItems.length, skipped: skipped ? t("skippedCount", { n: skipped }) : "" })
       });
     } catch (error) {
       await LaterOnDialog.alert({
         tone: "danger",
-        title: "导入失败",
+        title: t("importFailTitle"),
         message: String(error?.message || error)
       });
     } finally {
@@ -194,9 +208,9 @@ async function init() {
   document.querySelector("#wipeBtn").addEventListener("click", async () => {
     const confirmed = await LaterOnDialog.confirm({
       tone: "danger",
-      title: "清空所有收藏？",
-      message: "所有收藏都会被删除，此操作无法撤销。",
-      confirmText: "全部清空"
+      title: t("wipeConfirmTitle"),
+      message: t("wipeConfirmMsg"),
+      confirmText: t("wipeConfirmBtn")
     });
     if (!confirmed) return;
     await chrome.storage.local.remove(["laterOnCovers", "laterOnOrder", "laterOnCurrentItem"]);
@@ -204,54 +218,55 @@ async function init() {
     try { localStorage.removeItem("laterOnPanelCache"); } catch { /* 清缓存失败不影响清空收藏 */ }
     await LaterOnDialog.alert({
       tone: "success",
-      title: "已清空所有收藏",
-      message: "收藏列表现在是空的。"
+      title: t("wipeDoneTitle"),
+      message: t("wipeDoneMsg")
     });
   });
 }
 
 // ── 快捷键自检 ──────────────────────────────────────────────
-const COMMAND_NAMES = {
-  "quick-save": "收藏当前网页",
-  "toggle-translation": "翻译当前网页",
-  "save-all-tabs": "收藏所有标签"
+// 这些映射存的是 i18n 词条 key，显示时用 t() 按当前语言取词。
+const COMMAND_KEYS = {
+  "quick-save": "cmdSavePage",
+  "toggle-translation": "cmdTranslatePage",
+  "save-all-tabs": "cmdSaveAllTabs"
 };
-const TRIGGER_NAMES = { shortcut: "快捷键", menu: "右键菜单", panel: "面板按钮" };
-// 「封面是从哪一层拿到的」的中文说明（对应提取函数里的 imageFrom）。
-const COVER_SOURCE_NAMES = {
-  share: "网站自带的分享图",
-  image_src: "网页头部的 image_src",
-  itemprop: "网页里的 itemprop 封面",
-  jsonld: "结构化数据（JSON-LD）",
-  poster: "视频封面（poster）",
-  background: "页面上的背景图",
-  lazy: "懒加载图片",
-  biggest: "页面上最大的图片",
-  youtube: "按视频 id 拼出的 YouTube 封面",
-  "generic-skipped": "网站的分享图是平台通用图，已跳过",
-  none: "没找到任何可用的封面图"
+const TRIGGER_KEYS = { shortcut: "triggerShortcut", menu: "triggerMenu", panel: "triggerPanel" };
+// 「封面是从哪一层拿到的」的词条 key（对应提取函数里的 imageFrom）。
+const COVER_SOURCE_KEYS = {
+  share: "coverShare",
+  image_src: "coverImageSrc",
+  itemprop: "coverItemprop",
+  jsonld: "coverJsonld",
+  poster: "coverPoster",
+  background: "coverBackground",
+  lazy: "coverLazy",
+  biggest: "coverBiggest",
+  youtube: "coverYoutube",
+  "generic-skipped": "coverGenericSkipped",
+  none: "coverNone"
 };
-// 「标题是从哪一层拿到的」的中文说明（对应提取函数里的 titleFrom）。
-const TITLE_SOURCE_NAMES = {
-  "dom-headline": "页面上的实时标题",
-  share: "网站自带的分享标题",
-  twitter: "网站自带的 Twitter 标题",
-  "meta-title": "网页头部的 meta 标题",
-  jsonld: "结构化数据（JSON-LD）",
-  "page-title": "浏览器标签页标题",
-  youtube: "YouTube 视频数据",
-  tab: "浏览器记录的标签页标题",
-  fallback: "兜底（没找到像样的标题）",
-  none: "没找到任何可用的标题"
+// 「标题是从哪一层拿到的」的词条 key（对应提取函数里的 titleFrom）。
+const TITLE_SOURCE_KEYS = {
+  "dom-headline": "titleDomHeadline",
+  share: "titleShare",
+  twitter: "titleTwitter",
+  "meta-title": "titleMetaTitle",
+  jsonld: "coverJsonld",
+  "page-title": "titlePageTitle",
+  youtube: "titleYoutube",
+  tab: "titleTab",
+  fallback: "titleFallback",
+  none: "titleNone"
 };
 
 function relativeTime(timestamp) {
   if (!timestamp) return "";
   const diff = Date.now() - timestamp;
-  if (diff < 60000) return "刚刚";
-  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`;
-  return new Date(timestamp).toLocaleString("zh-CN");
+  if (diff < 60000) return t("justNow");
+  if (diff < 3600000) return t("minutesAgo", { n: Math.floor(diff / 60000) });
+  if (diff < 86400000) return t("hoursAgo", { n: Math.floor(diff / 3600000) });
+  return new Date(timestamp).toLocaleString(isEn() ? "en-US" : "zh-CN");
 }
 
 async function renderDiag() {
@@ -264,11 +279,11 @@ async function renderDiag() {
   if (popupEl) {
     const popup = stored.laterOnPopupDiag;
     if (!popup?.at) {
-      popupEl.textContent = "还没有打开过小窗口";
+      popupEl.textContent = t("popupNever");
     } else {
-      const parts = [relativeTime(popup.at), `就绪 ${popup.ready ?? 0} 毫秒`];
-      if (popup.detail != null) parts.push(`详情 ${popup.detail} 毫秒`);
-      if (popup.enhanced === false) parts.push("详情没取到（不影响收藏）");
+      const parts = [relativeTime(popup.at), t("readyMs", { n: popup.ready ?? 0 })];
+      if (popup.detail != null) parts.push(t("detailMs", { n: popup.detail }));
+      if (popup.enhanced === false) parts.push(t("detailMissed"));
       popupEl.textContent = parts.join(" · ");
     }
   }
@@ -278,32 +293,32 @@ async function renderDiag() {
   if (speedEl) {
     const panel = stored.laterOnPanelDiag;
     if (!panel?.at) {
-      speedEl.textContent = "还没有打开过侧栏";
+      speedEl.textContent = t("panelNever");
     } else {
       // 各段含义：page = 页面/脚本就绪，cache = 读秒开快照，paint = 画第一屏，
       // data = 等存储返回，migrate = 整理旧封面，other = 没被任何一段认领的剩余时间。
       const segEntries = [
-        ["page", "页面"],
-        ["cache", "缓存"],
-        ["paint", "画屏"],
-        ["data", "数据"],
-        ["migrate", "搬封面"],
-        ["other", "其余"]
+        ["page", "segPage"],
+        ["cache", "segCache"],
+        ["paint", "segPaint"],
+        ["data", "segData"],
+        ["migrate", "segMigrate"],
+        ["other", "segOther"]
       ].filter(([key]) => (panel[key] ?? 0) > 0);
       const parts = [
         relativeTime(panel.at),
-        `总 ${(panel.total / 1000).toFixed(1)} 秒`,
+        t("totalSeconds", { n: (panel.total / 1000).toFixed(1) }),
         // 给个判断，免得看到数字不知道算快还是算慢。
-        panel.total <= 1000 ? "（正常）" : panel.total <= 2000 ? "（略慢）" : "（偏慢）",
-        ...segEntries.map(([key, label]) => `${label} ${panel[key]} 毫秒`)
+        panel.total <= 1000 ? t("speedOk") : panel.total <= 2000 ? t("speedSlowish") : t("speedSlow"),
+        ...segEntries.map(([key, label]) => `${t(label)} ${t("msUnit", { n: panel[key] })}`)
       ];
-      if (panel.bytes) parts.push(`数据体积 ${Math.round(panel.bytes / 1024)} KB`);
-      if (panel.localStorageSlow) parts.push("本机 localStorage 偏慢（已停用秒开快照）");
-      if (panel.cacheHit === false) parts.push("没用上秒开缓存");
-      if (panel.cacheHit === true) parts.push("用上了秒开缓存");
-      if (panel.items != null) parts.push(`${panel.items} 篇`);
+      if (panel.bytes) parts.push(t("dataSizeKB", { n: Math.round(panel.bytes / 1024) }));
+      if (panel.localStorageSlow) parts.push(t("localStorageSlow"));
+      if (panel.cacheHit === false) parts.push(t("cacheOff"));
+      if (panel.cacheHit === true) parts.push(t("cacheOn"));
+      if (panel.items != null) parts.push(t("itemsCount", { n: panel.items }));
       if (Array.isArray(panel.slow) && panel.slow.length) {
-        parts.push(`最慢文件 ${panel.slow.map((entry) => `${entry.name} ${entry.ms} 毫秒`).join("、")}`);
+        parts.push(t("slowestFiles", { list: panel.slow.map((entry) => `${entry.name} ${t("msUnit", { n: entry.ms })}`).join(isEn() ? ", " : "、") }));
       }
       speedEl.textContent = parts.join(" · ");
     }
@@ -314,17 +329,17 @@ async function renderDiag() {
   if (locateEl) {
     const loc = stored.laterOnLocateDiag;
     if (!loc?.at) {
-      locateEl.textContent = "还没定位过";
+      locateEl.textContent = t("locateNever");
     } else {
       const parts = [relativeTime(loc.at)];
       if (loc.found === false) {
-        parts.push("没找到那张卡（可能被筛选/项目挡住了）");
+        parts.push(t("locateNotFound"));
       } else {
-        parts.push(loc.inView === false ? "滚完仍不在视野里" : "已在视野里");
-        if (loc.scrolled === false) parts.push("判断为不用滚");
-        if (loc.attempts != null) parts.push(`试了 ${loc.attempts} 次`);
+        parts.push(loc.inView === false ? t("locateOutOfView") : t("locateInView"));
+        if (loc.scrolled === false) parts.push(t("locateNoScroll"));
+        if (loc.attempts != null) parts.push(t("locateAttempts", { n: loc.attempts }));
       }
-      if (loc.viewport) parts.push(`视口 ${loc.viewport}px`);
+      if (loc.viewport) parts.push(t("viewportPx", { n: loc.viewport }));
       locateEl.textContent = parts.join(" · ");
     }
   }
@@ -332,25 +347,26 @@ async function renderDiag() {
   const shortcutEl = document.querySelector("#diagShortcut");
   if (shortcutEl) {
     shortcutEl.textContent = diag.lastCommandAt
-      ? `${relativeTime(diag.lastCommandAt)}（${COMMAND_NAMES[diag.lastCommand] || diag.lastCommand}）`
-      : "还没触发过";
+      ? t("shortcutLine", { time: relativeTime(diag.lastCommandAt), cmd: COMMAND_KEYS[diag.lastCommand] ? t(COMMAND_KEYS[diag.lastCommand]) : diag.lastCommand })
+      : t("neverTriggered");
   }
 
   const runEl = document.querySelector("#diagRun");
   if (runEl) {
     const at = diag.lastResultAt || diag.lastRunAt;
     if (!at) {
-      runEl.textContent = "还没执行过";
+      runEl.textContent = t("neverRan");
     } else {
+      const triggerLabel = TRIGGER_KEYS[diag.lastTrigger] ? t(TRIGGER_KEYS[diag.lastTrigger]) : (diag.lastTrigger || t("triggerShortcut"));
       const parts = [
         relativeTime(at),
-        `来自${TRIGGER_NAMES[diag.lastTrigger] || "快捷键"}`,
-        `新增 ${diag.lastAdded ?? 0} 篇`,
-        `重复 ${diag.lastDuplicated ?? 0} 篇`
+        t("fromTrigger", { trigger: triggerLabel }),
+        t("addedCount", { n: diag.lastAdded ?? 0 }),
+        t("duplicateCount", { n: diag.lastDuplicated ?? 0 })
       ];
-      if (diag.lastMoved) parts.push(`移入项目 ${diag.lastMoved} 篇`);
-      if (diag.lastEnriched) parts.push(`补全封面摘要 ${diag.lastEnriched} 篇`);
-      if (diag.lastDegraded) parts.push(`未抓全 ${diag.lastDegraded} 篇`);
+      if (diag.lastMoved) parts.push(t("movedCount", { n: diag.lastMoved }));
+      if (diag.lastEnriched) parts.push(t("enrichedCount", { n: diag.lastEnriched }));
+      if (diag.lastDegraded) parts.push(t("degradedCount", { n: diag.lastDegraded }));
       runEl.textContent = parts.join(" · ");
     }
   }
@@ -360,17 +376,17 @@ async function renderDiag() {
   if (errorRow && errorEl) {
     const hasError = !!diag.lastError;
     errorRow.hidden = !hasError;
-    if (hasError) errorEl.textContent = `${relativeTime(diag.lastErrorAt)}：${diag.lastError}`;
+    if (hasError) errorEl.textContent = t("errorLine", { time: relativeTime(diag.lastErrorAt), msg: diag.lastError });
   }
 
   const stageEl = document.querySelector("#diagStage");
   if (stageEl) {
     if (!diag.lastStage) {
-      stageEl.textContent = "还没执行过";
+      stageEl.textContent = t("neverRan");
     } else {
-      const parts = [`${diag.lastStage}（${relativeTime(diag.lastStageAt || diag.lastRunAt)}）`];
-      if (diag.lastProgress) parts.push(`进度 ${diag.lastProgress}`);
-      if (diag.lastTabCount != null) parts.push(`共 ${diag.lastTabCount} 个标签`);
+      const parts = [t("stageLine", { stage: diag.lastStage, time: relativeTime(diag.lastStageAt || diag.lastRunAt) })];
+      if (diag.lastProgress) parts.push(t("progressLabel", { p: diag.lastProgress }));
+      if (diag.lastTabCount != null) parts.push(t("tabCount", { n: diag.lastTabCount }));
       stageEl.textContent = parts.join(" · ");
     }
   }
@@ -379,13 +395,12 @@ async function renderDiag() {
   const coverEl = document.querySelector("#diagCover");
   if (coverEl) {
     if (!diag.lastCoverAt) {
-      coverEl.textContent = "还没有抓取记录";
+      coverEl.textContent = t("coverNever");
     } else {
-      const titleLabel = TITLE_SOURCE_NAMES[diag.lastTitleFrom] || diag.lastTitleFrom || "未知";
-      const coverLabel = COVER_SOURCE_NAMES[diag.lastCoverFrom] || diag.lastCoverFrom || "未知";
-      coverEl.textContent = `${relativeTime(diag.lastCoverAt)} · 标题：${titleLabel} · 封面：${coverLabel}${
-        diag.lastCoverTitle ? `（${diag.lastCoverTitle}）` : ""
-      }`;
+      const titleLabel = TITLE_SOURCE_KEYS[diag.lastTitleFrom] ? t(TITLE_SOURCE_KEYS[diag.lastTitleFrom]) : (diag.lastTitleFrom || t("unknown"));
+      const coverLabel = COVER_SOURCE_KEYS[diag.lastCoverFrom] ? t(COVER_SOURCE_KEYS[diag.lastCoverFrom]) : (diag.lastCoverFrom || t("unknown"));
+      const extra = diag.lastCoverTitle ? (isEn() ? ` (${diag.lastCoverTitle})` : `（${diag.lastCoverTitle}）`) : "";
+      coverEl.textContent = [relativeTime(diag.lastCoverAt), t("coverLine", { title: titleLabel, cover: coverLabel }) + extra].join(" · ");
     }
   }
 }

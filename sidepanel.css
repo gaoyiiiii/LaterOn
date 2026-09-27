@@ -8,7 +8,7 @@ button, input { font: inherit; }
 button { cursor: pointer; }
 header { position: sticky; z-index: 5; top: 0; display: flex; align-items: center; justify-content: space-between; height: 58px; margin: 0; padding: 0 15px; border-bottom: 1px solid var(--hairline-2); background: var(--topbar-bg); backdrop-filter: blur(15px); }
 .brand { display:flex; align-items:center; gap:7px; font-size:17px; font-weight:850; letter-spacing:-.5px; }
-.brand span { display:grid; place-items:center; width:25px; height:25px; border-radius:8px; background:linear-gradient(140deg,#ff7a52,#ff4f2e); color:white; box-shadow:0 4px 12px -5px rgba(255,80,50,.6); }
+.brand-icon { display:block; width:25px; height:25px; border-radius:6px; box-shadow:0 4px 12px -5px rgba(255,80,50,.6); }
 .icon-button { display:grid; place-items:center; width:33px; height:33px; border:1px solid var(--line); border-radius:9px; background:var(--field); color:var(--chip-text); }
 .icon-button:hover { color:var(--ink); border-color:var(--subtle); }
 .icon-button svg { width:16px; fill:none; stroke:currentColor; stroke-linecap:round; stroke-width:1.7; }
@@ -57,14 +57,22 @@ main { padding:14px 13px 30px; }
 /* 真实封面：盖在占位之上（它在 DOM 里排在占位前面，不给 z-index 会被占位挡住）。 */
 .thumb .thumb-img { position:absolute; inset:0; z-index:1; }
 .thumb-logo { display:block; width:100%; height:100%; object-fit:cover; }
+.thumb-placeholder .thumb-logo { border-radius: 0; }
+.thumb-placeholder .thumb-logo { transform: scale(1.12); }
 .copy { min-width:0; padding:10px 29px 9px 11px; }
 .meta { display:grid; grid-template-columns:14px minmax(0,1fr) auto auto; align-items:center; column-gap:4px; min-width:0; width:100%; color:var(--subtle); font-size:9px; white-space:nowrap; }
 .meta img { width:14px; height:14px; border-radius:50%; object-fit:cover; }
 .meta .source { display:block; overflow:hidden; min-width:0; max-width:100%; color:var(--field-text); font-weight:650; text-overflow:ellipsis; white-space:nowrap; }
 .meta time { justify-self:end; min-width:max-content; white-space:nowrap; }
+/* 日期和「·」平时显示；鼠标移上来（铅笔浮出）时淡出，把右上角让给铅笔和垃圾桶。 */
+.meta time, .meta .dot { transition:opacity .16s ease; }
+.item:hover .meta time, .item:hover .meta .dot { opacity:0; }
 .copy h2 { display:-webkit-box; overflow:hidden; margin:7px 0 5px; font-size:12px; line-height:1.4; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
 .description { display:-webkit-box; overflow:hidden; margin:0; color:var(--muted); font-size:9.5px; line-height:1.45; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
 .edit, .delete { position:absolute; top:7px; display:grid; place-items:center; width:25px; height:25px; border:0; border-radius:7px; background:var(--glass-strong); color:var(--subtle); opacity:0; }
+/* 铅笔放回右上角（和垃圾桶一排在手边，更顺手）。代价是它会盖住右边的日期，
+   所以卡片一悬停就把日期连同中间那个「·」淡出——用 opacity 而不是 display，
+   位置还占着，标题和来源不会因为少了一个词而左右跳动。 */
 .edit { right:35px; }
 .delete { right:6px; }
 .item:hover .edit, .item:hover .delete { opacity:1; }
@@ -166,7 +174,7 @@ body.booting #appBody { display:none; }
 /* 当前正在阅读的那篇：和全屏界面用一致的「橙圈 + 左上角『正在读』」标出来。 */
 .item.is-current { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,92,53,.5); }
 .item.is-current::after {
-  content: "正在读";
+  content: attr(data-current-label);
   position: absolute; top: 7px; left: 7px; z-index: 3;
   padding: 2px 8px; border-radius: 99px;
   background: var(--accent); color: #fff;
@@ -174,7 +182,7 @@ body.booting #appBody { display:none; }
   pointer-events: none;
 }
 .empty { padding:45px 20px; color:var(--muted); text-align:center; }
-.empty>span { display:grid; place-items:center; width:48px; height:48px; margin:auto; border-radius:15px; background:var(--btn-soft); color:var(--accent); font-size:23px; }
+.empty>img { display:block; width:26px; height:26px; margin:auto; padding:11px; border-radius:15px; background:var(--btn-soft); }
 .empty h2 { margin:14px 0 5px; color:var(--ink); font-size:15px; }
 .empty p { margin:0; font-size:10px; }
 @media (max-width:330px) { .save-label { display:none; } .open-item { grid-template-columns:78px minmax(0,1fr); } .thumb { width:78px; min-height:88px; } }
@@ -200,6 +208,8 @@ body.booting #appBody { display:none; }
   .copy h2 { min-height:42px; margin:10px 0 7px; font-size:14px; line-height:1.48; }
   .description { font-size:10.5px; -webkit-line-clamp:3; }
   .edit, .delete { top:auto; bottom:9px; opacity:1; }
-  .edit { right:38px; }
+  /* 网格模式的按钮在右下角，离日期很远，所以那里不用让位。 */
+  .edit { right:38px; left:auto; }
+  .item:hover .meta time, .item:hover .meta .dot { opacity:1; }
   .delete { right:9px; }
 }

@@ -163,7 +163,7 @@
     // 人已经在收藏库里了，顶部再写一遍品牌纯属重复，还把项目列表往下挤了一截。
     const brandHtml = isPopover
       ? ""
-      : `<div class="lon-brand"><span class="lon-logo">↗</span>LaterOn</div>`;
+      : `<div class="lon-brand"><img class="lon-logo" src="${chrome.runtime.getURL("icon128.png")}" width="34" height="34" alt="" />LaterOn</div>`;
 
     const root = document.createElement("div");
     root.className = "lon-root" + (isPopover ? " lon-popover" : "");
@@ -248,8 +248,8 @@
     // 输入框里写下的新项目名（空 = 用上面选中的那个项目）。
     const pendingNewName = () => newInput.value.trim();
     const selectedName = () => {
-      if (!selected) return "待整理";
-      return folders.find((folder) => folder.id === selected)?.name || "待整理";
+      if (!selected) return "等待整理";
+      return folders.find((folder) => folder.id === selected)?.name || "等待整理";
     };
     const applyLabel = () => {
       const name = pendingNewName();
@@ -272,6 +272,22 @@
       return span;
     }
 
+    // HTTPS 页面不能加载 HTTP 封面，尤其是 127.0.0.1 这类地址不会被浏览器自动升级。
+    // 先在创建 img 之前过滤掉不安全来源，避免触发 Mixed Content 请求和控制台告警。
+    function isSafeCoverSource(value) {
+      const source = String(value || "").trim();
+      if (!source) return false;
+      try {
+        const parsed = new URL(source, document.baseURI);
+        if (["https:", "data:", "blob:", "chrome-extension:", "moz-extension:"].includes(parsed.protocol)) {
+          return true;
+        }
+        return parsed.protocol === "http:" && window.location.protocol !== "https:";
+      } catch {
+        return false;
+      }
+    }
+
     const renderFolders = () => {
       folderList.replaceChildren();
       folders.forEach((folder) => {
@@ -283,7 +299,7 @@
 
         const icon = document.createElement("span");
         icon.className = "lon-folder-icon";
-        if (folder.cover) {
+        if (isSafeCoverSource(folder.cover)) {
           const img = document.createElement("img");
           img.className = "lon-folder-thumb";
           img.src = folder.cover;
@@ -572,10 +588,9 @@
       .lon-root.is-out .lon-backdrop { opacity: 0; }
       .lon-root.is-out .lon-panel { opacity: 0; transform: translateY(8px) scale(.98); }
 
-      .lon-brand { display: flex; align-items: center; gap: 8px; color: var(--lon-muted); font-size: 12px; font-weight: 700; letter-spacing: .2px; }
+      .lon-brand { display: flex; align-items: center; gap: 10px; color: var(--lon-muted); font-size: 13.5px; font-weight: 700; letter-spacing: .2px; }
       .lon-logo {
-        display: grid; place-items: center; width: 26px; height: 26px; border-radius: 9px;
-        background: linear-gradient(140deg, #ff7a52, #ff4f2e); color: #fff; font-size: 15px; line-height: 1;
+        display: block; width: 34px; height: 34px; border-radius: 9px;
         box-shadow: 0 6px 16px -6px rgba(255,80,50,.6);
       }
       .lon-title { margin: 12px 0 0; font-size: 20px; font-weight: 800; letter-spacing: -.4px; line-height: 1.3; color: var(--lon-ink); }
@@ -713,16 +728,20 @@ function showFolderPickerOverlay(payload) {
   });
 }
 
-// 后台把配置放进一个一次性 JSON 节点再执行本文件：从这里读出 payload。
-// 仅在节点确实存在时才自动弹出——预览页不会带上这个节点，就不会在加载时误弹一个空浮层。
-  const laterOnPickerPayloadNode = document.getElementById("lateron-picker-payload-data");
-  let laterOnPickerPayload = null;
-  try { laterOnPickerPayload = JSON.parse(laterOnPickerPayloadNode?.textContent || "null"); } catch {}
-  laterOnPickerPayloadNode?.remove();
+  // 后台把配置放进一个一次性 JSON 节点再执行本文件：从这里读出 payload。
+  // 配置和本文件可能并行注入，所以既检查现有节点，也监听后台发出的就绪事件。
+  const consumePickerPayload = () => {
+    const node = document.getElementById("lateron-picker-payload-data");
+    let payload = null;
+    try { payload = JSON.parse(node?.textContent || "null"); } catch {}
+    node?.remove();
+    if (payload) showFolderPickerOverlay(payload);
+  };
 
   // 预览页会直接调用这个入口；重复注入时覆盖同名属性是安全的。
   window.showFolderPickerOverlay = showFolderPickerOverlay;
-  if (laterOnPickerPayload) showFolderPickerOverlay(laterOnPickerPayload);
+  document.addEventListener("lateron-picker-payload-ready", consumePickerPayload, { once: true });
+  consumePickerPayload();
 })();
 
 </script>

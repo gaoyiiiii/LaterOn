@@ -23,6 +23,28 @@
   function openFolderPicker(options) {
     const data = options || {};
     const isPopover = !!data.anchor;
+    const language = data.language === "en" || (!data.language && document.documentElement.lang === "en") ? "en" : "zh-CN";
+    const copy = language === "en" ? {
+      projects: "Choose a project", newProject: "New project name", cancel: "Cancel", moveTitle: "Move this save to which project?",
+      saveTitle: "Save to which project?", saveSingleTitle: "Save this page to which project?",
+      singleSaved: "This page is already saved — confirming will move it to the selected project", singleNew: "Choose a project to save this page",
+      batchSaved: (total, saved) => `${total} tabs, including ${saved} already saved — confirming will move them to the selected project`,
+      batchNew: (total) => `${total} tabs — choose a project to start saving them one by one`, pages: (n) => `View the ${n} pages to be saved`,
+      newMove: "Type a new project name and press Enter to move", newSave: "Type a new project name and press Enter to save", inbox: "Inbox",
+      processing: "Working…", createMove: (name) => `Create “${name}” and move`, createSave: (name) => `Create “${name}” and save`,
+      moveTo: (name) => `Move to “${name}”`, saveTo: (name) => `Save to “${name}”`, createFailed: "Couldn’t create the project. Try again.",
+      failed: "Something went wrong. Try again."
+    } : {
+      projects: "选择项目", newProject: "新建项目名称", cancel: "取消", moveTitle: "把这篇放到哪个项目？",
+      saveTitle: "收藏到哪个项目？", saveSingleTitle: "把这篇收藏到哪个项目？",
+      singleSaved: "这篇已经收藏过——确认后会一并移进你选的项目", singleNew: "选好项目后就会收藏这一篇",
+      batchSaved: (total, saved) => `共 ${total} 个标签页，其中 ${saved} 个已经收藏过——确认后会一并移进你选的项目`,
+      batchNew: (total) => `共 ${total} 个标签页，选好项目后就会开始逐个收藏`, pages: (n) => `查看将要收藏的 ${n} 个页面`,
+      newMove: "输入新项目名，回车直接移入", newSave: "输入新项目名，回车直接收藏进去", inbox: "等待整理",
+      processing: "正在处理…", createMove: (name) => `新建「${name}」并移入`, createSave: (name) => `新建「${name}」并收藏`,
+      moveTo: (name) => `移动到「${name}」`, saveTo: (name) => `收藏到「${name}」`, createFailed: "新建项目失败，请重试。",
+      failed: "操作失败，请重试。"
+    };
 
     const HOST_ID = "lateron-folder-picker";
     const stale = document.getElementById(HOST_ID);
@@ -56,7 +78,7 @@
     // 人已经在收藏库里了，顶部再写一遍品牌纯属重复，还把项目列表往下挤了一截。
     const brandHtml = isPopover
       ? ""
-      : `<div class="lon-brand"><img class="lon-logo" src="${chrome.runtime.getURL("icon.svg")}" width="34" height="34" alt="" />LaterOn</div>`;
+      : `<div class="lon-brand"><img class="lon-logo" src="${chrome.runtime.getURL("icon128.png")}" width="34" height="34" alt="" />LaterOn</div>`;
 
     const root = document.createElement("div");
     root.className = "lon-root" + (isPopover ? " lon-popover" : "");
@@ -74,13 +96,13 @@
           <ul class="lon-page-list"></ul>
         </details>
         <div class="lon-box">
-          <div class="lon-folders" role="radiogroup" aria-label="选择项目">
+          <div class="lon-folders" role="radiogroup" aria-label="${copy.projects}">
             <div class="lon-folder-list"></div>
-            <input class="lon-new-input" maxlength="28" placeholder="" aria-label="新建项目名称" />
+            <input class="lon-new-input" maxlength="28" placeholder="" aria-label="${copy.newProject}" />
           </div>
         </div>
         <footer class="lon-foot">
-          <button type="button" class="lon-ghost">取消</button>
+          <button type="button" class="lon-ghost">${copy.cancel}</button>
           <button type="button" class="lon-primary"></button>
         </footer>
       </div>
@@ -101,26 +123,22 @@
 
     // 标题 / 摘要 / 页面清单：浮层（改卡片项目）和整屏弹窗（收藏网页）文案不同。
     if (isPopover) {
-      $(".lon-title").textContent = data.titleText || "把这篇放到哪个项目？";
+      $(".lon-title").textContent = data.titleText || copy.moveTitle;
       summaryEl.textContent = "";
       $(".lon-pages").hidden = true;
     } else {
       const single = pages.length <= 1;
       // 整屏弹窗的默认标题；单篇收藏时再换成更具体的那句。
-      $(".lon-title").textContent = "收藏到哪个项目？";
+      $(".lon-title").textContent = copy.saveTitle;
       if (single) {
-        $(".lon-title").textContent = "把这篇收藏到哪个项目？";
-        summaryEl.textContent = savedCount > 0
-          ? "这篇已经收藏过——确认后会一并移进你选的项目"
-          : "选好项目后就会收藏这一篇";
+        $(".lon-title").textContent = copy.saveSingleTitle;
+        summaryEl.textContent = savedCount > 0 ? copy.singleSaved : copy.singleNew;
         $(".lon-pages").hidden = true;
       } else {
-        summaryEl.textContent = savedCount > 0
-          ? `共 ${pages.length} 个标签页，其中 ${savedCount} 个已经收藏过——确认后会一并移进你选的项目`
-          : `共 ${pages.length} 个标签页，选好项目后就会开始逐个收藏`;
+        summaryEl.textContent = savedCount > 0 ? copy.batchSaved(pages.length, savedCount) : copy.batchNew(pages.length);
       }
     }
-    pagesLabel.textContent = `查看将要收藏的 ${pages.length} 个页面`;
+    pagesLabel.textContent = copy.pages(pages.length);
     pages.forEach((page, index) => {
       const li = document.createElement("li");
       const no = document.createElement("span");
@@ -134,26 +152,24 @@
       pageList.append(li);
     });
 
-    newInput.placeholder = isPopover
-      ? "输入新项目名，回车直接移入"
-      : "输入新项目名，回车直接收藏进去";
+    newInput.placeholder = isPopover ? copy.newMove : copy.newSave;
 
     // 输入框里写下的新项目名（空 = 用上面选中的那个项目）。
     const pendingNewName = () => newInput.value.trim();
     const selectedName = () => {
-      if (!selected) return "等待整理";
-      return folders.find((folder) => folder.id === selected)?.name || "等待整理";
+      if (!selected) return copy.inbox;
+      return folders.find((folder) => folder.id === selected)?.name || copy.inbox;
     };
     const applyLabel = () => {
       const name = pendingNewName();
       if (name) {
         confirmBtn.textContent = busy
-          ? "正在处理…"
-          : (isPopover ? `新建「${name}」并移入` : `新建「${name}」并收藏`);
+          ? copy.processing
+          : (isPopover ? copy.createMove(name) : copy.createSave(name));
       } else {
         confirmBtn.textContent = busy
-          ? "正在处理…"
-          : (isPopover ? `移动到「${selectedName()}」` : `收藏到「${selectedName()}」`);
+          ? copy.processing
+          : (isPopover ? copy.moveTo(selectedName()) : copy.saveTo(selectedName()));
       }
     };
 
@@ -163,6 +179,22 @@
       span.className = "lon-folder-ph";
       span.textContent = (name || "·").trim().slice(0, 1);
       return span;
+    }
+
+    // HTTPS 页面不能加载 HTTP 封面，尤其是 127.0.0.1 这类地址不会被浏览器自动升级。
+    // 先在创建 img 之前过滤掉不安全来源，避免触发 Mixed Content 请求和控制台告警。
+    function isSafeCoverSource(value) {
+      const source = String(value || "").trim();
+      if (!source) return false;
+      try {
+        const parsed = new URL(source, document.baseURI);
+        if (["https:", "data:", "blob:", "chrome-extension:", "moz-extension:"].includes(parsed.protocol)) {
+          return true;
+        }
+        return parsed.protocol === "http:" && window.location.protocol !== "https:";
+      } catch {
+        return false;
+      }
     }
 
     const renderFolders = () => {
@@ -176,7 +208,7 @@
 
         const icon = document.createElement("span");
         icon.className = "lon-folder-icon";
-        if (folder.cover) {
+        if (isSafeCoverSource(folder.cover)) {
           const img = document.createElement("img");
           img.className = "lon-folder-thumb";
           img.src = folder.cover;
@@ -278,7 +310,7 @@
       if (!name) return { ok: true, projectId: selected || null };
       const create = data.onCreateProject || defaultCreateProject;
       const project = await create(name);
-      if (!project || !project.id) return { ok: false, error: "新建项目失败，请重试。" };
+      if (!project || !project.id) return { ok: false, error: copy.createFailed };
       if (!folders.some((folder) => folder.id === project.id)) {
         folders = [...folders, { id: project.id, name: project.name, count: 0 }];
       }
@@ -306,7 +338,7 @@
       try {
         result = data.onPick ? await data.onPick(target.projectId, selectedName()) : null;
       } catch (error) {
-        result = { ok: false, error: (error && error.message) || "操作失败，请重试。" };
+        result = { ok: false, error: (error && error.message) || copy.failed };
       }
       if (result && result.ok === false) {
         busy = false;

@@ -1,6 +1,6 @@
 // 模拟验证：收藏「单篇」时的两种行为（由设置里的「收藏当前网页前，先选项目」控制）。
 // 用假的 chrome API 把 background.js 跑起来，检查：
-//  1) 尚未存过设置时默认开启：先在当前网页里弹出「选项目」浮层
+//  1) 尚未存过设置时默认关闭：直接收藏到「等待整理」
 //  2) 用户明确关闭时：一键直接收藏，收进「等待整理」，不弹任何浮层
 //  3) 开关打开时：先在当前网页里弹出「选项目」浮层，此刻还没有真正收藏
 //  3) 浮层里选好项目并确认 → 这一篇带上所选项目，且只弹一条结果提示（不再多出「开始/总结」）
@@ -168,12 +168,13 @@ const check = (label, ok, extra = "") => {
 };
 
 (async () => {
-  // ── 第 0 步：没有存过该字段 → 默认开启并弹浮层 ──────────────
-  console.log("── 第 0 步：首次使用默认开启 ──");
+  // ── 第 0 步：没有存过该字段 → 默认关闭并直接收藏 ────────────
+  console.log("── 第 0 步：首次使用默认关闭 ──");
   const defaultResult = await sandbox.quickSave(tab, "shortcut");
-  check("没有设置记录时默认先选项目", defaultResult?.pending === true && overlays.length === 1, JSON.stringify(defaultResult));
-  check("选择项目前不会提前收藏", !store.laterOnItems.some((i) => i.url === PAGE_URL));
-  await sendFromPage({ type: "CANCEL_BATCH_SAVE" });
+  check("没有设置记录时不弹项目选择", !defaultResult?.pending && overlays.length === 0, JSON.stringify(defaultResult));
+  check("默认直接收藏进等待整理", store.laterOnItems.some((i) => i.url === PAGE_URL && !i.projectId));
+  store.laterOnItems = store.laterOnItems.filter((i) => i.url !== PAGE_URL);
+  pills.length = 0;
   overlays.length = 0;
 
   // ── 第 1 步：用户明确关闭 → 直接收藏，不弹浮层 ────────────────
@@ -188,7 +189,7 @@ const check = (label, ok, extra = "") => {
 
   // ── 第 2 步：打开开关 → 先弹浮层，此刻不收藏 ──────────────────
   console.log("\n── 第 2 步：打开「收藏单篇前先选项目」──");
-  store.laterOnSettings = { askFolderOnSingle: true };
+  store.laterOnSettings = { askFolderOnSingle: true, askFolderOnSingleOptIn: true };
   store.laterOnItems = [{ id: "old-1", title: "早就收藏过的一篇", description: "暂无摘要", image: "", favicon: "", source: "dup.com", projectId: null, url: DUP_URL, savedAt: 1, read: false }];
   pills.length = 0;
   const triggered = await sandbox.quickSave(tab, "shortcut");
@@ -249,7 +250,7 @@ const check = (label, ok, extra = "") => {
   // 这两个入口以前各自直接写库，会绕过开关；现在统一走后台的 QUICK_SAVE_TAB。
   console.log("\n── 第 7 步：面板里的收藏按钮 ──");
   store.laterOnItems = [];
-  store.laterOnSettings = { askFolderOnSingle: true };
+  store.laterOnSettings = { askFolderOnSingle: true, askFolderOnSingleOptIn: true };
   const overlaysBeforePanel = overlays.length;
   const panelPending = await sendFromPage({ type: "QUICK_SAVE_TAB", source: "panel" });
   check("开关打开时，点按钮同样先弹浮层（不直接收藏）", panelPending?.ok === true && panelPending?.pending === true, JSON.stringify(panelPending));
@@ -272,7 +273,7 @@ const check = (label, ok, extra = "") => {
 
   // ── 第 8 步：页面注入卡住时，只重试网页浮层，绝不能打开独立窗口 ──
   console.log("\n── 第 8 步：浮层注入卡住时不打开其它形态的窗口 ──");
-  store.laterOnSettings = { askFolderOnSingle: true };
+  store.laterOnSettings = { askFolderOnSingle: true, askFolderOnSingleOptIn: true };
   hangPickerPayloadInjection = true;
   const windowsBeforeFallback = windowsCreated.length;
   const fallbackStartedAt = Date.now();

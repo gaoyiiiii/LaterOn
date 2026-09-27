@@ -17,6 +17,13 @@ const ORDER_KEY = "laterOnOrder";
 // 用户自己上传的封面（体积大）：单独放一个键，不和收藏列表混在一个数组里。
 // 否则每次读写列表都要「连图一起搬」，数据攒多了哪个页面打开都会卡很久。
 const COVERS_KEY = "laterOnCovers";
+// 图钉图标：菜单里的「置顶 / 取消置顶」和列表上的置顶角标共用这一个形状。
+// 路径是「实心」画法（Material 的 push_pin），因为角标只有十几像素——
+// 描边款在这个尺寸下会糊成一团黑，根本看不出是图钉。用实心 + currentColor 填充，
+// 小到 11px 也还认得出「钉子 + 针」的轮廓。
+// ⚠️ 放在文件最上面的常量区：renderProjects() 在页面初始化时就会用到它，
+// 声明在下面会踩到 const 的暂时性死区，整个页面直接白屏。
+const PIN_FILL_PATH = "M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z";
 let items = [];
 let projects = [];
 let filter = DEFAULT_FILTER;
@@ -84,7 +91,7 @@ const tr = (key, vars) => {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "SHOW_LIBRARY_NOTICE") return;
   if (message.tabId != null && libraryTabId != null && message.tabId !== libraryTabId) return;
-  showToast(message.message || "请先打开一个普通网页后再试", 3200, "pill");
+  showToast(message.message || tr("openRegularPage"), 3200, "pill");
   sendResponse({ shown: true });
 });
 
@@ -160,7 +167,7 @@ function nextStatus(status) {
 }
 // 标记按钮上的文字：已完成时提示「标为未读」，其余提示「标为已读」。
 function readToggleLabel(status) {
-  return status === "done" ? "标为未读" : "标为已读";
+  return status === "done" ? tr("unreadButton") : tr("readButton");
 }
 
 // 筛选只认这三档。第一次打开还没有偏好，或存入了异常值时，默认展示「未读」；
@@ -168,6 +175,13 @@ function readToggleLabel(status) {
 const FILTER_VALUES = new Set(["all", "unread", "done"]);
 function normalizeFilter(value) {
   return FILTER_VALUES.has(value) ? value : DEFAULT_FILTER;
+}
+
+// 搜索是临时查看状态；切换项目或移动收藏后离开搜索结果，避免旧关键词继续过滤新页面。
+function clearSearch() {
+  clearTimeout(searchTimer);
+  if (searchInput?.value) searchInput.value = "";
+  query = "";
 }
 // 把三个筛选按钮的高亮同步成当前的 filter。
 // 之前只有「点按钮」时才改高亮，另一边改了存储这边就对不上了，所以抽出来单独调。
@@ -189,6 +203,7 @@ async function setFilter(value) {
 async function init() {
   await window.LaterOnI18n?.getLanguage();
   window.LaterOnI18n?.applyStatic();
+  document.title = document.documentElement.lang === "en" ? "LaterOn · My saves" : "LaterOn · 我的收藏";
   const [result, activeTabs] = await Promise.all([
     chrome.storage.local.get([STORAGE_KEY, PROJECTS_KEY, ACTIVE_PROJECT_KEY, SETTINGS_KEY, CURRENT_ITEM_KEY, FILTER_KEY, FILTER_CHOSEN_KEY, ORDER_KEY, COVERS_KEY]),
     chrome.tabs.query({ active: true, currentWindow: true })
@@ -201,7 +216,7 @@ async function init() {
   if (items.some((item, i) => item.doneAt && !Number(rawItems[i]?.doneAt))) {
     chrome.storage.local.set({ [STORAGE_KEY]: items });
   }
-  projects = result[PROJECTS_KEY] || [];
+  projects = sortPinnedFirst(result[PROJECTS_KEY] || []);
   orders = result[ORDER_KEY] || {};
   activeProject = normalizeProject(result[ACTIVE_PROJECT_KEY]);
   currentItemId = result[CURRENT_ITEM_KEY] || null;
@@ -229,7 +244,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     render();
   }
   if (area === "local" && changes[PROJECTS_KEY]) {
-    projects = changes[PROJECTS_KEY].newValue || [];
+    projects = sortPinnedFirst(changes[PROJECTS_KEY].newValue || []);
     render();
     renderProjects();
   }
@@ -264,35 +279,12 @@ document.querySelectorAll(".project-nav").forEach((button) => {
   enableDropTarget(button);
 });
 
-const projectForm = document.querySelector("#projectForm");
-const projectNameInput = document.querySelector("#projectName");
+const projectsSection = document.querySelector(".projects-section");
 
-document.querySelector("#showProjectForm").addEventListener("click", () => {
-  if (projectForm.hidden) openProjectForm(); else closeProjectForm();
-});
-
-// 点输入框以外的任何地方 → 收起新建项目的输入框（点加号本身除外，交给上面的开关处理）。
-document.addEventListener("pointerdown", (event) => {
-  if (projectForm.hidden) return;
-  const target = event.target;
-  if (target?.closest?.("#projectForm") || target?.closest?.("#showProjectForm")) return;
-  closeProjectForm();
-});
-
-function openProjectForm() {
-  projectForm.hidden = false;
-  projectNameInput.value = "";
-  projectNameInput.focus();
+function syncProjectsVisibility() {
+  const insideProject = activeProject !== "all" && activeProject !== "unfiled";
+  projectsSection?.classList.toggle("is-visible", insideProject);
 }
-
-function closeProjectForm() {
-  projectForm.hidden = true;
-  projectNameInput.value = "";
-}
-
-projectNameInput.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") { event.preventDefault(); closeProjectForm(); }
-});
 
 document.querySelector("#openSettings")?.addEventListener("click", async (event) => {
   const url = chrome.runtime.getURL("settings.html");
@@ -307,34 +299,38 @@ document.querySelector("#openSettings")?.addEventListener("click", async (event)
   else chrome.tabs.create({ url });
 });
 
-projectForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const name = projectNameInput.value.trim();
-  if (!name) { closeProjectForm(); return; }
+async function createProject(nameValue) {
+  const name = String(nameValue || "").trim();
+  if (!name) return;
   // 同名就不重复建，直接跳到那个项目。
   const existing = projects.find((project) => project.name === name);
   if (existing) {
-    closeProjectForm();
     selectProject(existing.id);
-    showToast(`已有同名项目「${name}」`);
+    showToast(tr("projectExists", { name }));
     return;
   }
   const project = { id: crypto.randomUUID(), name, createdAt: Date.now() };
   projects = [...projects, project];
-  // 先把输入框收起来，再写存储 —— 这样无论成功与否输入框都会消失。
-  // （之前这里写的是 event.currentTarget.hidden = true，但 await 之后
-  //   event.currentTarget 已经变成 null，那行其实一直在报错、输入框就赖着不走。）
-  closeProjectForm();
   try {
     await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
   } catch {
     projects = projects.filter((entry) => entry.id !== project.id);
-    showToast("新建项目失败，请重试");
+    showToast(tr("createProjectFailed"));
     return;
   }
   selectProject(project.id);
-  showToast(`已新建项目「${name}」`);
-});
+  showToast(tr("projectCreated", { name }));
+}
+
+async function promptCreateProject() {
+  const result = await LaterOnDialog.prompt({
+    title: tr("newProject"),
+    message: tr("newProjectHint"),
+    fields: [{ name: "name", label: tr("projectNameLabel"), placeholder: tr("projectNamePlaceholder"), maxLength: 28 }],
+    confirmText: tr("create")
+  });
+  if (result?.ok) await createProject(result.values?.name);
+}
 
 document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => setFilter(button.dataset.filter));
@@ -351,9 +347,7 @@ searchInput.addEventListener("input", () => {
 // 之所以要一次性复位这么多：钻进某个项目或筛到「未读」之后，用户对「怎么退回去」是没有把握的，
 // 点品牌标识就是那个万能的后退——不用去猜自己刚才点过什么。
 function goHome() {
-  clearTimeout(searchTimer);
-  if (searchInput.value) searchInput.value = "";
-  query = "";
+  clearSearch();
   setFilter("unread");
   selectProject("all");
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -399,8 +393,23 @@ grid.addEventListener("change", (event) => {
   if (!select) return;
   const card = event.target.closest(".card");
   const item = items.find((entry) => entry.id === card.dataset.id);
-  if (item) updateItem(item.id, { projectId: select.value || null });
+  if (item) {
+    clearSearch();
+    updateItem(item.id, { projectId: select.value || null });
+  }
 });
+// 卡片上右键 = 这一篇的菜单（打开 / 标记已读 / 编辑 / 移动 / 多选 / 删除）。
+// 和多选模式不冲突：多选时右键照样出菜单，只是「多选」那一项变成「取消选择」。
+grid.addEventListener("contextmenu", (event) => {
+  const card = event.target.closest(".card");
+  if (!card) return;
+  const item = items.find((entry) => entry.id === card.dataset.id);
+  if (!item) return;
+  // 不拦掉默认行为的话，浏览器会把自己的原生菜单叠在我们那个上面。
+  event.preventDefault();
+  openItemMenu(item.id, event.clientX, event.clientY);
+});
+
 // ── 卡片上的「所属项目」：点一下弹出选项目浮层（和网页收藏时同一个窗口）────
 // 原生 <select> 的下拉我们不让它弹（mousedown 就拦掉），改成贴着这个按钮弹浮层。
 // 浮层里选中/新建项目后，直接改这篇的 projectId，不用再走原生下拉。
@@ -442,7 +451,7 @@ grid.addEventListener("keydown", (event) => {
 //
 // 参数：container 在哪个容器里拖 / selector 被拖的元素 / idAttr 元素上记 id 的
 // data 属性名（"id" → data-id、"project" → data-project）/ commit 松手时怎么存。
-function enableReorder({ container, selector, idAttr, commit }) {
+function enableReorder({ container, selector, idAttr, commit, dragImageHotspotX = null }) {
   container.addEventListener("dragstart", (event) => {
     const el = event.target.closest(selector);
     if (!el) return;
@@ -465,7 +474,13 @@ function enableReorder({ container, selector, idAttr, commit }) {
     dragPreview.style.width = `${bounds.width}px`;
     dragPreview.style.height = `${bounds.height}px`;
     document.body.append(dragPreview);
-    const offsetX = Math.max(0, Math.min(bounds.width, event.clientX - bounds.left));
+    const grabbedOffsetX = Math.max(0, Math.min(bounds.width, event.clientX - bounds.left));
+    // 收藏卡片拖向左侧项目时，用卡片左边缘作为横向触发基准：拖影的光标热点
+    // 固定在左边缘附近后，左边缘刚碰到项目行，真实指针也就进入了放置区。
+    // 纵向仍保留用户原本抓住的位置，避免目标项目上下错位。
+    const offsetX = Number.isFinite(dragImageHotspotX)
+      ? Math.max(0, Math.min(bounds.width, dragImageHotspotX))
+      : grabbedOffsetX;
     const offsetY = Math.max(0, Math.min(bounds.height, event.clientY - bounds.top));
     event.dataTransfer?.setDragImage?.(dragPreview, offsetX, offsetY);
     // 快照要在 setDragImage 之后拍，并且此时元素还没加 .dragging（那个类会改变外观）。
@@ -509,7 +524,7 @@ function enableReorder({ container, selector, idAttr, commit }) {
 }
 
 // 卡片：拖一张卡片到另一个位置 → 换阅读顺序（每个项目各存一份，互不影响）。
-enableReorder({ container: grid, selector: ".card", idAttr: "id", commit: commitCardOrder });
+enableReorder({ container: grid, selector: ".card", idAttr: "id", commit: commitCardOrder, dragImageHotspotX: 8 });
 // 图板：拖一块图板 → 换这个类目在图板墙上的位置。和拖卡片是同一套手感。
 enableReorder({ container: boardGrid, selector: ".board-card", idAttr: "project", commit: commitBoardOrder });
 
@@ -655,10 +670,10 @@ async function commitCardOrder(dropIndex) {
     sortSelect.value = "custom";
     render();
     saveSortSetting();
-    showToast("已切到「自定义顺序」，这次排序已保存");
+    showToast(tr("customSortEnabled"));
   } else {
     render();
-    showToast("顺序已保存");
+    showToast(tr("orderSaved"));
   }
   void grid.offsetHeight;   // 强制回流，让新位置立刻生效，再恢复过渡
   grid.classList.remove("no-transition");
@@ -689,14 +704,14 @@ async function commitBoardOrder(dropIndex) {
   for (const project of projects) if (!nextProjects.includes(project)) nextProjects.push(project);
   if (nextProjects.every((project, i) => project.id === projects[i]?.id)) return;   // 位置没变，不用写库
 
-  const name = projects.find((project) => project.id === draggedId)?.name || "这个类目";
+  const name = projects.find((project) => project.id === draggedId)?.name || tr("unnamedProject");
   boardGrid.classList.add("no-transition");
   clearReorderPreview();
   projects = nextProjects;
   await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
   render();
   renderProjects();   // 侧栏的项目列表跟着换，两边顺序始终一致
-  showToast(`已把「${name}」移到第 ${next.indexOf(draggedId) + 1} 个`);
+  showToast(tr("movedToPosition", { name, n: next.indexOf(draggedId) + 1 }));
   void boardGrid.offsetHeight;
   boardGrid.classList.remove("no-transition");
 }
@@ -738,7 +753,6 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     if (folderMenu) { closeFolderMenu(); return; }
     if (renamingId) { stopRename(); return; }
-    if (!projectForm.hidden) { closeProjectForm(); return; }
     if (selectMode) setSelectMode(false);
     return;
   }
@@ -882,7 +896,12 @@ function boardGroups() {
     name: project.name,
     note: project.note || "",
     cover: project.cover || "",
-    items: items.filter((item) => item.projectId === project.id && matchesReadFilter(item))
+    // 用户在图板设置里自己挑的封面组合（收藏 id，按顺序，最多 3 个）。
+    pick: Array.isArray(project.coverPick) ? project.coverPick : [],
+    items: items.filter((item) => item.projectId === project.id && matchesReadFilter(item)),
+    // 这个项目里的全部收藏（不管筛选）。只给「自己挑的封面」用：
+    // 那是用户明确指定的门面，不该因为切一下未读/已读就换一张脸。
+    own: items.filter((item) => item.projectId === project.id)
   }));
   // 按存下来的图板顺序排（拖过就有顺序，没拖过就是项目的创建顺序）。
   const byId = new Map(groups.map((group) => [group.id, group]));
@@ -892,10 +911,11 @@ function boardGroups() {
     if (group) ordered.push(group);
   }
   for (const group of groups) if (!ordered.includes(group)) ordered.push(group);
-  // 一个类目里没有收藏（空项目，或当前筛选下这个项目里一篇都不剩）就不显示图板。
+  // 真正的空项目也要显示：这里叫“全部项目”，而且用户刚从末尾加号创建的项目
+  // 返回首页后必须找得到。只有“本来有内容、但当前阅读筛选下一篇都不剩”的项目才隐藏。
   // 注意：搜索时根本不会走到这里——有搜索词时视图直接切到卡片列表（见 isBoardView），
   // 因为搜索要找的是「文章」，按类目名去筛图板是另一回事。
-  return ordered.filter((group) => group.items.length > 0);
+  return ordered.filter((group) => group.items.length > 0 || group.own.length === 0);
 }
 
 function renderBoards() {
@@ -915,6 +935,7 @@ function renderBoards() {
 
   boardGrid.replaceChildren();
   for (const group of groups) boardGrid.append(createBoardCard(group));
+  boardGrid.append(createProjectBoard());
 
   empty.hidden = groups.length > 0;
   if (!groups.length && items.length) {
@@ -924,6 +945,24 @@ function renderBoards() {
     empty.querySelector("h2").textContent = tr("quiet");
     empty.querySelector("p").textContent = tr("quietHint");
   }
+}
+
+function createProjectBoard() {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "board-create";
+  button.setAttribute("aria-label", tr("newProjectButton"));
+  button.title = tr("newProjectButton");
+
+  const plus = document.createElement("span");
+  plus.className = "board-create-plus";
+  plus.textContent = "+";
+  plus.setAttribute("aria-hidden", "true");
+  const label = document.createElement("strong");
+  label.textContent = tr("newProject");
+  button.append(plus, label);
+  button.addEventListener("click", () => { promptCreateProject().catch(() => showToast(tr("createProjectFailed"))); });
+  return button;
 }
 
 function createBoardCard(group) {
@@ -964,8 +1003,16 @@ function createBoardCard(group) {
   return card;
 }
 
-// 拼封面用哪几篇：最新的优先，有封面的优先（没封面的只用来补空位）。
+// 拼封面用哪几篇：
+//   ① 用户在「编辑项目」里自己挑过 → 就照他挑的顺序来（那是他指定的门面，
+//      所以从「这个项目的全部收藏」里找，不受顶部未读/已读筛选影响）；
+//   ② 没挑过，或者挑的那几篇被删了 / 挪走了 / 封面没了 → 自动：最新的优先，有封面的优先
+//      （没封面的只用来补空位）。
 function boardCoverItems(group) {
+  const picked = (group.pick || [])
+    .map((id) => (group.own || group.items).find((item) => item.id === id))
+    .filter((item) => item && resolveImage(item));
+  if (picked.length) return picked.slice(0, 3);
   const sorted = [...group.items].sort((a, b) => b.savedAt - a.savedAt);
   const withCover = sorted.filter((item) => resolveImage(item));
   const withoutCover = sorted.filter((item) => !resolveImage(item));
@@ -1013,7 +1060,7 @@ function boardNote(group) {
   const written = (group.note || "").trim();
   if (written) return { text: written, auto: false };
   const list = group.items;
-  if (!list.length) return { text: "还没有收藏，存进来就会出现在封面上。", auto: true };
+  if (!list.length) return { text: tr("emptyBoardNote"), auto: true };
   const counts = new Map();
   for (const item of list) {
     const source = (item.source || "").trim();
@@ -1025,18 +1072,18 @@ function boardNote(group) {
     .map(([source]) => source);
   const latest = Math.max(...list.map((item) => Number(item.savedAt) || 0));
   const parts = [];
-  if (topSources.length) parts.push(`主要来自 ${topSources.join("、")}`);
-  if (latest) parts.push(`${formatTime(latest)}更新`);
-  return { text: parts.join(" · ") || `${list.length} 篇收藏`, auto: true };
+  if (topSources.length) parts.push(tr("mainlyFrom", { sources: topSources.join(document.documentElement.lang === "en" ? ", " : "、") }));
+  if (latest) parts.push(tr("updatedAt", { time: formatTime(latest) }));
+  return { text: parts.join(" · ") || tr("itemCount", { n: list.length }), auto: true };
 }
 
 function boardMeta(group) {
   const count = group.items.length;
-  if (!count) return "还没有收藏";
+  if (!count) return tr("emptyCollection");
   const unread = group.items.filter((item) => item.status !== "done").length;
   const english = document.documentElement.lang === "en";
   return unread ? (english ? `${count} saves · ${unread} ${tr("notFinished")}` : `${count} 篇 · ${unread} ${tr("notFinished")}`)
-    : (english ? `${count} saves · All read` : `${count} 篇 · 都读完了`);
+    : (english ? `${count} saves · ${tr("allRead")}` : `${count} 篇 · ${tr("allRead")}`);
 }
 
 boardGrid.addEventListener("click", (event) => {
@@ -1062,27 +1109,46 @@ async function editBoard(projectId) {
   // 比从前只能写一句简介更顺手。名称/封面留空就维持原样，简介留空则退回自动生成。
   //
   // 封面这里要显示「这个项目现在真正在用的那张」，而不是 project.cover（它常常是空的）：
-  //   自己传过 → 显示传的那张；没传过 → 显示项目里第一篇的封面（侧栏缩略图也是这张）。
-  // 两者用 derived 区分：自动取的那张没有「移除」的意义（移除后还是它），
-  // 所以弹窗里那一栏默认禁用「移除封面」，并说明这张是自动取的。
+  //   自己传过 → 显示传的那张；没传过 → 显示挑过的第一张 / 项目里第一篇的封面
+  //   （侧栏缩略图也是这张）。显示的不是自定义封面时用 derived 标出来：
+  //   那种封面没有「移除」的意义（移除后还是它），所以弹窗里禁用「移除封面」并说明来路。
   const storedCover = project.cover || "";
   const shownCover = projectCoverFor(projectId) || "";
-  const coverIsDerived = !storedCover && !!shownCover;
+
+  // 备选封面 = 这个项目里所有「能解析出图」的收藏，最新的排前面。
+  // 只给有图的：没图的挑上去也拼不出东西。（最多列 48 张，够挑的了。）
+  const candidates = items
+    .filter((item) => (item.projectId || "") === projectId && resolveImage(item))
+    .sort((a, b) => (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0))
+    .slice(0, 48)
+    .map((item) => ({ id: item.id, src: resolveImage(item), title: item.title || item.url || "" }));
+  // 已经挑过的（按顺序），顺手把已经不存在的收藏剔除——存储里别留着死 id。
+  const pickAlive = (list) => (Array.isArray(list) ? list : []).filter((id) => items.some((item) => item.id === id));
+  const storedPick = pickAlive(project.coverPick);
+  // 当前显示的那张到底是怎么来的，决定封面栏的说明文案。
+  const source = storedCover ? "custom" : storedPick.length ? "picked" : shownCover ? "auto" : "none";
+  const coverNotes = {
+    custom: [tr("coverDefaultNote"), tr("coverRemoved")],
+    picked: [tr("coverDefaultNote"), tr("coverReady")],
+    auto: [tr("coverDefaultNote"), tr("coverReady")],
+    none: [tr("coverDefaultNote"), tr("coverRemoved")]
+  }[source];
+
   const result = await LaterOnDialog.prompt({
-    title: `编辑「${project.name}」`,
+    title: tr("editProjectTitle", { name: project.name }),
     fields: [
       {
         name: "name",
-        label: "项目名称",
+        label: tr("projectNameLabel"),
         value: project.name,
-        placeholder: "这个类目叫什么",
+        placeholder: tr("projectNamePlaceholder"),
         maxLength: 28
       },
       {
         name: "note",
-        label: "简介",
+        label: tr("projectNoteLabel"),
         value: project.note || "",
-        placeholder: "这个类目是收集什么的？",
+        placeholder: tr("projectNotePlaceholder"),
         multiline: true,
         rows: 3,
         maxLength: 200
@@ -1090,17 +1156,21 @@ async function editBoard(projectId) {
     ],
     cover: {
       name: "cover",
-      label: "封面",
+      label: tr("cover"),
       value: shownCover,
-      derived: coverIsDerived,
-      note: coverIsDerived
-        ? "这张是按项目里的收藏自动取的；上传一张就会固定用它"
-        : "选一张本地图片，会自动压缩后保存（约 50–80KB）",
-      removedNote: coverIsDerived
-        ? "已改回自动取的封面，点「保存」生效"
-        : "已移除，点「保存」生效（会退回按项目内容自动取封面）"
+      derived: !storedCover,
+      note: coverNotes[0],
+      removedNote: coverNotes[1],
+      // 封面组合：从项目里已抓到的封面里点选最多 3 张，拖拽决定顺序。
+      // 传了 candidates 才会出现这一块（收藏条目的编辑弹窗不传，界面不变）。
+      candidates,
+      picks: storedPick,
+      picksName: "coverPick",
+      picksLabel: tr("coverPicks"),
+      maxPicks: 3,
+      picksNote: tr("coverPicksHint")
     },
-    confirmText: "保存"
+    confirmText: tr("save")
   });
   if (!result?.ok) return;
   const nextName = (result.values?.name ?? "").trim();
@@ -1111,31 +1181,43 @@ async function editBoard(projectId) {
   // 封面动没动，要跟「打开弹窗时看到的那张」比。关键是别把自动取的那张
   // 顺手写成项目自己的封面 —— 那样它就不再跟着项目里的新收藏变了。
   const coverChanged = nextCover !== shownCover && nextCover !== storedCover;
-  if (!nameChanged && !noteChanged && !coverChanged) return;
+  // 封面组合：弹窗里给了备选就一定会带回一个数组（可能是空数组 = 全部取消）。
+  // 没给备选（比如这个项目里还没有任何封面）时这份结果里没有这个键，那就维持原样。
+  const nextPick = pickAlive(result.values?.coverPick ?? storedPick);
+  const pickChanged = nextPick.join(",") !== storedPick.join(",");
+  if (!nameChanged && !noteChanged && !coverChanged && !pickChanged) return;
   // 名字若清空就沿用原来的，避免类目变成空白。
   const finalName = nameChanged ? nextName : project.name;
   if (nameChanged && projects.some((entry) => entry.id !== projectId && entry.name === finalName)) {
-    showToast("已经有个同名项目了");
+    showToast(tr("duplicateProject"));
     return;
   }
-  projects = projects.map((entry) => entry.id === projectId
-    ? {
+  projects = projects.map((entry) => {
+    if (entry.id !== projectId) return entry;
+    const updated = {
       ...entry,
       name: finalName,
       note: nextNote,
       // 没动过封面就原样保留（含「没有自定义封面」这个状态）。
       ...(coverChanged ? { cover: nextCover } : {})
+    };
+    if (pickChanged) {
+      // 全部取消 = 回到「按项目内容自动拼封面」，把字段删掉，别在存储里留个空壳。
+      if (nextPick.length) updated.coverPick = nextPick;
+      else delete updated.coverPick;
     }
-    : entry);
+    return updated;
+  });
   await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
   render();
   // 提示按实际改了什么来写，不啰嗦。
   const changed = [
-    nameChanged ? "名称" : "",
-    noteChanged ? "简介" : "",
-    coverChanged ? "封面" : ""
+    nameChanged ? tr("projectUpdateName") : "",
+    noteChanged ? tr("projectUpdateNote") : "",
+    coverChanged ? tr("projectUpdateCover") : "",
+    pickChanged ? tr("projectUpdateCollage") : ""
   ].filter(Boolean).join(" · ");
-  showToast(nameChanged ? `「${finalName}」已更新：${changed}` : `${changed}已保存`);
+  showToast(nameChanged ? tr("projectUpdated", { name: finalName, changes: changed }) : tr("projectChangesSaved", { changes: changed }));
 }
 
 function nextLibraryRender(fn) {
@@ -1181,6 +1263,7 @@ function nextCoverFallback(currentSrc) {
 // 把「正在读」那篇标出来（全屏与侧栏都会用到这个共享标记）。
 function applyCurrentHighlight() {
   for (const [id, card] of cardMap) {
+    card.dataset.currentLabel = tr("currentReading");
     card.classList.toggle("is-current", id === currentItemId);
   }
 }
@@ -1246,7 +1329,7 @@ function createCard(item) {
   // 因此 DOM 本身也只能放 http/https，不能把 javascript: 等协议留给浏览器执行。
   coverLink.href = titleLink.href = safeTarget(item.url) || "#";
   setText(fragment.querySelector(".title-link h2"), item.title);
-  setText(fragment.querySelector(".description"), item.description);
+  setText(fragment.querySelector(".description"), IS_EMPTY_SUMMARY.test(item.description) ? tr("noDescription") : item.description);
   fragment.querySelector(".source-name").textContent = item.source;
   fragment.querySelector("time").textContent = formatTime(item.savedAt);
   favicon.src = item.favicon;
@@ -1268,10 +1351,10 @@ function createCard(item) {
 // 但卡片 select 需要这个选项才能把 .value 设对，否则卡片上会显示成空白。
 function fillProjectSelect(select, ensureId, ensureName) {
   select.replaceChildren();
-  select.append(new Option("等待整理", ""));
+  select.append(new Option(tr("inbox"), ""));
   projects.forEach((project) => select.append(new Option(project.name, project.id)));
   if (ensureId && !projects.some((project) => project.id === ensureId)) {
-    select.append(new Option(ensureName || "新项目", ensureId));
+    select.append(new Option(ensureName || tr("newProject"), ensureId));
   }
 }
 
@@ -1286,7 +1369,7 @@ function updateCard(card, item) {
   // 标题和摘要也能同步跟上：卡片是复用的 DOM（只在第一次出现时新建），
   // 不同步的话，改完标题、或重复收藏抓到更好的信息，卡片上会一直是旧文字。
   setText(card.querySelector(".title-link h2"), item.title);
-  setText(card.querySelector(".description"), item.description);
+  setText(card.querySelector(".description"), IS_EMPTY_SUMMARY.test(item.description) ? tr("noDescription") : item.description);
   const target = safeTarget(item.url) || "#";
   const titleLink = card.querySelector(".title-link");
   const coverLink = card.querySelector(".cover-link");
@@ -1310,28 +1393,28 @@ function setText(element, value) {
 // ── 编辑收藏的标题 / 摘要 ──────────────────────────────────
 // 没抓到摘要时存的就是「暂无摘要」这几个字，编辑时要把占位当成「空」显示给用户。
 const NO_SUMMARY = "暂无摘要";
-const IS_EMPTY_SUMMARY = new RegExp(`^\\s*(${NO_SUMMARY})?\\s*$`);
+const IS_EMPTY_SUMMARY = /^\s*(暂无摘要|No summary)?\s*$/i;
 // 自动抓取难免有偏差（标题带站名、摘要抓成导航文字），所以允许用户自己改。
 // 改过的会被标记为 titleEdited / descriptionEdited，
 // 之后再次收藏同一网址时，后台不会再拿自动抓取的结果覆盖掉用户手写的版本。
 async function editItem(item) {
   const result = await LaterOnDialog.prompt({
-    title: "编辑收藏",
-    message: IS_EMPTY_SUMMARY.test(item.description) ? "这篇没抓到摘要，可以自己补一句。" : "",
+    title: tr("editItem"),
+    message: IS_EMPTY_SUMMARY.test(item.description) ? tr("missingSummaryHint") : "",
     // 封面：可以自己上传一张本地图片（自动压缩后保存），也可以移除，显示回 Logo 占位。
-    cover: { name: "cover", label: "封面", value: resolveImage(item) },
+    cover: { name: "cover", label: tr("cover"), value: resolveImage(item) },
     fields: [
-      { name: "title", label: "标题", value: item.title, maxLength: 200 },
+      { name: "title", label: tr("title"), value: item.title, maxLength: 200 },
       {
         name: "description",
-        label: "摘要",
+        label: tr("summary"),
         value: IS_EMPTY_SUMMARY.test(item.description) ? "" : item.description,
-        placeholder: "留空就显示「暂无摘要」",
+        placeholder: tr("summaryPlaceholder"),
         multiline: true,
         maxLength: 500
       }
     ],
-    confirmText: "保存"
+    confirmText: tr("save")
   });
   if (!result?.ok) return;
 
@@ -1366,14 +1449,15 @@ async function editItem(item) {
     // 记一笔：这是用户自己定的封面，之后再收藏同一网址时别用自动抓取的把它盖掉。
     patch.imageEdited = true;
   }
-  if (!Object.keys(patch).length) { showToast("没有改动"); return; }
+  if (!Object.keys(patch).length) { showToast(tr("noChanges")); return; }
   await updateItem(item.id, patch);
   // 立刻重画一次：存储的变更广播不一定会回到自己这个页面，靠它会显得「改了没反应」。
   render();
-  showToast("已保存修改");
+  showToast(tr("changesSaved"));
 }
 
 function selectProject(projectId) {
+  clearSearch();
   activeProject = normalizeProject(projectId);
   renderProjects();
   render();
@@ -1385,6 +1469,48 @@ function normalizeProject(projectId) {
   return projects.some((project) => project.id === projectId) ? projectId : "all";
 }
 
+// ── 项目置顶 ────────────────────────────────────────────────
+// 置顶（project.pinned）的实现刻意做得很简单：**置顶的项目永远排在数组最前面**。
+// 这样「存储里的顺序」就是「侧栏看到的顺序」，拖拽排序按屏幕算出来的下标可以直接用，
+// 不用再做一次「显示顺序 ↔ 存储顺序」的换算（多一层换算就多一处会对不上的地方）。
+function sortPinnedFirst(list) {
+  const pinned = list.filter((project) => project.pinned);
+  const rest = list.filter((project) => !project.pinned);
+  return [...pinned, ...rest];
+}
+
+// 置顶 / 取消置顶（右键菜单和「⋯」菜单里的同一项）。
+// 取消时不去猜「它原来在第几个」（没人记得住），只让它从置顶那一拨里退出来，
+// 落到最后一个还置顶的项目后面——位置基本不动，用户再拖一下就能微调。
+async function toggleProjectPin(id) {
+  const project = projects.find((entry) => entry.id === id);
+  if (!project) return;
+  const next = projects.filter((entry) => entry.id !== id);
+  const moved = { ...project };
+  // 除了该项目之外，还置顶着几个、普通的有几个——两者夹出它能去的下标范围。
+  const plain = next.filter((entry) => !entry.pinned);
+  const pins = next.length - plain.length;
+  if (project.pinned) {
+    // 取消置顶：回到它在普通列表里原来的那个位置（置顶时记下的序号），
+    // 落在「还置顶着的那几个」之后。记不住（数据是别的界面写的）就排在置顶区之后。
+    const back = Number.isInteger(project.pinFrom) ? Math.max(0, Math.min(project.pinFrom, plain.length)) : 0;
+    delete moved.pinned;
+    delete moved.pinFrom;
+    next.splice(pins + back, 0, moved);
+  } else {
+    // 置顶：提到置顶那一拨的最后，并记下它原本排第几，取消时才能原样放回去。
+    // 序号要在「还没把自己摘出去」的列表上算——摘出去之后 findIndex 永远找不到自己。
+    const plainAll = projects.filter((entry) => !entry.pinned);
+    moved.pinned = true;
+    moved.pinFrom = Math.max(0, plainAll.findIndex((entry) => entry.id === id));
+    next.splice(pins, 0, moved);
+  }
+  projects = next;
+  renderProjects();
+  await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
+  showToast(tr(moved.pinned ? "pinDone" : "unpinDone", { name: project.name }));
+}
+
 function renderProjects() {
   const counts = new Map();
   let unfiled = 0;
@@ -1394,36 +1520,46 @@ function renderProjects() {
   }
   document.querySelector("#allCount").textContent = items.length;
   document.querySelector("#unfiledCount").textContent = unfiled;
+  syncProjectsVisibility();
   // 「待整理」那块：有内容就高亮，并把提示写成一句要去办的事。
   const inbox = document.querySelector(".inbox-card");
   if (inbox) {
     inbox.classList.toggle("has-items", unfiled > 0);
     inbox.querySelector(".inbox-hint").textContent = unfiled
-      ? (document.documentElement.lang === "en" ? `${unfiled} saves not assigned` : `${unfiled} 篇还没归到项目`)
+      ? tr("inboxPending", { n: unfiled })
       : tr("noInbox");
   }
   document.querySelectorAll(".project-nav").forEach((button) => button.classList.toggle("active", button.dataset.project === activeProject));
 
-  // 「项目列表」始终显示（用户需求）：不管当前在全部项目、待整理还是某个项目里，
-  // 左侧都列出所有项目，想换直接点——不用先退回全部项目。
+  // 项目列表的 DOM 始终维护完整，但只在具体项目里显示；首页已有图板，
+  // 等待整理也保持独立，避免同一批项目在左侧重复出现。
   const projectList = document.querySelector("#projectList");
   // 正在改名时，重建列表会打断输入；先记下焦点是否在改名输入框上，重建后再还回去。
   const hadRenameFocus = !!document.activeElement?.classList?.contains("project-rename");
   projectList.replaceChildren();
+  const pinCount = projects.filter((project) => project.pinned).length;
+  const divider = document.createElement("div");
+  divider.className = "project-pin-sep";
+  divider.setAttribute("role", "separator");
+  divider.setAttribute("aria-label", tr("pinnedProjects"));
 
-  projects.forEach((project) => {
+  projects.forEach((project, index) => {
     const row = document.createElement("div");
     row.className = "project-row";
     row.dataset.id = project.id;
     row.dataset.project = project.id; // 拖拽放下时要读它，缺了会把归属写成 undefined
 
+    row.classList.toggle("is-pinned", !!project.pinned);
     const button = document.createElement("button");
     button.type = "button";
     button.className = `project-nav${activeProject === project.id ? " active" : ""}`;
     button.dataset.project = project.id;
     // 每行左侧不是文件夹图标，而是该项目的缩略图（和选项目浮层里的一样）：
     // 项目自带封面就用封面，否则取项目里某篇的封面，都没有就用名字首字做占位色块。
-    button.append(projectThumb(project.name, projectCoverFor(project.id)));
+    const thumb = projectThumb(project.name, projectCoverFor(project.id));
+    // 置顶的项目在缩略图右下角挂一枚图钉：一眼能看出「它不是因为名字排第一，是钉住的」。
+    if (project.pinned) thumb.append(pinBadge());
+    button.append(thumb);
 
     if (project.id === renamingId) {
       // 改名中：名字位置换成输入框（回车保存、Esc 取消、点到别处自动保存）。
@@ -1433,7 +1569,7 @@ function renderProjects() {
       input.value = renameDraft;
       input.maxLength = 28;
       input.autocomplete = "off";
-      input.setAttribute("aria-label", "项目名称");
+      input.setAttribute("aria-label", tr("projectNameLabel"));
       input.addEventListener("input", () => { renameDraft = input.value; });
       input.addEventListener("click", (event) => event.stopPropagation());
       input.addEventListener("dblclick", (event) => event.stopPropagation());
@@ -1447,7 +1583,7 @@ function renderProjects() {
       const name = document.createElement("span");
       name.className = "project-name";
       name.textContent = project.name;
-      name.title = `${project.name}（双击改名 · 按住拖动可排序）`;
+      name.title = tr("projectTip", { name: project.name, pinned: project.pinned ? tr("pinnedPrefix") : "" });
       button.append(name);
     }
 
@@ -1470,8 +1606,8 @@ function renderProjects() {
     const more = document.createElement("button");
     more.type = "button";
     more.className = "project-more";
-    more.title = "更多操作";
-    more.setAttribute("aria-label", `「${project.name}」的更多操作`);
+    more.title = tr("moreActions");
+    more.setAttribute("aria-label", tr("projectAria", { name: project.name }));
     more.textContent = "⋯";
     more.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -1487,6 +1623,8 @@ function renderProjects() {
     // 拖拽收藏到项目：监听挂在外层行上，这样右侧「⋯」那一小块也能接收放下。
     enableDropTarget(row);
     projectList.append(row);
+    // 置顶区和其余项目之间画一条细线：告诉用户「上面这几个是钉住的，拖下来就是取消置顶」。
+    if (pinCount && index === pinCount - 1 && projects.length > pinCount) projectList.append(divider.cloneNode(true));
   });
 
   const renameInput = projectList.querySelector(".project-rename");
@@ -1509,7 +1647,7 @@ function refreshCardProjectOptions() {
     const select = card.querySelector(".project-select");
     if (!select) continue;
     const current = select.value;
-    select.replaceChildren(new Option("等待整理", ""));
+    select.replaceChildren(new Option(tr("inbox"), ""));
     projects.forEach((project) => select.append(new Option(project.name, project.id)));
     if (select.value !== current) select.value = current;
   }
@@ -1534,11 +1672,11 @@ function enableDropTarget(target) {
     const itemId = event.dataTransfer.getData("text/plain");
     const destination = target.dataset.project;
     const projectId = destination === "unfiled" ? null : destination;
-    const projectName = projectId ? projects.find((project) => project.id === projectId)?.name : "等待整理";
+    const projectName = projectId ? projects.find((project) => project.id === projectId)?.name : tr("inbox");
     clearDropHighlights();
     if (!itemId || !items.some((item) => item.id === itemId)) return;
     await updateItem(itemId, { projectId });
-    showToast(`已移入「${projectName || "项目"}」`);
+    showToast(tr("movedIntoProject", { name: projectName || tr("genericProject") }));
   });
 }
 
@@ -1593,12 +1731,19 @@ function moveFolderDropLine(pointerY) {
   const projectList = document.querySelector("#projectList");
   if (!projectList || !folderDragId) return;
   const rows = [...projectList.children].filter((element) => element.classList.contains("project-row"));
-  let before = null;
+  let target = null;
   for (const row of rows) {
     if (row.dataset.id === folderDragId) continue; // 被拖的那行不参与比较
     const bounds = row.getBoundingClientRect();
-    if (pointerY < bounds.top + bounds.height / 2) { before = row; break; }
+    if (pointerY < bounds.top + bounds.height / 2) { target = row; break; }
   }
+  // 先把「插到哪一行前面」换成下标（去掉被拖那项后，它前面还有几行），
+  // 夹到允许区间里，再换回行对象——这样指示线本身也只在合法的落点上出现，
+  // 用户看到的「会插到这里」和松手后的结果永远一致。
+  const others = rows.filter((row) => row.dataset.id !== folderDragId);
+  const index = target ? rows.slice(0, rows.indexOf(target)).filter((row) => row.dataset.id !== folderDragId).length : others.length;
+  const [min, max] = folderDropRange();
+  const before = others[Math.max(min, Math.min(max, index))] || null;
   if (!folderDropLine) {
     folderDropLine = document.createElement("div");
     folderDropLine.className = "folder-drop-line";
@@ -1625,11 +1770,25 @@ async function commitFolderOrder() {
   const dragged = projects.find((project) => project.id === folderDragId);
   if (index == null || !dragged) return;
   const rest = projects.filter((project) => project.id !== dragged.id);
-  rest.splice(Math.max(0, Math.min(index, rest.length)), 0, dragged);
+  const [min, max] = folderDropRange();
+  const at = Math.max(min, Math.min(max, index));
+  rest.splice(at, 0, dragged);
   if (rest.every((project, i) => project.id === projects[i].id)) return; // 位置没变，不用写库
   projects = rest;
   await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
-  showToast(`已把「${dragged.name}」移到第 ${rest.indexOf(dragged) + 1} 个`);
+  showToast(tr("movedToPosition", { name: dragged.name, n: rest.indexOf(dragged) + 1 }));
+}
+
+// 拖拽排序只在「自己那一区」里发生：置顶的项目只能在置顶那几个之间换位，
+// 普通项目只能在其余项目里换位。想把项目挪进 / 挪出置顶区请用右键菜单里的
+// 「置顶项目 / 取消置顶」——拖动的时候悄悄改掉置顶状态，会让「拖到第 1 个」
+// 这种动作的结果变得不可预测（拖上去就变成置顶，再拖下来就丢掉置顶）。
+// 返回值是允许的下标区间 [最小, 最大]，下标按「去掉被拖的那项之后」的列表算。
+function folderDropRange() {
+  const rest = projects.filter((project) => project.id !== folderDragId);
+  const pins = rest.filter((project) => project.pinned).length;
+  const dragged = projects.find((project) => project.id === folderDragId);
+  return dragged?.pinned ? [0, pins] : [pins, rest.length];
 }
 
 function endFolderDrag() {
@@ -1646,19 +1805,52 @@ function endFolderDrag() {
 
 // ── 项目：图标 / 改名 / 更多菜单 / 删除 ───────────────────
 
-// 项目封面：优先项目自己上传的封面（data URL），否则取该项目里某篇的封面。
+// 项目封面：优先项目自己上传的封面（data URL），其次用户在「编辑项目」里挑的
+// 封面组合里的第一张，否则取该项目里某篇的封面。
 // 侧栏项目行和卡片上的「所属项目」浮层共用这一个，两处的缩略图才永远一致。
 function projectCoverFor(projectId) {
   const project = projects.find((entry) => entry.id === projectId);
   if (project?.cover) return project.cover;
   const inProject = items.filter((entry) => (entry.projectId || "") === projectId);
   // resolveImage 兼容三种来源：本地上传的封面（local://<id> 指针）、旧的 data: 内联、远程 URL。
+  // 挑过的就按挑的顺序找第一张能用的——和图板上「第 1 张占大格」保持一致。
+  for (const id of (Array.isArray(project?.coverPick) ? project.coverPick : [])) {
+    const picked = inProject.find((entry) => entry.id === id);
+    const src = picked && resolveImage(picked);
+    if (src) return src;
+  }
   // 取第一篇「能解析出图」的收藏当这个项目的门面。
   for (const entry of inProject) {
     const src = resolveImage(entry);
     if (src) return src;
   }
   return null;
+}
+
+// 图钉图标（置顶 / 取消置顶共用）：slashed = true 时叠一道斜杠表示「取消」。
+function pinIconSvg(slashed = false) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("class", "pin-icon");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", PIN_FILL_PATH);
+  svg.append(path);
+  if (slashed) {
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    line.setAttribute("d", "M4 20 20 4");
+    line.setAttribute("class", "pin-slash");
+    svg.append(line);
+  }
+  return svg;
+}
+
+// 置顶角标：缩略图右下角的一枚小图钉。
+function pinBadge() {
+  const badge = document.createElement("span");
+  badge.className = "project-pin-badge";
+  badge.title = tr("pinned");
+  badge.append(pinIconSvg());
+  return badge;
 }
 
 // 没有封面时的占位：项目名首字 + 一块暖色底，看起来仍是「图板缩略图」。
@@ -1714,14 +1906,14 @@ async function commitRename(id, input) {
   if (!project) { renderProjects(); return; }
   if (!name || name === project.name) { renderProjects(); return; }
   if (projects.some((entry) => entry.id !== id && entry.name === name)) {
-    showToast(`已有同名项目「${name}」`);
+    showToast(tr("projectExists", { name }));
     renderProjects();
     return;
   }
   projects = projects.map((entry) => entry.id === id ? { ...entry, name } : entry);
   renderProjects();
   await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
-  showToast(`已重命名为「${name}」`);
+  showToast(tr("renamedTo", { name }));
 }
 
 async function deleteProject(id) {
@@ -1730,11 +1922,11 @@ async function deleteProject(id) {
   const affected = items.filter((item) => item.projectId === id).length;
   const confirmed = await LaterOnDialog.confirm({
     tone: "danger",
-    title: `删除项目「${project.name}」？`,
+    title: tr("deleteProjectTitle", { name: project.name }),
     message: affected
-      ? `里面的 ${affected} 篇收藏会移到「等待整理」，不会被删除。`
-      : "这个项目里还没有收藏，删除后无法恢复。",
-    confirmText: "删除项目"
+      ? tr("deleteProjectMoveItems", { n: affected })
+      : tr("deleteEmptyProject"),
+    confirmText: tr("deleteProject")
   });
   if (!confirmed) return;
   projects = projects.filter((entry) => entry.id !== id);
@@ -1749,7 +1941,7 @@ async function deleteProject(id) {
   }
   renderProjects();
   render();
-  showToast(affected ? `已删除项目「${project.name}」，${affected} 篇已移到等待整理` : `已删除项目「${project.name}」`);
+  showToast(tr(affected ? "projectDeletedMoved" : "projectDeleted", { name: project.name, n: affected }));
 }
 
 function openFolderMenu(projectId, x, y) {
@@ -1765,12 +1957,54 @@ function openFolderMenu(projectId, x, y) {
   title.title = project.name;
   menu.append(
     title,
-    folderMenuItem("重命名", "pencil", () => startRename(projectId, project.name)),
-    folderMenuItem("编辑简介", "note", () => editBoard(projectId)),
-    folderMenuItem("删除项目", "trash", () => deleteProject(projectId), true)
+    // 置顶放在第一项：这是最常用的一步操作（把常用的项目挪到手边），
+    // 也比「双击改名」更安全——点错了再点一次「取消置顶」就回来。
+    menuItem(project.pinned ? tr("unpinProject") : tr("pinProject"), project.pinned ? "unpin" : "pin", () => toggleProjectPin(projectId)),
+    menuItem(tr("rename"), "pencil", () => startRename(projectId, project.name)),
+    menuItem(tr("editNote"), "note", () => editBoard(projectId)),
+    menuItem(tr("deleteProject"), "trash", () => deleteProject(projectId), true)
   );
   document.body.append(menu);
-  // 贴边时自动往回收，保证菜单完整可见。
+  positionMenu(menu, x, y);
+  folderMenu = menu;
+  requestAnimationFrame(() => menu.classList.add("is-open"));
+}
+
+// ── 单篇收藏的右键菜单 ────────────────────────────────────
+// 卡片上右键 = 这一篇能做的所有事，样式和图板的「项目菜单」完全一致（同一个 .folder-menu）。
+// 这里刻意复用 folderMenu 这个变量：于是「点别处 / Esc / 滚动 / 窗口失焦自动关闭」全都白拿，
+// 不用再抄一遍关闭逻辑。
+function openItemMenu(itemId, x, y) {
+  closeFolderMenu();
+  const item = items.find((entry) => entry.id === itemId);
+  if (!item) return;
+  const card = cardMap.get(itemId) || grid.querySelector(`.card[data-id="${cssEscape(itemId)}"]`);
+  const menu = document.createElement("div");
+  menu.className = "folder-menu";
+  menu.setAttribute("role", "menu");
+  const title = document.createElement("p");
+  title.className = "folder-menu-title";
+  const heading = (item.title || "").trim() || item.source || tr("itemFallback");
+  title.textContent = heading.length > 20 ? `${heading.slice(0, 20)}…` : heading;
+  title.title = heading;   // 标题被截短了，悬停能看到全名
+  const picked = selectMode && selectedIds.has(item.id);
+  // 只放「卡片上不方便做 / 做不到」的几项：
+  // 「标为已读」和「移动到项目」在卡片上本来就有明显的按钮，不重复占用右键菜单。
+  menu.append(
+    title,
+    menuItem(tr("itemOpen"), "open", () => openItem({ preventDefault() {}, metaKey: false, ctrlKey: false }, item)),
+    menuItem(tr("itemEdit"), "pencil", () => editItem(item)),
+    menuItem(picked ? tr("itemDeselect") : tr("itemSelect"), picked ? "deselect" : "multi", () => startMultiSelect(item.id, card, !picked)),
+    menuItem(tr("delete"), "trash", () => deleteItem(item.id), true)
+  );
+  document.body.append(menu);
+  positionMenu(menu, x, y);
+  folderMenu = menu;
+  requestAnimationFrame(() => menu.classList.add("is-open"));
+}
+
+// 菜单贴边时自动往回收，保证整块完整可见（项目菜单和收藏菜单共用）。
+function positionMenu(menu, x, y) {
   const rect = menu.getBoundingClientRect();
   const width = rect.width || 180;
   const height = rect.height || 96;
@@ -1778,29 +2012,47 @@ function openFolderMenu(projectId, x, y) {
   const top = Math.min(Math.max(8, y), Math.max(8, window.innerHeight - height - 8));
   menu.style.left = `${left}px`;
   menu.style.top = `${top}px`;
-  folderMenu = menu;
-  requestAnimationFrame(() => menu.classList.add("is-open"));
 }
 
-function folderMenuItem(label, icon, onPick, danger = false) {
+function cssEscape(value) {
+  return typeof CSS !== "undefined" && CSS.escape ? CSS.escape(value) : String(value).replace(/["\\]/g, "\\$&");
+}
+
+// 从右键菜单里点「多选」：进入多选模式，并把这一篇先勾上（取消则勾掉）。
+// 已经选中时这项变成「取消选择」，方便在多选状态里直接反悔。
+function startMultiSelect(itemId, card, on) {
+  if (!selectMode) setSelectMode(true);
+  toggleSelect(itemId, card, on);
+}
+
+function menuItem(label, icon, onPick, danger = false) {
   const item = document.createElement("button");
   item.type = "button";
   item.className = `folder-menu-item${danger ? " danger" : ""}`;
   item.setAttribute("role", "menuitem");
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  // 铅笔（重命名）/ 带字的纸（简介）/ 垃圾桶（删除）
+  // 铅笔（重命名 / 编辑）/ 带字的纸（简介）/ 垃圾桶（删除）——都是描边图标（fill:none）。
+  // 置顶用另一套实心图钉（见 pinIconSvg），不在这里。
   const ICON_PATHS = {
     pencil: "M4 20h4L20 8l-4-4L4 16zM14 6l4 4",
     note: "M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h4",
-    trash: "M4 7h16m-10 4v6m4-6v6M9 7l1-3h4l1 3m3 0-1 13H7L6 7"
+    trash: "M4 7h16m-10 4v6m4-6v6M9 7l1-3h4l1 3m3 0-1 13H7L6 7",
+    // 下面几个是「单篇收藏菜单」用的：
+    open: "M14 5h5v5M19 5l-8 8M17 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h5",
+    multi: "M3.5 6.5h7v7h-7zM13.5 6.5h7v7h-7zM5 10l1.6 1.6L9 8",
+    deselect: "M3.5 6.5h7v7h-7zM5.5 8.6l3 2.8M8.5 8.6l-3 2.8M14 10h6"
   };
-  path.setAttribute("d", ICON_PATHS[icon] || ICON_PATHS.trash);
-  svg.append(path);
   const text = document.createElement("span");
   text.textContent = label;
-  item.append(svg, text);
+  if (icon === "pin" || icon === "unpin") {
+    item.append(pinIconSvg(icon === "unpin"), text);
+  } else {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", ICON_PATHS[icon] || ICON_PATHS.trash);
+    svg.append(path);
+    item.append(svg, text);
+  }
   item.addEventListener("click", (event) => {
     event.stopPropagation();
     closeFolderMenu();
@@ -1829,7 +2081,7 @@ async function openItem(event, item) {
   event.preventDefault();
 
   const target = safeTarget(item.url);
-  if (!target) { showToast("这条收藏的网址打不开"); return; }
+  if (!target) { showToast(tr("invalidUrlShort")); return; }
 
   // 记下「正在读这篇」——侧栏据此高亮并滚动定位到它，两个视图保持一致。
   chrome.storage.local.set({ [CURRENT_ITEM_KEY]: item.id });
@@ -1837,7 +2089,7 @@ async function openItem(event, item) {
   const windowId = await resolveWindowId();
   if (!(await openSidePanel(windowId))) {
     // 侧栏打不开（极少数情况）：至少别让这次点击落空。
-    showToast("侧栏打开失败，已在新标签页中打开");
+    showToast(tr("sidePanelFallback"));
     await chrome.tabs.create({ url: target, openerTabId: libraryTabId || undefined });
     return;
   }
@@ -1926,7 +2178,7 @@ function projectPickerFolders() {
   }
   // 每行左侧的封面缩略图用 projectCoverFor —— 和侧栏项目行是同一份逻辑，两处永远一致。
   return [
-    { id: "", name: "等待整理", count: unfiled, cover: projectCoverFor("") },
+    { id: "", name: tr("inbox"), count: unfiled, cover: projectCoverFor("") },
     ...projects.map((project) => ({ id: project.id, name: project.name, count: counts.get(project.id) || 0, cover: projectCoverFor(project.id) }))
   ];
 }
@@ -1940,6 +2192,7 @@ function openCardProjectPicker(card, item, select) {
   window.openFolderPicker({
     anchor: select,
     theme: settings.theme || "system",
+    language: document.documentElement.lang,
     folders: projectPickerFolders(),
     selected: item.projectId || "",
     // 新建项目走后台的 CREATE_PROJECT（和网页浮层同一份逻辑），项目会写进存储、
@@ -1954,8 +2207,10 @@ function openCardProjectPicker(card, item, select) {
       }
       await updateItem(item.id, { projectId });
       const latest = items.find((entry) => entry.id === item.id);
+      clearSearch();
       updateCard(card, latest);
-      showToast(projectId ? `已移到「${name}」` : "已移回等待整理");
+      render();
+      showToast(projectId ? tr("movedTo", { name }) : tr("movedToInbox"));
     }
   });
 }
@@ -1964,18 +2219,18 @@ async function deleteItem(id) {
   const target = items.find((entry) => entry.id === id);
   if (!target) return;
   // 删除是没法撤销的，删之前一定问一句。标题可能很长，截断免得把弹窗撑成一整段。
-  const raw = (target.title || "").trim() || "这篇收藏";
+  const raw = (target.title || "").trim() || tr("itemFallback");
   const title = raw.length > 26 ? `${raw.slice(0, 26)}…` : raw;
   const confirmed = await LaterOnDialog.confirm({
     tone: "danger",
-    title: `删除「${title}」？`,
-    message: "删除后无法恢复。",
-    confirmText: "删除"
+    title: tr("deleteItemTitle", { title }),
+    message: tr("deleteCannotUndo"),
+    confirmText: tr("delete")
   });
   if (!confirmed) return;
   items = items.filter((item) => item.id !== id);
   await chrome.storage.local.set({ [STORAGE_KEY]: items });
-  showToast("已删除收藏");
+  showToast(tr("itemDeleted"));
 }
 
 // ── 批量操作 ─────────────────────────────────────────────
@@ -2010,9 +2265,9 @@ function toggleSelect(id, card, force) {
 function updateSelectionUI() {
   const count = selectedIds.size;
   const countEl = document.querySelector("#bulkCount");
-  if (countEl) countEl.textContent = `已选 ${count} 篇`;
+  if (countEl) countEl.textContent = tr("selectCount", { count });
   const allBtn = document.querySelector("#bulkSelectAll");
-  if (allBtn) allBtn.textContent = count > 0 && count >= grid.children.length ? "取消全选" : "全选";
+  if (allBtn) allBtn.textContent = count > 0 && count >= grid.children.length ? tr("deselectAll") : tr("selectAll");
 }
 
 async function bulkUpdate(patch) {
@@ -2038,13 +2293,14 @@ function openBulkProjectPicker() {
   window.openFolderPicker({
     anchor,
     theme: settings.theme || "system",
+    language: document.documentElement.lang,
     folders: projectPickerFolders(),
     selected: selectedProjects.size === 1 ? [...selectedProjects][0] : "",
-    titleText: `把选中的 ${count} 篇放到哪个项目？`,
+    titleText: tr("bulkMoveTitle", { n: count }),
     onCreateProject: createProjectFromPicker,
     onPick: async (projectId, name) => {
       await bulkMove(projectId || null);
-      showToast(`已将 ${count} 篇移到「${name || "等待整理"}」`);
+      showToast(tr("bulkMoved", { n: count, name: name || tr("inbox") }));
     }
   });
 }
@@ -2054,9 +2310,9 @@ async function bulkDelete() {
   const count = selectedIds.size;
   const confirmed = await LaterOnDialog.confirm({
     tone: "danger",
-    title: `删除选中的 ${count} 篇收藏？`,
-    message: "此操作无法撤销。",
-    confirmText: `删除 ${count} 篇`
+    title: tr("bulkDeleteTitle", { n: count }),
+    message: tr("cannotUndo"),
+    confirmText: tr("bulkDeleteButton", { n: count })
   });
   if (!confirmed) return;
   const ids = new Set(selectedIds);
@@ -2064,7 +2320,7 @@ async function bulkDelete() {
   await chrome.storage.local.set({ [STORAGE_KEY]: items });
   await removeCoversOf(ids);
   finishBulk();
-  showToast(`已删除 ${ids.size} 篇`);
+  showToast(tr("bulkDeleted", { n: ids.size }));
 }
 
 function finishBulk() {
@@ -2090,11 +2346,11 @@ document.querySelector("#bulkDone")?.addEventListener("click", () => setSelectMo
 function formatTime(timestamp) {
   const diff = Date.now() - timestamp;
   const day = 86400000;
-  if (diff < 60000) return "刚刚";
-  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
-  if (diff < day) return `${Math.floor(diff / 3600000)} 小时前`;
-  if (diff < day * 30) return `${Math.floor(diff / day)} 天前`;
-  return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric" }).format(timestamp);
+  if (diff < 60000) return tr("justNow");
+  if (diff < 3600000) return tr("minutesAgo", { n: Math.floor(diff / 60000) });
+  if (diff < day) return tr("hoursAgo", { n: Math.floor(diff / 3600000) });
+  if (diff < day * 30) return tr("daysAgo", { n: Math.floor(diff / day) });
+  return new Intl.DateTimeFormat(document.documentElement.lang === "en" ? "en" : "zh-CN", { month: "short", day: "numeric" }).format(timestamp);
 }
 
 let toastTimer = null;

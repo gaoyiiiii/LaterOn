@@ -20,11 +20,12 @@ assert.strictEqual(
   undefined,
   "macOS 不应再覆盖为旧的 Command+Shift+E"
 );
-assert.match(settings, /默认 Alt\+Shift\+1/);
+assert.match(settings, /def:\s*"Alt\+Shift\+1"/);
 assert.match(readme, /按 `Alt\+Shift\+1`/);
-assert.match(settingsHtml, /关掉后收藏进「等待整理」/);
-assert.doesNotMatch(settingsHtml, /关掉后[^<]*全部文章/);
-assert.match(theme, /askFolderOnSingle:\s*true/);
-assert.match(background, /settings\.askFolderOnSingle\s*!==\s*false/);
+assert.match(settingsHtml, /默认关闭/);
+assert.doesNotMatch(settingsHtml, /默认开启/);
+assert.match(theme, /askFolderOnSingle:\s*false/);
+assert.match(theme, /askFolderOnSingleOptIn:\s*false/);
+assert.match(background, /settings\.askFolderOnSingle\s*===\s*true\s*&&\s*settings\.askFolderOnSingleOptIn\s*===\s*true/);
 
 console.log("PASS 收藏当前窗口所有标签页快捷键统一为 Alt+Shift+1");

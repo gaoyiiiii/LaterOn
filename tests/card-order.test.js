@@ -231,13 +231,20 @@ async function dragCard({ window, grid, tick }, fromId, index) {
     const items = [item("a", 1), item("b", 2)];
     const app = await boot({ items, settings: { defaultSort: "custom" } });
     const card = app.grid.querySelector('.card[data-id="a"]');
+    layout(app.window, [...app.grid.querySelectorAll(".card")]);
+    let dragImagePoint = null;
     const dragstart = new app.window.Event("dragstart", { bubbles: true, cancelable: true });
-    dragstart.dataTransfer = { effectAllowed: "", setData() {}, setDragImage() {} };
-    dragstart.clientX = 10; dragstart.clientY = 10;
+    dragstart.dataTransfer = {
+      effectAllowed: "", setData() {},
+      setDragImage(_preview, x, y) { dragImagePoint = { x, y }; }
+    };
+    dragstart.clientX = 150; dragstart.clientY = 90;
     card.dispatchEvent(dragstart);
     await app.tick(20);
     // 卡片拖拽依然会启动（拖到左侧项目列表上松手 = 移动过去），只是这次不落在网格里。
     check("卡片仍可发起拖拽（拖到项目上照旧是移动）", app.store.laterOnOrder !== undefined);
+    check("拖影热点靠近卡片左边缘（左边一碰项目就会高亮）", dragImagePoint?.x === 8, JSON.stringify(dragImagePoint));
+    check("拖影仍保留原本的纵向抓取位置", dragImagePoint?.y === 90, JSON.stringify(dragImagePoint));
   }
 
   // ── ⑦ 退让效果 + 不抖动（这条就是「卡片疯狂跳动」的回归测试）──

@@ -8,6 +8,17 @@
   const elapsed = () => Math.round((((window.performance && performance.now) ? performance.now() : Date.now()) - t0));
   const marks = [];
   let revealed = false;
+  let english = false;
+
+  // This script paints before the regular i18n layer. Read only the saved
+  // language so a slow first load does not leave English users with Chinese UI.
+  try {
+    chrome.storage.local.get("laterOnSettings").then((stored) => {
+      english = stored?.laterOnSettings?.language === "en";
+      const opening = textOf("bootTipText");
+      if (english && opening) opening.textContent = "Opening your saves…";
+    });
+  } catch {}
 
   function textOf(id) {
     return document.getElementById(id);
@@ -49,11 +60,13 @@
     if (ms > 1200 && tip) tip.hidden = false;
     if (tip && !tip.hidden) {
       const time = textOf("bootTipTime");
-      if (time) time.textContent = `${(ms / 1000).toFixed(1)} 秒`;
+      if (time) time.textContent = `${(ms / 1000).toFixed(1)} ${english ? "s" : "秒"}`;
       // 等太久了给一句实话 + 一个可操作的建议，而不是让人干瞪眼。
       if (ms > 6000) {
         const hint = textOf("bootTipHint");
-        if (hint) hint.textContent = "加载比平时慢，可以先试试关掉侧栏再打开；一直这样就在扩展页点一下「重新加载」。";
+        if (hint) hint.textContent = english
+          ? "This is taking longer than usual. Close and reopen the side panel; if it keeps happening, reload LaterOn on the Extensions page."
+          : "加载比平时慢，可以先试试关掉侧栏再打开；一直这样就在扩展页点一下「重新加载」。";
       }
     }
     // 兜底：万一页面脚本整个没跑起来（极端异常），也不能让用户永远盯着骨架屏。

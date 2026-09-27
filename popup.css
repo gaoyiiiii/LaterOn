@@ -4,7 +4,7 @@ body { margin: 0; width: 370px; background: #f4f2ed; color: #151515; }
 main { padding: 18px; }
 header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .logo { font-size: 19px; font-weight: 800; letter-spacing: -0.5px; }
-.logo span { display: inline-grid; place-items: center; width: 25px; height: 25px; margin-right: 5px; border-radius: 8px; background: #ff5c35; color: white; }
+.logo-icon { display: inline-block; width: 25px; height: 25px; margin-right: 5px; border-radius: 6px; vertical-align: -5px; }
 .eyebrow { color: #77736b; font-size: 12px; }
 .preview { overflow: hidden; border: 1px solid #dedbd3; border-radius: 16px; background: #fff; }
 .preview-image { height: 136px; background: linear-gradient(135deg, #ddd8ce, #f4f2ed); background-position: center; background-size: cover; }

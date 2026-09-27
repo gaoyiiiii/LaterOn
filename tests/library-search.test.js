@@ -49,7 +49,7 @@ const store = {
   ],
   laterOnActiveProject: "all",
   laterOnSettings: {},
-  laterOnFilter: "all"
+  laterOnFilter: "all",
   laterOnFilterChosen: true,
 };
 

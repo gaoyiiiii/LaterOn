@@ -47,11 +47,13 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
   background: color-mix(in srgb, var(--paper) 54%, transparent);
 }
 .sidebar-section + .sidebar-section { margin-top: 28px; }
-.projects-section { display: flex; flex-direction: column; flex: 1; min-height: 0; margin-top: 18px; padding-top: 17px; border-top: 1px solid var(--hairline-2); }
-/* 项目列表现在是常显的（不靠 hidden 收起），但这条留着当保险：
-   自己写 display 就必须自己管 hidden——浏览器自带的 [hidden]{display:none} 敌不过作者样式，
-   将来谁再给它加 hidden 却忘了这条，就会「设了属性却没藏起来」。 */
-.projects-section[hidden] { display: none; }
+.projects-section { display: none; flex-direction: column; flex: 1; min-height: 0; }
+/* 具体项目不是第三个顶层入口，而是「全部项目」展开后的子级。
+   用缩进与更紧凑的行高建立父子关系，保持侧栏干净，不额外画树状连接线。 */
+.projects-section.is-visible {
+  position: relative; display: flex;
+  margin: 4px 0 0 27px; padding: 5px 0 4px 14px;
+}
 .sidebar-label { margin: 0 10px 9px; color: var(--muted); font-size: 11px; font-weight: 720; letter-spacing: .04em; }
 .project-nav {
   /* 第一列 = 缩略图宽度；列间距必须显式写：缩略图是实心方块，
@@ -63,7 +65,6 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
 }
 .project-nav:hover { background: var(--glass-strong); color: var(--ink); }
 .project-nav:focus-visible,
-.add-project:focus-visible,
 .sidebar-setting:focus-visible,
 .project-more:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 72%, transparent); outline-offset: 2px; }
 /* 自己写了 display 就得自己管 hidden：浏览器自带的 [hidden]{display:none} 敌不过作者样式。
@@ -117,7 +118,8 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
 .nav-icon { display: grid; place-items: center; color: var(--subtle); font-size: 14px; }
 /* 项目行左侧：不是文件夹图标，而是这个项目的封面缩略图
    （和「选项目」浮层里每行那张小图同一套外观：圆角方块 + 首字占位色块） */
-.project-thumb { display: block; flex: none; width: 36px; height: 36px; border: 2px solid color-mix(in srgb, var(--card) 88%, transparent); border-radius: 11px; overflow: hidden; background: var(--field-soft); box-shadow: 0 2px 7px -4px rgba(20,18,14,.32); }
+/* position 是为了让「已置顶」的图钉角标能贴在缩略图右下角 */
+.project-thumb { position: relative; display: block; flex: none; width: 36px; height: 36px; border: 2px solid color-mix(in srgb, var(--card) 88%, transparent); border-radius: 11px; overflow: hidden; background: var(--field-soft); box-shadow: 0 2px 7px -4px rgba(20,18,14,.32); }
 .project-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
 /* 没有封面时的占位：项目名首字 + 暖色底 */
 .project-ph {
@@ -143,6 +145,17 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
 .project-nav strong { color: var(--subtle); font-size: 9px; font-weight: 600; }
 /* 项目行：主体按钮 + 右侧「⋯」更多按钮 */
 .project-row { position: relative; display: flex; align-items: center; }
+/* 子级项目略小、略轻：保留封面识别度，但不再和顶层入口争层级。 */
+.projects-section .project-nav {
+  position: relative; z-index: 1;
+  grid-template-columns: 32px minmax(0,1fr) auto; column-gap: 9px;
+  min-height: 44px; border-radius: 13px; padding: 5px 7px;
+  font-size: 12.75px; font-weight: 610;
+}
+.projects-section .project-row .project-nav { padding-right: 28px; }
+.projects-section .project-thumb { width: 32px; height: 32px; border-radius: 10px; }
+.projects-section .project-ph { font-size: 12px; }
+.projects-section .project-more { z-index: 2; right: 5px; }
 /* 右侧要给「⋯」留位（它是绝对定位的），但不能留太多——侧栏本来就窄，
    缩略图 + 列间距已经吃掉一截名字空间了。⋯ 20px 宽、贴右 6px，留 28px 正好够。 */
 .project-row .project-nav { padding-right: 31px; }
@@ -179,6 +192,24 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
 /* 选中项目里的更多按钮沿用强调色，避免和缩略图争抢视觉焦点。 */
 .project-row:has(.project-nav.active) .project-more { color: var(--accent); }
 .project-row:has(.project-nav.active) .project-more:hover { background: rgba(255,92,53,.12); color: var(--accent); }
+/* ── 置顶：缩略图右下角一枚图钉 + 置顶区和其余项目之间一条细分隔线 ──
+   加上这个标记之后，「排在最上面」才读得出来是「被钉住的」，而不是「名字刚好排第一」。 */
+.project-pin-badge {
+  position: absolute; right: -1px; bottom: -1px;
+  display: grid; place-items: center; width: 17px; height: 17px;
+  border-radius: 50%; background: var(--card); color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 80%, transparent);
+}
+/* 实心图钉：fill 走 currentColor（角标用强调色，菜单里跟着文字色），描边关掉——
+   十几像素的尺寸下描边款会糊成一团，认不出是什么。
+   ⚠️ 菜单那条要写成「.folder-menu-item svg.pin-icon」：上面已有的
+   `.folder-menu-item svg { fill:none; stroke:currentColor }` 是「类+元素」，
+   只写 .pin-icon（单个类）压不过它，图钉会被重新描边、又糊回去。 */
+.project-pin-badge svg { width: 11px; height: 11px; fill: currentColor; stroke: none; }
+.folder-menu-item svg.pin-icon { fill: currentColor; stroke: none; }
+/* 「取消置顶」在图钉上叠的那道斜杠，得单独描边 */
+.pin-icon .pin-slash { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.project-pin-sep { height: 1px; margin: 5px 12px 6px; background: var(--hairline-2); }
 /* 就地改名 */
 .project-nav.is-renaming strong { display: none; }
 .project-rename {
@@ -187,16 +218,6 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
   font-family: inherit; font-size: 12.5px; outline: none;
   box-shadow: 0 0 0 3px rgba(255,92,53,.16);
 }
-/* 「项目 ＋」这一行和下面第一行项目之间要留出明显的空隙：
-   间距写在容器上（不是 label 上），这样「项目」两个字和右边的 ＋ 是同一个基线，
-   下面的空隙也一样高——写在 label 上会让 ＋ 贴住第一行，两边不等高。 */
-.projects-heading { display: flex; align-items: center; justify-content: space-between; min-height: 28px; margin: 0 7px 9px 0; }
-.projects-heading .sidebar-label { margin: 0 0 0 10px; }
-.add-project { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 19px; line-height: 1; transition: background .15s, color .15s, transform .15s; }
-.add-project:hover { background: var(--field-soft); color: var(--ink); transform: scale(1.04); }
-.project-form { margin: 2px 4px 8px; padding: 8px; border: 1px solid var(--hairline-2); border-radius: 11px; background: var(--field); box-shadow: var(--shadow-sm); }
-.project-form input { width: 100%; border: 0; outline: 0; padding: 3px; background: transparent; font-size: 11px; color: var(--ink); }
-.project-form button { width: 100%; margin-top: 6px; border: 0; border-radius: 7px; padding: 5px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; }
 .project-list { display: flex; flex-direction: column; gap: 3px; flex: 1; min-height: 0; overflow-y: auto; padding-right: 3px; }
 .project-list::-webkit-scrollbar { width: 6px; }
 .project-list::-webkit-scrollbar-thumb { background: var(--hairline-2); border-radius: 3px; }
@@ -204,9 +225,10 @@ kbd { border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; color
 .sidebar-setting { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 44px; border: 0; border-radius: 14px; padding: 6px 12px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 640; text-align: left; transition: background .15s, color .15s; }
 .sidebar-setting:hover { background: var(--glass-strong); color: var(--ink); }
 .sidebar-setting svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.sidebar-slogan { margin: 7px 12px 0; color: var(--subtle); font-size: 10.5px; font-weight: 500; line-height: 1.55; letter-spacing: .01em; opacity: .72; }
 
 @media (prefers-reduced-motion: reduce) {
-  .project-nav, .inbox-icon, .all-icon, .add-project, .project-more, .sidebar-setting { transition: none; }
+  .project-nav, .inbox-icon, .all-icon, .project-more, .sidebar-setting, .board-create { transition: none; }
 }
 
 /* 项目的右键 / 「⋯」菜单 */
@@ -303,7 +325,10 @@ select:hover { border-color: var(--card-line); }
 .cover img { width: 100%; height: 100%; object-fit: cover; transition: transform .45s ease; }
 .card:hover .cover img { transform: scale(1.04); }
 .cover-placeholder { display: grid; height: 100%; place-items: center; background: var(--cover-ph); }
-.cover-logo { width: 54px; height: 54px; border-radius: 16px; opacity: .92; box-shadow: var(--cover-ph-shadow); }
+.cover-logo { width: 54px; height: 54px; border-radius: 0; opacity: .92; box-shadow: var(--cover-ph-shadow); }
+/* 箭头版封面源图自带一圈圆角；放大到卡片边缘外，由 .cover 的裁切只留下卡片这一层圆角。 */
+.cover-placeholder .cover-logo { width: 100%; height: 100%; transform: scale(1.12); }
+.card:hover .cover-placeholder .cover-logo { transform: scale(1.12); }
 .card-body { padding: 15px 15px 13px; }
 .source-row { display: grid; grid-template-columns: 17px minmax(0,1fr) auto auto; align-items: center; column-gap: 5px; min-width: 0; width: 100%; color: var(--muted); font-size: 11px; white-space: nowrap; }
 .favicon { width: 17px; height: 17px; border-radius: 50%; background: var(--cover-bg); object-fit: cover; }
@@ -375,6 +400,18 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
   /* 和卡片一样只用 backwards：forwards 会盖掉行内 transform（见 .card 的注释） */
   animation: cardIn .4s ease backwards;
 }
+.board-create {
+  align-self: start; display: grid; place-items: center; align-content: center; gap: 10px;
+  width: 100%; aspect-ratio: 1.42; border: 1.5px dashed var(--hairline-2); border-radius: 14px;
+  background: color-mix(in srgb, var(--card) 38%, transparent); color: var(--muted);
+  font: inherit; cursor: pointer; animation: cardIn .4s ease backwards;
+  transition: border-color .2s, background .2s, color .2s, transform .2s cubic-bezier(.2,.7,.3,1);
+}
+.board-create:hover { border-color: color-mix(in srgb, var(--accent) 62%, var(--hairline-2)); background: var(--accent-soft); color: var(--accent); transform: translateY(-2px); }
+.board-create:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 72%, transparent); outline-offset: 3px; }
+.board-create-plus { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--field-soft); color: currentColor; font-size: 27px; font-weight: 350; line-height: 1; transition: transform .2s, background .2s; }
+.board-create:hover .board-create-plus { background: color-mix(in srgb, var(--accent) 12%, var(--card)); transform: scale(1.06); }
+.board-create strong { font-size: 12px; font-weight: 680; letter-spacing: .01em; }
 /* 拖拽中：让位要跟手，默认 .2s 会显得拖沓；animation:none 是双保险——
    万一某块的入场动画还没播完，动画仍在覆盖 transform，这里直接掐断。 */
 .board-grid.is-reordering .board-card { animation: none; transition: transform .16s cubic-bezier(.2,.8,.2,1); }
@@ -413,9 +450,11 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
 .board-body { padding: 11px 2px 0; }
 /* 标题是 Pinterest 那种「紧贴封面下方、字号偏大」的写法 */
 .board-name { overflow: hidden; margin: 0; font-size: 14.5px; font-weight: 770; letter-spacing: -.28px; text-overflow: ellipsis; white-space: nowrap; }
-/* 简介：手写的用正常灰，自动生成的再淡一档，暗示「这只是概览，可以自己写一句」 */
+/* 简介：手写的用正常灰，自动生成的再淡一档，暗示「这只是概览，可以自己写一句」。
+   高度跟着内容走：一句就占一行，别为了「整排对齐」硬撑成两行——
+   那是留白，不是对齐（一份简介往往就一行，下面空一行看着像没写完）。 */
 .board-note {
-  display: -webkit-box; overflow: hidden; min-height: 32px; margin: 6px 0 0;
+  display: -webkit-box; overflow: hidden; margin: 6px 0 0;
   color: var(--muted); font-size: 11px; line-height: 1.52;
   -webkit-box-orient: vertical; -webkit-line-clamp: 2;
 }
@@ -478,8 +517,10 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
   .workspace { display: block; }
   .project-sidebar { position: static; align-self: stretch; height: auto; display: block; padding: 14px 18px; border-right: 0; border-bottom: 1px solid var(--line); }
   .projects-section { flex: none; }
+  .projects-section.is-visible { margin-left: 27px; padding-left: 12px; }
   .project-list { flex: none; overflow: visible; padding-right: 0; }
   .sidebar-footer { margin-top: 14px; }
+  .sidebar-slogan { display: none; }
   .sidebar-section:first-child { display: flex; gap: 5px; }
   .sidebar-section + .sidebar-section { margin-top: 12px; }
   .sidebar-label { display: none; }
@@ -512,7 +553,7 @@ footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-it
 /* 当前正在阅读的这篇：两个视图都用「橙圈 + 左上角『正在读』」标出来，让你一眼知道自己在哪。 */
 .card.is-current { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,92,53,.5), var(--shadow-md); }
 .card.is-current::after {
-  content: "正在读";
+  content: attr(data-current-label);
   position: absolute; top: 12px; left: 12px; z-index: 4;
   padding: 3px 9px; border-radius: 99px;
   background: var(--accent); color: #fff;

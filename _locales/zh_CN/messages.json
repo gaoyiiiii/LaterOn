@@ -1,0 +1,8 @@
+{
+  "extensionName": { "message": "LaterOn · 稍后阅读" },
+  "extensionDescription": { "message": "一键收藏当前网页，在清爽的卡片界面中稍后阅读。" },
+  "actionTitle": { "message": "打开 LaterOn 侧栏" },
+  "commandSavePage": { "message": "将当前网页收藏到 LaterOn" },
+  "commandTranslatePage": { "message": "翻译当前网页或恢复原文" },
+  "commandSaveAllTabs": { "message": "将当前窗口所有标签页收藏到 LaterOn" }
+}

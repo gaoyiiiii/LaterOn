@@ -1,0 +1,24 @@
+.lon-guide { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 20px; opacity: 0; transition: opacity .18s ease; }
+.lon-guide.is-visible { opacity: 1; }
+.lon-guide.is-leaving { opacity: 0; }
+.lon-guide-backdrop { position: absolute; inset: 0; background: rgba(20,18,15,.46); backdrop-filter: blur(7px); }
+.lon-guide-card { position: relative; width: min(420px, 100%); border: 1px solid var(--card-line); border-radius: 24px; padding: 24px; background: var(--card); color: var(--ink); box-shadow: 0 30px 80px -24px rgba(0,0,0,.55); outline: none; transform: translateY(10px) scale(.98); transition: transform .22s cubic-bezier(.2,.8,.3,1); }
+.lon-guide.is-visible .lon-guide-card { transform: none; }
+.lon-guide-brand { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; }
+.lon-guide-brand img { width: 28px; height: 28px; border-radius: 8px; }
+.lon-guide-progress { display: flex; gap: 6px; margin: 22px 0 18px; }
+.lon-guide-progress span { width: 22px; height: 4px; border-radius: 9px; background: var(--line); transition: width .18s, background .18s; }
+.lon-guide-progress span.active { width: 38px; background: var(--accent); }
+.lon-guide-page { min-height: 276px; opacity: 1; transform: translateX(0); transition: opacity .15s ease, transform .18s cubic-bezier(.4,0,.2,1); }
+.lon-guide-page.is-leaving { opacity: 0; transform: translateX(-18px); }
+.lon-guide-page.is-entering { opacity: 0; transform: translateX(18px); }
+.lon-guide-icon { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 17px; background: var(--accent-soft); color: var(--accent); font-size: 25px; font-weight: 800; }
+.lon-guide-card h2 { margin: 18px 0 8px; font-size: 23px; line-height: 1.25; letter-spacing: -.4px; }
+.lon-guide-body { margin: 0; color: var(--field-text); font-size: 14px; line-height: 1.7; }
+.lon-guide-hint { margin: 14px 0 0; padding: 10px 12px; border-radius: 11px; background: var(--field-soft); color: var(--muted); font-size: 12px; line-height: 1.6; }
+.lon-guide-card footer { display: flex; justify-content: space-between; gap: 10px; margin-top: 24px; }
+.lon-guide-card button { min-height: 40px; border: 0; border-radius: 12px; padding: 0 18px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.lon-guide-skip { background: transparent; color: var(--muted); }
+.lon-guide-next { margin-left: auto; background: var(--accent); color: #fff; box-shadow: 0 8px 20px -9px rgba(255,80,50,.75); }
+.lon-guide-card button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .lon-guide, .lon-guide-card, .lon-guide-page { transition: none; } }

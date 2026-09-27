@@ -81,7 +81,7 @@ function nextStatus(status) {
 }
 // 标记按钮上的文字：已完成时提示「标为未读」，其余提示「标为已读」。
 function readToggleLabel(status) {
-  return status === "done" ? "标为未读" : "标为已读";
+  return status === "done" ? tr("unreadButton") : tr("readButton");
 }
 
 // 筛选只认这三档。第一次打开还没有偏好，或存入了异常值时，默认展示「未读」；
@@ -112,7 +112,14 @@ const template = document.querySelector("#itemTemplate");
 const saveButton = document.querySelector("#saveCurrent");
 const status = document.querySelector("#status");
 
-init();
+// 先让浏览器完成一帧绘制骨架屏，再启动数据读取和真实列表渲染。
+// 如果这里直接同步 init()，首屏缓存很快时骨架会在第一次 paint 前就被移除，
+// 用户只会看到“突然出现的正式内容”，看不到正在加载的反馈。
+if (typeof requestAnimationFrame === "function") {
+  requestAnimationFrame(() => requestAnimationFrame(() => init()));
+} else {
+  setTimeout(() => init(), 16);
+}
 
 // 页面里加载最慢的几个文件（CSS / JS）。慢在「读页面」还是「读数据」，看这个就知道。
 function slowestResources() {
@@ -134,23 +141,27 @@ function slowestResources() {
 }
 
 // 各段的中文名：横幅 / 诊断里都用它，顺序就是显示顺序。
-const BOOT_SEGMENTS = [
-  ["page", "准备页面"],
-  ["cache", "读本地缓存"],
-  ["paint", "画第一屏"],
-  ["data", "读收藏数据"],
-  ["migrate", "整理旧封面"],
-  ["other", "其余收尾"]
+const bootSegments = () => [
+  ["page", tr("segPage")], ["cache", tr("segCache")], ["paint", tr("segPaint")],
+  ["data", tr("segData")], ["migrate", tr("segMigrate")], ["other", tr("segOther")]
 ];
 
 // 慢在哪一段 → 一句话结论（写给人看，不写术语）。
 function slowConclusion(seg) {
-  const worst = BOOT_SEGMENTS
+  const worst = bootSegments()
     .filter(([key]) => (seg[key] || 0) > 0)
     .sort((a, b) => (seg[b[0]] || 0) - (seg[a[0]] || 0))[0];
   if (!worst) return "";
   const [key, label] = worst;
   const ms = seg[key];
+  if (document.documentElement.lang === "en") {
+    if (key === "page") return "Most time was spent preparing the page — Chrome was opening the side panel or loading its files; the number of saves isn’t the cause.";
+    if (key === "cache") return `The local snapshot took ${ms} ms to read, so it will be skipped for the rest of this session.`;
+    if (key === "data") return `Reading local storage took ${ms} ms. The cached first screen was shown while it finished.`;
+    if (key === "paint") return `Painting the first screen took ${ms} ms. Remaining cards are being rendered in batches.`;
+    if (key === "migrate") return `Migrating old covers took ${ms} ms. This should only happen once after upgrading.`;
+    return `Finishing up took ${ms} ms.`;
+  }
   if (key === "page") return "「准备页面」占了大头 → 是 Chrome 打开侧边栏 / 加载页面文件慢，跟收藏多少无关。";
   if (key === "cache") return `「读本地缓存」占了大头（${ms} 毫秒）→ 侧栏的秒开快照读取慢，接下来本次会话会直接跳过它，不再反复卡。`;
   if (key === "data") return `「读收藏数据」占了大头（${ms} 毫秒）→ 本地存储冷的时候这一次读取会慢，列表已先用缓存画出来了。`;
@@ -164,19 +175,22 @@ function showSlowBanner({ total, firstPaint, seg, slow }) {
   const banner = document.querySelector("#slowBanner");
   if (!banner) return;
   // 只列出真正花掉时间的段（<80 毫秒的不值一提），免得横幅又长又没重点。
-  const parts = BOOT_SEGMENTS
+  const english = document.documentElement.lang === "en";
+  const parts = bootSegments()
     .filter(([key]) => (seg[key] || 0) > 80)
-    .map(([key, label]) => `${label} ${seg[key]} 毫秒`);
+    .map(([key, label]) => `${label} ${seg[key]} ${english ? "ms" : "毫秒"}`);
   const headline = firstPaint < total
-    ? `首屏 ${(firstPaint / 1000).toFixed(1)} 秒可见，最新数据校准完成共 ${(total / 1000).toFixed(1)} 秒`
-    : `这次打开用了 ${(total / 1000).toFixed(1)} 秒`;
-  const lines = [`${headline}：${parts.length ? parts.join(" · ") : "各段都不到 80 毫秒"}`];
-  if (slow.length) lines.push(`最慢的文件：${slow.map((entry) => `${entry.name} ${entry.ms} 毫秒`).join("、")}`);
+    ? (english ? `First screen in ${(firstPaint / 1000).toFixed(1)} s; latest data ready in ${(total / 1000).toFixed(1)} s` : `首屏 ${(firstPaint / 1000).toFixed(1)} 秒可见，最新数据校准完成共 ${(total / 1000).toFixed(1)} 秒`)
+    : (english ? `Opened in ${(total / 1000).toFixed(1)} s` : `这次打开用了 ${(total / 1000).toFixed(1)} 秒`);
+  const lines = [`${headline}${english ? ": " : "："}${parts.length ? parts.join(" · ") : (english ? "every stage was under 80 ms" : "各段都不到 80 毫秒")}`];
+  if (slow.length) lines.push(english ? `Slowest files: ${slow.map((entry) => `${entry.name} ${entry.ms} ms`).join(", ")}` : `最慢的文件：${slow.map((entry) => `${entry.name} ${entry.ms} 毫秒`).join("、")}`);
   const conclusion = slowConclusion(seg);
   if (conclusion) lines.push(conclusion);
   // 数据体积异常大单独说一句：这是「读数据慢」最常见的原因。
   if ((seg.bytes || 0) > 300000) {
-    lines.push(`收藏数据 ${Math.round(seg.bytes / 1024)} KB（正常几十 KB）→ 里面有体积大的内容，建议删掉带大图的旧收藏。`);
+    lines.push(english
+      ? `Save data is ${Math.round(seg.bytes / 1024)} KB (normally only tens of KB). Large embedded content may be slowing it down.`
+      : `收藏数据 ${Math.round(seg.bytes / 1024)} KB（正常几十 KB）→ 里面有体积大的内容，建议删掉带大图的旧收藏。`);
   }
   banner.textContent = lines.join("\n");
   banner.hidden = false;
@@ -239,15 +253,28 @@ function saveOpenDiag(record) {
 }
 
 async function init() {
-  await window.LaterOnI18n?.getLanguage();
-  window.LaterOnI18n?.applyStatic();
   // 计时起点：boot.js 在页面 <head> 里记的那一刻（比侧栏脚本更早），
   // 这样「页面加载」和「读数据」花的时间能分别算出来。
   const bootStart = window.LaterOnBoot?.t0 ?? nowMs();
+  // 语言设置是独立的存储读取，不能阻塞首屏，也不能把它算进「准备页面」。
+  // 先启动请求，下面继续读缓存 / 收藏；完成后再把静态文字切换到用户语言。
+  const languagePromise = Promise.resolve(
+    window.LaterOnI18n?.ready || window.LaterOnI18n?.getLanguage?.()
+  ).catch(() => null);
   const scriptReady = nowMs();   // = 页面 + 脚本就绪时刻（差值 = 浏览器准备页面用了多久）
   // 每一段都单独计时：之前只记了「读数据」，结果总耗时比各段加起来大好几秒，
   // 那几秒花在哪完全看不出来。现在一段都不放过。
   const seg = { page: Math.round(scriptReady - bootStart), cache: 0, paint: 0, data: 0, migrate: 0 };
+
+  // 语言读取完成后再应用翻译；此时如果首屏已经画出来，只重画一次文字和当前列表。
+  // 不等待它，避免一次冷 storage 读取把侧栏首屏拖到几秒之后。
+  languagePromise.then(() => {
+    window.LaterOnI18n?.applyStatic();
+    if (sidePanelReady || cacheHit) {
+      render();
+      renderProjectFilters();
+    }
+  });
 
   // ① 先把「读存储」发出去，但**不等它**。存储冷的时候这一次读取要好几秒，
   //    早点发出去，它就能和后面的「读本地缓存」「画第一屏」同时跑；
@@ -273,7 +300,7 @@ async function init() {
     renderProjectFilters();
     seg.paint = Math.round(nowMs() - paintStart);
   }
-  if (typeof window.LaterOnBoot?.stage === "function") window.LaterOnBoot.stage("正在读取收藏数据…");
+  if (typeof window.LaterOnBoot?.stage === "function") window.LaterOnBoot.stage(tr("readingSaves"));
 
   // ③ 现在才等存储结果（它从 ① 就开始跑了）。
   const stored = await storedPromise;
@@ -291,8 +318,8 @@ async function init() {
     // loadCurrentPage() 会同步重置顶部状态，因此先启动它，再放回这条更重要的读取提示。
     loadCurrentPage();
     status.textContent = cacheHit
-      ? "暂时无法刷新，正在显示上次打开的内容"
-      : "暂时无法读取收藏，请关闭侧栏后重试";
+      ? tr("noRefreshShowingCache")
+      : tr("loadFailedRetry");
     return;
   }
   const migrateStart = nowMs();
@@ -386,6 +413,29 @@ async function loadCovers() {
 // 不能让它把整个侧栏拖住——所以这里加了超时，超时就维持基础信息。
 const CURRENT_PAGE_TIMEOUT_MS = 4000;
 
+// 编辑弹窗不是首屏能力：侧栏打开时不加载 27KB 的 dialog.js 和对应 CSS，
+// 用户第一次点击编辑时再按需加载，避免冷启动把非必要资源也排进就绪链路。
+let dialogLoadPromise = null;
+function ensureDialogLoaded() {
+  if (window.LaterOnDialog) return Promise.resolve(window.LaterOnDialog);
+  if (dialogLoadPromise) return dialogLoadPromise;
+  dialogLoadPromise = new Promise((resolve, reject) => {
+    if (!document.querySelector('link[data-lateron-dialog-style]')) {
+      const style = document.createElement("link");
+      style.rel = "stylesheet";
+      style.href = "dialog.css";
+      style.dataset.lateronDialogStyle = "";
+      document.head.append(style);
+    }
+    const script = document.createElement("script");
+    script.src = "dialog.js";
+    script.onload = () => window.LaterOnDialog ? resolve(window.LaterOnDialog) : reject(new Error("弹窗脚本未就绪"));
+    script.onerror = () => reject(new Error("弹窗脚本加载失败"));
+    document.head.append(script);
+  });
+  return dialogLoadPromise;
+}
+
 // 给 Promise 加超时：到点就返回兜底值，绝不让界面无限期等下去。
 function withTimeout(promise, ms, fallback) {
   return new Promise((resolve) => {
@@ -406,12 +456,12 @@ async function loadCurrentPage() {
   resetCurrentPage();
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) throw new Error("当前窗口没有可收藏的页面");
+    if (!tab?.id) throw new Error(tr("noCurrentPage"));
     if (!/^https?:/i.test(tab.url || "")) {
       const scheme = String(tab.url || "").split(":", 1)[0].toLowerCase();
       throw new Error(scheme === "file"
-        ? "本地文件无法收藏，请切换到普通网页"
-        : "浏览器内部页面无法收藏，请切换到普通网页");
+        ? tr("localFileUnsupported")
+        : tr("browserPageUnsupported"));
     }
     const fallback = fallbackMetadata(tab);
     // 第一段：立刻显示，按钮放开，不等后台。
@@ -452,19 +502,19 @@ function resetCurrentPage() {
   saveButton.disabled = true;
   saveButton.classList.remove("done");
   saveButton.querySelector("span").textContent = "＋";
-  saveButton.querySelector(".save-label").textContent = "收藏";
-  document.querySelector("#currentTitle").textContent = "当前页面";
-  document.querySelector("#currentSource").textContent = "正在读取当前网页…";
+  saveButton.querySelector(".save-label").textContent = tr("saveCurrent");
+  document.querySelector("#currentTitle").textContent = tr("currentPage");
+  document.querySelector("#currentSource").textContent = tr("currentLoading");
   resetCurrentThumb();
   status.textContent = "";
 }
 
 function fallbackMetadata(tab) {
-  let source = "网页";
+  let source = tr("webPage");
   try { source = new URL(tab.url).hostname.replace(/^www\./, ""); } catch {}
   return {
     title: tab.title || tab.url,
-    description: "暂无摘要",
+    description: tr("noDescription"),
     image: "",
     favicon: tab.favIconUrl || "",
     source
@@ -504,19 +554,19 @@ saveButton.addEventListener("click", async () => {
   if (response?.ok && response.pending) {
     // 已经弹出浮层了，真正的收藏等用户在浮层里确认（结果会弹在网页上）。
     saveButton.disabled = false;
-    status.textContent = "已在网页里弹出「选项目」，选好确认后才会收藏";
+    status.textContent = tr("pickerOpened");
     return;
   }
   if (response?.ok) {
     saveButton.classList.add("done");
     saveButton.querySelector("span").textContent = "✓";
     saveButton.querySelector(".save-label").textContent = response.duplicated
-      ? (response.refreshed ? "已更新信息" : "已收藏过")
-      : (response.updated ? "已更新" : "已收藏");
+      ? (response.refreshed ? tr("infoUpdated") : tr("alreadySaved"))
+      : (response.updated ? tr("updated") : tr("saved"));
     status.textContent = "";
   } else {
     saveButton.disabled = false;
-    status.textContent = response?.error || "收藏失败，请重试";
+    status.textContent = response?.error || tr("saveFailed");
   }
 });
 
@@ -531,7 +581,7 @@ document.querySelector("#openLibrary").addEventListener("click", async () => {
   } catch (error) {
     console.error("切换完整界面失败", error);
     if (libraryOpened) window.close();
-    else status.textContent = "无法打开完整界面，请重试";
+    else status.textContent = tr("libraryOpenFailed");
   }
 });
 document.querySelector("#searchInput").addEventListener("input", (event) => {
@@ -596,7 +646,7 @@ function render() {
   }
   const token = ++renderToken;
   renderComplete = false;   // 这一轮还没画完，先别拿半张列表的坐标去做定位
-  document.querySelector("#itemCount").textContent = document.documentElement.lang === "en" ? `${visible.length} saves` : `${visible.length} 篇`;
+  document.querySelector("#itemCount").textContent = tr("cardCount", { n: visible.length });
 
   // 已经不在列表里的卡片先撤掉（删掉的收藏要立刻从界面消失）。
   const visibleIds = new Set(visible.map((item) => item.id));
@@ -620,6 +670,7 @@ function renderSlice(visible, start, token) {
     let article = itemMap.get(item.id);
     if (!article) { article = createItem(item); itemMap.set(item.id, article); }
     else updateItemCard(article, item);
+    article.dataset.currentLabel = tr("currentReading");
     article.classList.toggle("is-current", item.id === currentItemId);
     if (list.children[index] !== article) list.insertBefore(article, list.children[index] || null);
   }
@@ -646,7 +697,10 @@ function finishRender(token) {
 // 分两步：卡片已经画出来就立刻定位（快路径）；还没画到 / 列表没铺完，
 // 就挂一个定位任务，等整张列表画完（finishRender）再定位。
 function applyCurrentAndLocate() {
-  for (const [id, article] of itemMap) article.classList.toggle("is-current", id === currentItemId);
+  for (const [id, article] of itemMap) {
+    article.dataset.currentLabel = tr("currentReading");
+    article.classList.toggle("is-current", id === currentItemId);
+  }
   pendingLocate = Boolean(currentItemId);
   if (!pendingLocate) return;
   locateCurrent();
@@ -928,26 +982,32 @@ function setText(element, value) {
 // 改过的会被标记为 titleEdited / descriptionEdited，
 // 之后再次收藏同一网址时，后台不会再拿自动抓取的结果覆盖掉用户手写的版本。
 const NO_SUMMARY = "暂无摘要";
-const IS_EMPTY_SUMMARY = new RegExp(`^\\s*(${NO_SUMMARY})?\\s*$`);
+const IS_EMPTY_SUMMARY = /^\s*(暂无摘要|No summary)?\s*$/i;
 
 async function editItem(item) {
+  try {
+    await ensureDialogLoaded();
+  } catch {
+    status.textContent = tr("dialogLoadFailed");
+    return;
+  }
   const result = await LaterOnDialog.prompt({
-    title: "编辑收藏",
-    message: IS_EMPTY_SUMMARY.test(item.description) ? "这篇没抓到摘要，可以自己补一句。" : "",
+    title: tr("editItem"),
+    message: IS_EMPTY_SUMMARY.test(item.description) ? tr("missingSummaryHint") : "",
     // 封面：可以自己上传一张本地图片（自动压缩后保存），也可以移除。
-    cover: { name: "cover", label: "封面", value: resolveImage(item) },
+    cover: { name: "cover", label: tr("cover"), value: resolveImage(item) },
     fields: [
-      { name: "title", label: "标题", value: item.title, maxLength: 200 },
+      { name: "title", label: tr("title"), value: item.title, maxLength: 200 },
       {
         name: "description",
-        label: "摘要",
+        label: tr("summary"),
         value: IS_EMPTY_SUMMARY.test(item.description) ? "" : item.description,
-        placeholder: "留空就显示「暂无摘要」",
+        placeholder: tr("summaryPlaceholder"),
         multiline: true,
         maxLength: 500
       }
     ],
-    confirmText: "保存"
+    confirmText: tr("save")
   });
   if (!result?.ok) return;
 
@@ -990,7 +1050,7 @@ async function editItem(item) {
 async function openItem(item) {
   const target = safeTarget(item.url);
   if (!target) {
-    status.textContent = "这条收藏的网址无效，无法打开";
+    status.textContent = tr("invalidItemUrl");
     return;
   }
   // 记下「正在读这篇」——全屏界面据此高亮并滚动定位，两个视图保持一致。
@@ -1029,14 +1089,14 @@ async function deleteItem(id) {
   if (!target) return;
   // 删除是没法撤销的，删之前一定问一句（弹窗组件是 defer 加载的，
   // 万一还没就绪就直接删，别把删除卡死）。
-  const raw = (target.title || "").trim() || "这篇收藏";
+  const raw = (target.title || "").trim() || tr("itemFallback");
   const title = raw.length > 26 ? `${raw.slice(0, 26)}…` : raw;
   if (window.LaterOnDialog) {
     const confirmed = await window.LaterOnDialog.confirm({
       tone: "danger",
-      title: `删除「${title}」？`,
-      message: "删除后无法恢复。",
-      confirmText: "删除"
+      title: tr("deleteItemTitle", { title }),
+      message: tr("deleteCannotUndo"),
+      confirmText: tr("delete")
     });
     if (!confirmed) return;
   }
@@ -1052,9 +1112,9 @@ async function deleteItem(id) {
 
 function formatTime(timestamp) {
   const days = Math.floor((Date.now() - timestamp) / 86400000);
-  if (days < 1) return "今天";
-  if (days < 30) return `${days} 天前`;
-  return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric" }).format(timestamp);
+  if (days < 1) return tr("today");
+  if (days < 30) return tr("daysAgo", { n: days });
+  return new Intl.DateTimeFormat(document.documentElement.lang === "en" ? "en" : "zh-CN", { month: "short", day: "numeric" }).format(timestamp);
 }
 
 // YouTube 的最大分辨率封面（maxresdefault）对部分视频并不存在，

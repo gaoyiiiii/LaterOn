@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "LaterOn · 稍后阅读",
-  "version": "1.64.5",
+  "name": "__MSG_extensionName__",
+  "version": "1.65.0",
+  "default_locale": "zh_CN",
   "minimum_chrome_version": "121",
-  "description": "一键收藏当前网页，在清爽的卡片界面中稍后阅读。",
+  "description": "__MSG_extensionDescription__",
   "permissions": [
     "activeTab",
     "storage",
@@ -19,7 +20,7 @@
     "https://*/*"
   ],
   "action": {
-    "default_title": "打开 LaterOn 侧栏",
+    "default_title": "__MSG_actionTitle__",
     "default_icon": {
       "16": "icon16.png",
       "32": "icon32.png",
@@ -38,19 +39,19 @@
       "suggested_key": {
         "default": "Alt+1"
       },
-      "description": "将当前网页收藏到 LaterOn"
+      "description": "__MSG_commandSavePage__"
     },
     "toggle-translation": {
       "suggested_key": {
         "default": "Alt+2"
       },
-      "description": "翻译当前网页或恢复原文"
+      "description": "__MSG_commandTranslatePage__"
     },
     "save-all-tabs": {
       "suggested_key": {
         "default": "Alt+Shift+1"
       },
-      "description": "将当前窗口所有标签页收藏到 LaterOn"
+      "description": "__MSG_commandSaveAllTabs__"
     }
   },
   "options_page": "settings.html",
@@ -62,7 +63,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["icon.svg"],
+      "resources": ["icon128.png"],
       "matches": ["http://*/*", "https://*/*"]
     }
   ]

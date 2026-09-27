@@ -7,7 +7,7 @@
          整页统一不发 Referer，收藏的封面与站点图标才能正常显示。 -->
     <meta name="referrer" content="no-referrer" />
     <title>LaterOn</title>
-    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="icon" href="icon128.png" type="image/png" />
 
     <!-- ── 首屏「零依赖」样式 ─────────────────────────────────
          这段样式内联在这里，是浏览器画出第一批内容所需要的全部 CSS。
@@ -67,7 +67,7 @@
       /* 顶部标题栏（在 appBody 之外，启动时也能立刻显示出来认认脸） */
       header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
       .brand { font-size: 16px; font-weight: 600; letter-spacing: .2px; }
-      .brand span { color: #ff5c35; }
+      .brand-icon { display: block; width: 25px; height: 25px; border-radius: 6px; }
       #openLibrary { width: 28px; height: 28px; border: 0; background: transparent; color: inherit; }
       #openLibrary svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
 
@@ -87,12 +87,11 @@
     <!-- 下面三个样式表故意「先不生效」（media=print）：这样它们不阻塞首屏渲染，
          由 boot.js 在加载完成后切换成 media=all。 -->
     <link rel="stylesheet" href="theme-vars.css" media="print" data-boot-style />
-    <link rel="stylesheet" href="dialog.css" media="print" data-boot-style />
     <link rel="stylesheet" href="sidepanel.css" media="print" data-boot-style />
+    <link rel="stylesheet" href="onboarding.css" media="print" data-boot-style />
     <noscript>
       <!-- 万一脚本被禁用，样式照样要生效（此时没人去切换 media）。 -->
       <link rel="stylesheet" href="theme-vars.css" />
-      <link rel="stylesheet" href="dialog.css" />
       <link rel="stylesheet" href="sidepanel.css" />
     </noscript>
     <!-- 启动占位提示（自带计时）：早于其他脚本，页面一进来就能显示「正在打开…」 -->
@@ -100,15 +99,13 @@
     <!-- defer：不卡住 <body> 的解析（骨架屏因此能更早被浏览器读进来） -->
     <script src="theme.js" defer></script>
     <script src="i18n.js" defer></script>
-    <script src="url-utils.js" defer></script>
+    <script src="onboarding.js" defer></script>
     <script src="sidepanel.js" defer></script>
-    <!-- 弹窗只在用户编辑 / 删除时需要，放到侧栏主逻辑之后，避免拖慢首屏执行。 -->
-    <script src="dialog.js" defer></script>
   </head>
   <body class="booting">
     <header>
-      <div class="brand"><img class="brand-icon" src="icon.svg" width="25" height="25" alt="" />LaterOn</div>
-      <button id="openLibrary" class="icon-button" title="打开完整界面" aria-label="打开完整界面">
+      <div class="brand"><img class="brand-icon" src="icon128.png" width="25" height="25" alt="" />LaterOn</div>
+      <button id="openLibrary" class="icon-button" data-i18n-title="openLibrary" data-i18n-aria-label="openLibrary" title="打开完整界面" aria-label="打开完整界面">
         <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M8 21H5a2 2 0 0 1-2-2v-3m18 0v3a2 2 0 0 1-2 2h-3"/></svg>
       </button>
     </header>
@@ -199,7 +196,7 @@
            顺便带上实时秒数和久等时的建议；真内容画出来由 JS 移除。 -->
       <div id="bootTip" class="boot-tip" role="status" hidden>
         <span class="boot-dot"></span>
-        <span id="bootTipText">正在打开收藏…</span>
+        <span id="bootTipText" data-i18n="openingSaves">正在打开收藏…</span>
         <span id="bootTipTime" class="boot-time"></span>
         <span id="bootTipHint" class="boot-hint"></span>
       </div>
@@ -208,10 +205,10 @@
            免得「灰色占位」和「真内容」同时出现在屏幕上。 -->
       <div id="appBody">
       <section class="save-panel">
-        <div id="currentThumb" class="current-thumb"><img class="thumb-logo" src="icon.svg" alt="" /></div>
+        <div id="currentThumb" class="current-thumb"><img class="thumb-logo" src="article-cover-placeholder.png" alt="" /></div>
         <div class="current-copy">
-          <p id="currentSource">正在读取当前网页…</p>
-          <h1 id="currentTitle">当前页面</h1>
+          <p id="currentSource" data-i18n="currentLoading">正在读取当前网页…</p>
+          <h1 id="currentTitle" data-i18n="currentPage">当前页面</h1>
         </div>
         <button id="saveCurrent" disabled><span>＋</span><span class="save-label" data-i18n="saveCurrent">收藏</span></button>
       </section>
@@ -219,7 +216,7 @@
 
       <label class="search">
         <svg viewBox="0 0 24 24"><path d="m21 21-4.3-4.3m2.3-5.2a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z"/></svg>
-        <input id="searchInput" type="search" placeholder="搜索收藏" autocomplete="off" />
+        <input id="searchInput" type="search" data-i18n-placeholder="search" placeholder="搜索收藏" autocomplete="off" />
       </label>
 
       <div class="filter-row">
@@ -230,12 +227,12 @@
         </div>
         <span id="itemCount"></span>
       </div>
-      <div id="projectFilters" class="project-filters" aria-label="项目分类"></div>
+      <div id="projectFilters" class="project-filters" data-i18n-aria-label="projectCategories" aria-label="项目分类"></div>
 
       <section id="emptyState" class="empty" hidden>
-        <span>↗</span>
-        <h2>还没有收藏</h2>
-        <p>收藏当前网页后，它会出现在这里。</p>
+        <img class="empty-icon" src="icon128.png" alt="" />
+        <h2 data-i18n="sideEmptyTitle">还没有收藏</h2>
+        <p data-i18n="sideEmptyHint">收藏当前网页后，它会出现在这里。</p>
       </section>
       <section id="items" class="items" aria-live="polite"></section>
       </div>
@@ -243,20 +240,20 @@
 
     <template id="itemTemplate">
       <article class="item">
-        <button class="open-item" title="在当前标签页打开">
-          <div class="thumb"><div class="thumb-placeholder"><img class="thumb-logo" src="icon.svg" alt="" /></div></div>
+        <button class="open-item" data-i18n-title="openCurrentTab" title="在当前标签页打开">
+          <div class="thumb"><div class="thumb-placeholder"><img class="thumb-logo" src="article-cover-placeholder.png" alt="" /></div></div>
           <div class="copy">
-            <div class="meta"><img alt="" referrerpolicy="no-referrer" /><span class="source"></span><span>·</span><time></time></div>
+            <div class="meta"><img alt="" referrerpolicy="no-referrer" /><span class="source"></span><span class="dot">·</span><time></time></div>
             <h2></h2>
             <p class="description"></p>
           </div>
         </button>
         <!-- 和全屏界面同一颗按钮：文字直接写清「标为已读 / 标为未读」（文字由 JS 填） -->
         <button class="read-toggle" aria-label="标为已读" title="标为已读"></button>
-        <button class="edit" title="编辑标题和摘要" aria-label="编辑标题和摘要">
+        <button class="edit" data-i18n-title="editItemAria" data-i18n-aria-label="editItemAria" title="编辑标题和摘要" aria-label="编辑标题和摘要">
           <svg viewBox="0 0 24 24"><path d="M4 20h4L20 8l-4-4L4 16zM14 6l4 4"/></svg>
         </button>
-        <button class="delete" title="删除" aria-label="删除">
+        <button class="delete" data-i18n-title="deleteSave" data-i18n-aria-label="deleteSave" title="删除" aria-label="删除">
           <svg viewBox="0 0 24 24"><path d="M4 7h16m-10 4v6m4-6v6M9 7l1-3h4l1 3m3 0-1 13H7L6 7"/></svg>
         </button>
       </article>

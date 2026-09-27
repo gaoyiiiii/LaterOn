@@ -42,7 +42,7 @@ const store = {
   laterOnProjects: [{ id: "work", name: "工作", createdAt: 1 }],
   laterOnActiveProject: "work",
   laterOnSettings: {},
-  laterOnFilter: "all"
+  laterOnFilter: "all",
   laterOnFilterChosen: true,
 };
 

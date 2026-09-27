@@ -48,7 +48,7 @@ const store = {
   ],
   laterOnActiveProject: "work",
   laterOnSettings: {},
-  laterOnFilter: "all"
+  laterOnFilter: "all",
   laterOnFilterChosen: true,
 };
 

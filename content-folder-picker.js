@@ -24,6 +24,7 @@ function showFolderPickerOverlay(payload) {
 
   window.openFolderPicker({
     theme,
+    language: data.language || "zh-CN",
     folders,
     selected,
     pages,

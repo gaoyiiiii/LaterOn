@@ -2,7 +2,7 @@
 //  1) 全部项目默认就是图板视图（一个类目一张图板，等待整理不占块）
 //  2) 封面是该类目里几篇收藏拼出来的：有封面的优先，最多 3 张
 //  3) 没写过简介时自动生成一句概览；写过就用写的那句
-//  4) 点图板进入该类目看卡片列表；侧栏的项目列表任何时候都列着（不用先钻进去）
+//  4) 点图板进入该类目看卡片列表；侧栏项目列表此时才以子级层次出现
 //  5) 顶部「未读 / 已读」筛选照样影响图板上的篇数
 //  6) 不再有手动「卡片/图板」切换；全部项目恒为图板，等待整理/项目恒为卡片
 // 用 jsdom 而不是真浏览器，只是为了让这个检查能在命令行里快速反复跑。
@@ -47,11 +47,11 @@ const store = {
   laterOnProjects: [
     { id: "work", name: "工作", createdAt: 1 },
     { id: "read", name: "阅读", createdAt: 2 },
-    { id: "empty", name: "空抽屉", createdAt: 3 }   // 一篇收藏都没有 → 不该出现在图板上
+    { id: "empty", name: "空抽屉", createdAt: 3 }   // 一篇收藏都没有 → 仍应作为项目图板出现
   ],
   laterOnActiveProject: "all",
   laterOnSettings: {},
-  laterOnFilter: "all"
+  laterOnFilter: "all",
   laterOnFilterChosen: true,
 };
 const changeListeners = [];
@@ -145,18 +145,18 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   check("打开就是图板视图（全部项目 = 图板）", !boardGrid().hidden && cardGrid().hidden);
   check("已经没有手动切换的视图按钮", !document.querySelector("#viewSwitch") && !document.querySelector(".view-btn"));
   check("排序下拉在图板视图下收起（顺序对图板没意义）", document.querySelector("#sortSelect").hidden);
-  // 项目列表常显：在全部项目里也要能直接看到并点进任意项目，不用先钻进去。
-  // 顺带静态锁住 HTML 里那份 markup：别再给它挂 hidden 变成「默认收起」。
-  check("默认（全部项目）下项目列表就显示着", document.querySelector(".projects-section").hidden === false && !!document.querySelector('#projectList .project-row[data-id="work"]'));
-  check("HTML 里 .projects-section 没有挂着 hidden", /class="projects-section"(?![^>]*\shidden)/.test(html));
+  // 首页的主内容已经是项目图板，左侧不再重复显示项目列表，也没有第二套标题与加号。
+  check("默认（全部项目）下不显示左侧项目列表", !document.querySelector(".projects-section").classList.contains("is-visible"));
+  check("侧栏不再出现项目标题与加号", !document.querySelector("#toggleProjects") && !document.querySelector("#showProjectForm"));
+  check("图板末尾提供虚线新建入口", boardGrid().lastElementChild?.classList.contains("board-create"));
 
   console.log("\n── 一个类目一张图板 ──");
-  check("两个项目 = 2 张图板", boardCards().length === 2, boardCards().map((c) => c.dataset.project).join(","));
-  check("一篇收藏都没有的项目不显示图板", !boardOf("empty"), boardCards().map((c) => c.dataset.project).join(","));
+  check("全部项目包含 3 张图板", boardCards().length === 3, boardCards().map((c) => c.dataset.project).join(","));
+  check("一篇收藏都没有的项目也保留图板", !!boardOf("empty"), boardCards().map((c) => c.dataset.project).join(","));
   check("图板上写着类目名", text(boardOf("work"), ".board-name") === "工作", text(boardOf("work"), ".board-name"));
   check("「等待整理」不再单独占一块图板", !boardOf("unfiled"));
   // 等待整理那 1 篇不进任何图板；全部项目统计只描述项目图板本身。
-  check("顶部计数改成按类目算且不混入等待整理", /2 个类目 · 共 5 篇收藏 · 4 篇没看完/.test(document.querySelector("#countText").textContent) && !document.querySelector("#countText").textContent.includes("等待整理"), document.querySelector("#countText").textContent);
+  check("顶部计数改成按类目算且不混入等待整理", /3 个类目 · 共 5 篇收藏 · 4 篇没看完/.test(document.querySelector("#countText").textContent) && !document.querySelector("#countText").textContent.includes("等待整理"), document.querySelector("#countText").textContent);
   // 侧栏：全屏页面里「等待整理」要钉在最上面，而且有内容时整块高亮
   const inbox = document.querySelector(".inbox-card");
   check("侧栏有「等待整理」这块，而且钉在最上面", !!inbox && document.querySelector(".project-sidebar").firstElementChild === inbox);
@@ -246,14 +246,14 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   check("切到了「工作」项目", store.laterOnActiveProject === "work", store.laterOnActiveProject);
   check("进类目后回到卡片视图", cardGrid().hidden === false && boardGrid().hidden);
   check("卡片只剩这个类目里的 4 篇", cardGrid().querySelectorAll(".card").length === 4, String(cardGrid().querySelectorAll(".card").length));
-  check("钻进项目后，项目列表照样显示", document.querySelector(".projects-section").hidden === false);
+  check("钻进项目后，项目列表才出现", document.querySelector(".projects-section").classList.contains("is-visible"));
   check("列表里有这个项目", !!document.querySelector('#projectList .project-row[data-id="work"]'));
 
   console.log("\n── 回到全部项目还是图板 ──");
   click(document.querySelector('.project-nav[data-project="all"]'));
   await tick(30);
   check("又是图板视图", !boardGrid().hidden && cardGrid().hidden);
-  check("回到全部项目后，项目列表仍然显示", document.querySelector(".projects-section").hidden === false);
+  check("回到全部项目后，左侧项目列表消失", !document.querySelector(".projects-section").classList.contains("is-visible"));
 
   console.log("\n── 顶部筛选照样生效 ──");
   click(document.querySelector('.nav-item[data-filter="done"]'));
