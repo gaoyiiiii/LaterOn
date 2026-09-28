@@ -1,3 +1,4 @@
+<img width="1920" height="993" alt="image" src="https://github.com/user-attachments/assets/b42aa09a-d55f-436c-a079-651dec5a9169" />
 # LaterOn Chrome 扩展
 
 一个本地优先的稍后阅读 Chrome / Edge 扩展。点击工具栏图标直接打开侧栏，可提取当前网页的标题、摘要、封面、来源与站点头像，并保存在浏览器本地。
