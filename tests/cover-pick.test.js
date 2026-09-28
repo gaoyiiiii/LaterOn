@@ -14,6 +14,7 @@ const ROOT = path.resolve(__dirname, "..");
 const html = fs.readFileSync(`${ROOT}/library.html`, "utf8");
 const librarySource = fs.readFileSync(`${ROOT}/library.js`, "utf8");
 const dialogSource = fs.readFileSync(`${ROOT}/dialog.js`, "utf8");
+const i18nSource = fs.readFileSync(`${ROOT}/i18n.js`, "utf8");
 const dialogCss = fs.readFileSync(`${ROOT}/dialog.css`, "utf8");
 const libraryCss = fs.readFileSync(`${ROOT}/library.css`, "utf8");
 
@@ -92,6 +93,7 @@ window.Element.prototype.getBoundingClientRect = function () {
   return { left, top: 0, right: left + CELL_W, bottom: CELL_H, width: CELL_W, height: CELL_H, x: left, y: 0, toJSON() {} };
 };
 
+window.eval(i18nSource);
 window.eval(dialogSource);
 window.eval(librarySource);
 

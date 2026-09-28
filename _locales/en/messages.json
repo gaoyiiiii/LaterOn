@@ -1,6 +1,6 @@
 {
-  "extensionName": { "message": "LaterOn · Read Later" },
-  "extensionDescription": { "message": "Save the current page in one click and return to it later in a clean, focused library." },
+  "extensionName": { "message": "LaterOn · Project Web Manager" },
+  "extensionDescription": { "message": "A web manager built for project research. Save scattered pages into projects, organize them, and keep working through them." },
   "actionTitle": { "message": "Open the LaterOn side panel" },
   "commandSavePage": { "message": "Save the current page to LaterOn" },
   "commandTranslatePage": { "message": "Translate the current page or restore the original" },

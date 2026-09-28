@@ -131,6 +131,9 @@ window.eval(librarySource);
 
 (async () => {
   await tick(40);   // 等 init() 把卡片渲染出来
+  document.querySelector('.project-nav[data-project="work"]')
+    .dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick(30);
 
   console.log("── 第 1 步：点标题链接 → 切侧栏 + 当前标签页跳转 ──");
   resetLogs();

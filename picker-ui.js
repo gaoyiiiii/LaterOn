@@ -36,13 +36,13 @@
       failed: "Something went wrong. Try again."
     } : {
       projects: "选择项目", newProject: "新建项目名称", cancel: "取消", moveTitle: "把这篇放到哪个项目？",
-      saveTitle: "收藏到哪个项目？", saveSingleTitle: "把这篇收藏到哪个项目？",
-      singleSaved: "这篇已经收藏过——确认后会一并移进你选的项目", singleNew: "选好项目后就会收藏这一篇",
-      batchSaved: (total, saved) => `共 ${total} 个标签页，其中 ${saved} 个已经收藏过——确认后会一并移进你选的项目`,
-      batchNew: (total) => `共 ${total} 个标签页，选好项目后就会开始逐个收藏`, pages: (n) => `查看将要收藏的 ${n} 个页面`,
-      newMove: "输入新项目名，回车直接移入", newSave: "输入新项目名，回车直接收藏进去", inbox: "等待整理",
-      processing: "正在处理…", createMove: (name) => `新建「${name}」并移入`, createSave: (name) => `新建「${name}」并收藏`,
-      moveTo: (name) => `移动到「${name}」`, saveTo: (name) => `收藏到「${name}」`, createFailed: "新建项目失败，请重试。",
+      saveTitle: "保存到哪个项目？", saveSingleTitle: "把这个网页保存到哪个项目？",
+      singleSaved: "这个网页已经保存过——确认后会一并移进你选的项目", singleNew: "选好项目后就会保存这个网页",
+      batchSaved: (total, saved) => `共 ${total} 个标签页，其中 ${saved} 个已经保存过——确认后会一并移进你选的项目`,
+      batchNew: (total) => `共 ${total} 个标签页，选好项目后就会开始逐个保存`, pages: (n) => `查看将要保存的 ${n} 个网页`,
+      newMove: "输入新项目名，回车直接移入", newSave: "输入新项目名，回车直接保存进去", inbox: "等待整理",
+      processing: "正在处理…", createMove: (name) => `新建「${name}」并移入`, createSave: (name) => `新建「${name}」并保存`,
+      moveTo: (name) => `移动到「${name}」`, saveTo: (name) => `保存到「${name}」`, createFailed: "新建项目失败，请重试。",
       failed: "操作失败，请重试。"
     };
 

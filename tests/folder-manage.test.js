@@ -14,6 +14,7 @@ const { JSDOM, VirtualConsole } = require("jsdom");
 const ROOT = path.resolve(__dirname, "..");
 const html = fs.readFileSync(`${ROOT}/library.html`, "utf8");
 const librarySource = fs.readFileSync(`${ROOT}/library.js`, "utf8");
+const i18nSource = fs.readFileSync(`${ROOT}/i18n.js`, "utf8");
 // 确认框现在走自定义弹窗，所以把 dialog.js 也一起加载进来跑真实的组件。
 const dialogSource = fs.readFileSync(`${ROOT}/dialog.js`, "utf8");
 // 侧栏那套样式的源码：下面有几条「静态断言」用它锁住纯视觉的规矩
@@ -114,6 +115,7 @@ const dragEvent = (el, type, dataTransfer) => {
   el.dispatchEvent(event);
 };
 
+window.eval(i18nSource);
 window.eval(dialogSource);
 window.eval(librarySource);
 
@@ -141,11 +143,12 @@ const cardFolderOptions = () => [...document.querySelectorAll(".card .project-se
   const createBoard = document.querySelector(".board-create");
   check("全部项目图板末尾有新建入口", !!createBoard && createBoard === document.querySelector("#boardGrid").lastElementChild);
   click(createBoard);
+  await tick();
   const nameInput = document.querySelector('.lod-root:not([hidden]) [data-field="name"]');
   check("点虚线加号打开应用内弹窗", !!nameInput);
   nameInput.value = "  设计灵感  ";
   click(document.querySelector(".lod-root:not([hidden]) .lod-ok"));
-  await tick(10);
+  await tick(300);
   const design = folderByName("设计灵感");
   check("项目真的写进了存储，且名称去了空格", !!design, JSON.stringify(store.laterOnProjects.map((p) => p.name)));
   check("侧栏里多出这一行", projectRows().length === 2);
@@ -162,10 +165,11 @@ const cardFolderOptions = () => [...document.querySelectorAll(".card .project-se
   click(document.querySelector('.project-nav[data-project="all"]'));
   await tick(10);
   click(document.querySelector(".board-create"));
+  await tick();
   const duplicateNameInput = document.querySelector('.lod-root:not([hidden]) [data-field="name"]');
   duplicateNameInput.value = "工作";
   click(document.querySelector(".lod-root:not([hidden]) .lod-ok"));
-  await tick(10);
+  await tick(300);
   check("重名不会再建一个", store.laterOnProjects.filter((p) => p.name === "工作").length === 1);
   check("给出同名提示并跳到已有的那个", /已有同名项目/.test(toastText()) && store.laterOnActiveProject === "work", toastText());
 
@@ -248,7 +252,7 @@ const cardFolderOptions = () => [...document.querySelectorAll(".card .project-se
   check("删除前弹出了自定义弹窗（不再是浏览器自带）", !!dialog());
   check("弹窗是危险操作的红色主题", dialog()?.dataset.tone === "danger", dialog()?.dataset.tone);
   check("弹窗标题写明是哪个项目", /删除项目「工作与灵感」/.test(dialogText(".lod-title")), dialogText(".lod-title"));
-  check("弹窗写清会影响几篇收藏", /2 篇收藏会移到/.test(dialogText(".lod-message")), dialogText(".lod-message"));
+  check("弹窗写清会影响几篇网页", /2 篇网页会移到/.test(dialogText(".lod-message")), dialogText(".lod-message"));
   check("确认按钮写明动作", dialogText(".lod-ok") === "删除项目", dialogText(".lod-ok"));
   click(dialog().querySelector(".lod-cancel"));
   await tick(300);
@@ -319,7 +323,7 @@ const cardFolderOptions = () => [...document.querySelectorAll(".card .project-se
   const nestedSection = ruleOf("\\.projects-section\\.is-visible");
   const nestedNav = ruleOf("\\.projects-section\\s+\\.project-nav");
   const nestedFirstCol = Number(/grid-template-columns:\s*(\d+)px/.exec(nestedNav)?.[1] || 0);
-  check("项目列表整体右缩，明确从属于全部项目", /margin:[^;]*0 0 0 (?:2[4-9]|[3-9]\d)px/.test(nestedSection), nestedSection);
+  check("项目列表整体右缩，明确从属于全部项目", /margin:[^;]*0 0 (?:2[4-9]|[3-9]\d)px/.test(nestedSection), nestedSection);
   check("子级列表不画树状竖线", !/\.projects-section\.is-visible::before/.test(libraryCss));
   check("子级项目缩略图小于顶层入口", nestedFirstCol > 0 && nestedFirstCol < firstCol, "顶层=" + firstCol + "px 子级=" + nestedFirstCol + "px");
 

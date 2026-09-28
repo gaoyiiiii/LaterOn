@@ -165,9 +165,9 @@ function slowConclusion(seg) {
     if (key === "migrate") return `Migrating old covers took ${ms} ms. This should only happen once after upgrading.`;
     return `Finishing up took ${ms} ms.`;
   }
-  if (key === "page") return "「准备页面」占了大头 → 是 Chrome 打开侧边栏 / 加载页面文件慢，跟收藏多少无关。";
+  if (key === "page") return "「准备页面」占了大头 → 是 Chrome 打开侧边栏 / 加载页面文件慢，跟保存的网页数量无关。";
   if (key === "cache") return `「读本地缓存」占了大头（${ms} 毫秒）→ 侧栏的秒开快照读取慢，接下来本次会话会直接跳过它，不再反复卡。`;
-  if (key === "data") return `「读收藏数据」占了大头（${ms} 毫秒）→ 本地存储冷的时候这一次读取会慢，列表已先用缓存画出来了。`;
+  if (key === "data") return `「读取网页数据」占了大头（${ms} 毫秒）→ 本地存储冷的时候这一次读取会慢，列表已先用缓存画出来了。`;
   if (key === "paint") return `「画第一屏」占了大头（${ms} 毫秒）→ 卡片太多，一次画不完（已分批，剩下的后台续画）。`;
   if (key === "migrate") return `「整理旧封面」占了大头（${ms} 毫秒）→ 升级后第一次打开会搬一次封面，之后不会再有。`;
   return `其余收尾花了 ${ms} 毫秒。`;
@@ -193,7 +193,7 @@ function showSlowBanner({ total, firstPaint, seg, slow }) {
   if ((seg.bytes || 0) > 300000) {
     lines.push(english
       ? `Save data is ${Math.round(seg.bytes / 1024)} KB (normally only tens of KB). Large embedded content may be slowing it down.`
-      : `收藏数据 ${Math.round(seg.bytes / 1024)} KB（正常几十 KB）→ 里面有体积大的内容，建议删掉带大图的旧收藏。`);
+      : `网页数据 ${Math.round(seg.bytes / 1024)} KB（正常几十 KB）→ 里面有体积大的内容，建议删掉带大图的旧网页。`);
   }
   banner.textContent = lines.join("\n");
   banner.hidden = false;

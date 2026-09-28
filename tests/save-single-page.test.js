@@ -190,7 +190,7 @@ const check = (label, ok, extra = "") => {
   const saved = store.laterOnItems.find((i) => i.url === PAGE_URL);
   check("这一篇被直接收藏了", !!saved, saved ? saved.title : "没找到");
   check("关闭后收进「等待整理」（不带项目）", saved && (saved.projectId || null) === null, `projectId=${JSON.stringify(saved?.projectId)}`);
-  check("只弹了一条结果提示", pills.length === 1 && String(pills[0].items[0].text).includes("已收藏："), pills.map((p) => p.items[0].text).join(" | "));
+  check("只弹了一条结果提示", pills.length === 1 && String(pills[0].items[0].text).includes("已保存："), pills.map((p) => p.items[0].text).join(" | "));
 
   // ── 第 2 步：打开开关 → 先弹浮层，此刻不收藏 ──────────────────
   console.log("\n── 第 2 步：打开「收藏单篇前先选项目」──");
@@ -303,7 +303,7 @@ const check = (label, ok, extra = "") => {
   });
   const libraryNotice = runtimeNotices.at(-1);
   check("给全屏收藏库发送页内提示", runtimeNotices.length === noticesBefore + 1 && libraryNotice?.type === "SHOW_LIBRARY_NOTICE", JSON.stringify(libraryNotice));
-  check("提示说清要先打开想收藏的网页", /打开想收藏的网页/.test(libraryNotice?.message || "") && /Alt\+1/.test(libraryNotice?.message || ""), libraryNotice?.message);
+  check("提示说清要先打开想保存的网页", /打开想保存的网页/.test(libraryNotice?.message || "") && /Alt\+1/.test(libraryNotice?.message || ""), libraryNotice?.message);
   check("全屏页用收藏成功通知同款药丸变体", /showToast\([^\n]+3200,\s*"pill"\)/.test(librarySource));
   const pillRule = /\.toast\.pill-toast\s*\{[\s\S]*?\}/.exec(libraryCss)?.[0] || "";
   check("药丸复用右上角位置与圆角样式", /top:\s*18px/.test(pillRule) && /right:\s*18px/.test(pillRule) && /border-radius:\s*999px/.test(pillRule), pillRule.replace(/\s+/g, " ").slice(0, 180));

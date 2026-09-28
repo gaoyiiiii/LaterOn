@@ -288,7 +288,7 @@ const check = (label, ok, extra = "") => {
   check("用的是「搬家」样式（不是灰色的「已收藏过」）", dupPill.kind === "move", `kind=${dupPill.kind}`);
 
   const summaryPill = pills[13]?.items?.[0]?.text || "";
-  check("总结里既说新增、也说有几篇搬了家", summaryPill.includes("新增 11 篇") && summaryPill.includes("1 篇已收藏的移入「工作」"), summaryPill);
+  check("总结里既说新增、也说有几篇搬了家", summaryPill.includes("新增 11 篇") && summaryPill.includes("1 篇已保存网页移入「工作」"), summaryPill);
   check("收藏库新增 11 条、按标签页顺序排列", addedItems.length === 11 && items[0].title === "文章一", `最上面是「${items[0].title}」`);
   check("卡死的页面降级为新收藏（没有丢）", items.some((i) => i.title === "卡死页面"));
   check("未抓全的 3 篇被标记", result.degraded === 3, `degraded=${result.degraded}`);
@@ -358,7 +358,7 @@ const check = (label, ok, extra = "") => {
   const movedPills = pills6.filter((p) => String(p.text).startsWith("已移到「等待整理」"));
   check("每篇都弹了一条「已移到…」的通知", movedPills.length === 12, `共 ${movedPills.length} 条`);
   check("「搬家」通知用的是橙色搬家样式", movedPills.every((p) => p.kind === "move"), [...new Set(movedPills.map((p) => p.kind))].join(","));
-  check("总结说明「把 12 篇已收藏的移入等待整理」", pills6.some((p) => /把 12 篇已收藏的移入「等待整理」/.test(String(p.text))), pills6.map((p) => p.text).join(" | "));
+  check("总结说明「把 12 篇已保存网页移入等待整理」", pills6.some((p) => /把 12 篇已保存网页移入「等待整理」/.test(String(p.text))), pills6.map((p) => p.text).join(" | "));
 
   // ── 第 7 步：选的项目在「等待选择」期间被删掉 → 退回「等待整理」──
   console.log("\n── 第 7 步：项目被删掉后的兜底 ──");

@@ -158,7 +158,7 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   await tick(30);
 
   console.log("── 全部项目默认就是图板视图 ──");
-  check("首次打开标签页显示品牌名和 slogan", document.title === "LaterOn - 没看完的网页，留到 LaterOn。", document.title);
+  check("首次打开标签页显示品牌名和 slogan", document.title === "LaterOn - 有价值的网页，留给 LaterOn。", document.title);
   check("打开就是图板视图（全部项目 = 图板）", !boardGrid().hidden && cardGrid().hidden);
   check("不恢复上次停留的具体项目，默认打开“全部项目”首页", document.querySelector('.project-nav[data-project="all"]').classList.contains("active"));
   check("已经没有手动切换的视图按钮", !document.querySelector("#viewSwitch") && !document.querySelector(".view-btn"));
@@ -176,7 +176,7 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   check("图板上写着类目名", text(boardOf("work"), ".board-name") === "工作", text(boardOf("work"), ".board-name"));
   check("「等待整理」不再单独占一块图板", !boardOf("unfiled"));
   // 等待整理那 1 篇不进任何图板；全部项目统计只描述项目图板本身。
-  check("顶部计数使用“项目”且不混入等待整理", /3 个项目 · 共 5 篇收藏 · 4 篇没看完/.test(document.querySelector("#countText").textContent) && !document.querySelector("#countText").textContent.includes("等待整理"), document.querySelector("#countText").textContent);
+  check("顶部计数使用“项目”且不混入等待整理", /3 个项目 · 共 5 篇网页 · 4 篇没看完/.test(document.querySelector("#countText").textContent) && !document.querySelector("#countText").textContent.includes("等待整理"), document.querySelector("#countText").textContent);
   // 侧栏：全屏页面里「等待整理」要钉在最上面，而且有内容时整块高亮
   const inbox = document.querySelector(".inbox-card");
   check("侧栏有「等待整理」这块，而且钉在最上面", !!inbox && document.querySelector(".project-sidebar").firstElementChild === inbox);
@@ -319,7 +319,7 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   click(brand);
   await tick(60);
   check("回到「全部项目」", store.laterOnActiveProject === "all", String(store.laterOnActiveProject));
-  check("点 Logo 回首页后标签页恢复品牌名和 slogan", document.title === "LaterOn - 没看完的网页，留到 LaterOn。", document.title);
+  check("点 Logo 回首页后标签页恢复品牌名和 slogan", document.title === "LaterOn - 有价值的网页，留给 LaterOn。", document.title);
   check("视图跟着变回图板", !boardGrid().hidden && cardGrid().hidden);
   check("筛选复到默认的「未读」", store.laterOnFilter === "unread", String(store.laterOnFilter));
   check("搜索词被清空", searchBox.value === "");

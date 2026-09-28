@@ -287,8 +287,8 @@ function bigStore(currentIndex, overrides = {}) {
     !envG.document.querySelector('.item[data-id="work-1"]') && envG.isHighlighted("read-1"));
   check("目标文章定位在可视区域", envG.inView("read-1") === true, String(envG.inView("read-1")));
   const saveButton = envG.document.querySelector("#saveCurrent");
-  check("已收藏页面顶部明确显示“已收藏”", saveButton.disabled && saveButton.classList.contains("saved")
-    && saveButton.querySelector(".save-label").textContent === "已收藏", saveButton.textContent.trim());
+  check("已保存页面顶部明确显示“已保存”", saveButton.disabled && saveButton.classList.contains("saved")
+    && saveButton.querySelector(".save-label").textContent === "已保存", saveButton.textContent.trim());
   envG.switchTab({ id: 3, url: "https://example.com/new", title: "还没收藏的文章" });
   await tick(300);
   check("未收藏页面恢复为可点击的“收藏”按钮", !saveButton.disabled && !saveButton.classList.contains("saved")

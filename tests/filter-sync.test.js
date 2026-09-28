@@ -90,6 +90,7 @@ function mount(html, source, url) {
     virtualConsole: makeVirtualConsole()
   });
   dom.window.chrome = makeChrome(dom.window);
+  dom.window.scrollTo = () => {};
   ensureUuid(dom.window);
   dom.window.eval(source);
   return dom.window;
@@ -116,6 +117,8 @@ const activePanelNav = () => panelWin.document.querySelector(".filters .filter.a
 
 (async () => {
   await tick(80);
+  click(libWin, libWin.document.querySelector('.project-nav[data-project="unfiled"]'));
+  await tick(40);
 
   console.log("── 第 1 步：首次打开还没有偏好，两个视图都默认显示「未读」──");
   check("全屏默认高亮「未读」，只显示未读与在读", activeLibNav() === "unread" && libIds() === "a,b", `高亮=${activeLibNav()} 可见=${libIds()}`);

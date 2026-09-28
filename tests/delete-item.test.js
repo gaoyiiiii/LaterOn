@@ -12,6 +12,7 @@ const ROOT = path.resolve(__dirname, "..");
 const html = fs.readFileSync(`${ROOT}/library.html`, "utf8");
 const librarySource = fs.readFileSync(`${ROOT}/library.js`, "utf8");
 const dialogSource = fs.readFileSync(`${ROOT}/dialog.js`, "utf8");
+const i18nSource = fs.readFileSync(`${ROOT}/i18n.js`, "utf8");
 
 const errors = [];
 const virtualConsole = new VirtualConsole();
@@ -81,6 +82,7 @@ const tick = (ms = 20) => new Promise((resolve) => window.setTimeout(resolve, ms
 const click = (el) => el.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
 const pressKey = (el, key) => el.dispatchEvent(new window.KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
 
+window.eval(i18nSource);
 window.eval(dialogSource);
 window.eval(librarySource);
 
@@ -90,6 +92,8 @@ const dialogText = (selector) => dialog()?.querySelector(selector)?.textContent 
 const clickDelete = (id) => click(cardOf(id).querySelector(".delete"));
 
 (async () => {
+  await tick(30);
+  click(document.querySelector('.project-nav[data-project="unfiled"]'));
   await tick(30);
 
   console.log("── 点删除先弹确认 ──");
@@ -118,7 +122,7 @@ const clickDelete = (id) => click(cardOf(id).querySelector(".delete"));
   await tick(320);
   check("收藏被删掉了", !store.laterOnItems.some((it) => it.id === "i1"), store.laterOnItems.map((it) => it.id).join(","));
   check("卡片也从列表里消失", !cardOf("i1"));
-  check("弹了「已删除收藏」的提示", document.querySelector("#toast").textContent === "已删除收藏", document.querySelector("#toast").textContent);
+  check("弹了「已删除网页」的提示", document.querySelector("#toast").textContent === "已删除网页", document.querySelector("#toast").textContent);
 
   console.log("\n── 标题太长会截断 ──");
   clickDelete("i2");

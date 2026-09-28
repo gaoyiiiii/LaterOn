@@ -14,6 +14,7 @@ const ROOT = path.resolve(__dirname, "..");
 const html = fs.readFileSync(`${ROOT}/library.html`, "utf8");
 const librarySource = fs.readFileSync(`${ROOT}/library.js`, "utf8");
 const dialogSource = fs.readFileSync(`${ROOT}/dialog.js`, "utf8");
+const i18nSource = fs.readFileSync(`${ROOT}/i18n.js`, "utf8");
 
 const errors = [];
 const virtualConsole = new VirtualConsole();
@@ -148,6 +149,7 @@ const itemProject = (id) => store.laterOnItems.find((item) => item.id === id)?.p
 const topOf = (index) => ROW_TOP + index * ROW_STEP;
 const midOf = (index) => topOf(index) + ROW_HEIGHT / 2;
 
+window.eval(i18nSource);
 window.eval(dialogSource);
 window.eval(librarySource);
 

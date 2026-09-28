@@ -24,8 +24,8 @@ assert.deepStrictEqual(
   Object.keys(dictionaries["zh-CN"]).sort(),
   "中英文词典必须包含完全相同的词条"
 );
-assert.strictEqual(dictionaries["zh-CN"].guideStepSaveTitle, "一键收下，稍后再看");
-assert.strictEqual(dictionaries["zh-CN"].guideStepReadTitle, "全屏管理，全屏/侧栏均可阅读");
+assert.strictEqual(dictionaries["zh-CN"].guideStepSaveTitle, "一键保存，随时继续浏览");
+assert.strictEqual(dictionaries["zh-CN"].guideStepReadTitle, "全屏管理，侧栏继续浏览");
 assert.match(dictionaries["zh-CN"].guideStepReadHint, /30 天后自动清除/);
 
 const libraryHtml = read("library.html");
@@ -52,5 +52,6 @@ for (const locale of ["zh_CN", "en"]) {
     assert.ok(messages[key]?.message, `${locale} 缺少 ${key}`);
   }
 }
+assert.strictEqual(JSON.parse(read("_locales/zh_CN/messages.json")).extensionName.message, "LaterOn · 项目型网页管理");
 
 console.log("PASS 英文词典、扩展清单和可重复新手引导均已接入");

@@ -11,6 +11,7 @@ const { JSDOM } = require("jsdom");
 const ROOT = path.join(__dirname, "..");
 const read = (name) => fs.readFileSync(path.join(ROOT, name), "utf8");
 const BACKGROUND = read("background.js");
+const I18N_SOURCE = read("i18n.js");
 const DIALOG_SOURCE = read("dialog.js");
 const DIALOG_CSS = read("dialog.css");
 const LIBRARY_SOURCE = read("library.js");
@@ -33,6 +34,7 @@ async function partDialog() {
   );
   const { window } = dom;
   const { document } = window;
+  window.eval(I18N_SOURCE);
   window.eval(DIALOG_SOURCE);
 
   const tick = (ms = 20) => new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -239,6 +241,7 @@ async function partLibrary() {
     sidePanel: { open: async () => ({}), close: async () => ({}) }
   };
 
+  window.eval(I18N_SOURCE);
   window.eval(DIALOG_SOURCE);
   window.eval(LIBRARY_SOURCE);
 
@@ -251,6 +254,8 @@ async function partLibrary() {
   const titleOf = (id) => card(id)?.querySelector(".title-link h2")?.textContent;
   const descOf = (id) => card(id)?.querySelector(".description")?.textContent;
 
+  await tick();
+  click(document.querySelector('.project-nav[data-project="unfiled"]'));
   await tick();
   check("卡片渲染出来了", document.querySelectorAll(".card").length === 2, `${document.querySelectorAll(".card").length} 张`);
   check("卡片右上角有铅笔按钮", !!card("item-1")?.querySelector(".edit"));
@@ -334,7 +339,7 @@ function partWiring() {
   check("收藏库：点编辑按钮会打开弹窗", /\.edit\"\)\)\s+editItem\(/.test(LIBRARY_SOURCE));
   check("侧边栏：点编辑按钮会打开弹窗", /\.edit\"\)\)\s+editItem\(/.test(sidepanelJs));
   check("收藏库引入了弹窗组件（否则弹不出来）", /dialog\.js/.test(libraryHtml));
-  check("侧边栏引入了弹窗组件", /dialog\.js/.test(sidepanelHtml));
+  check("侧边栏按需加载弹窗组件", /script\.src = "dialog\.js"/.test(sidepanelJs));
   check("两处都同步卡片标题 / 摘要", /setText\(card\.querySelector\("\.title-link h2"\)/.test(LIBRARY_SOURCE) && /setText\(article\.querySelector\("h2"\)/.test(sidepanelJs));
   check("编辑后立刻重画卡片（不等存储广播）", /await updateItem\(item\.id, patch\);\s*\n\s*\/\/.+\n\s*render\(\);/.test(LIBRARY_SOURCE) && /render\(\);\s*\n}/.test(sidepanelJs));
 }

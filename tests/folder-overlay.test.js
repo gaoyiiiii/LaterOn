@@ -79,9 +79,9 @@ const PAGES = [
   check("列出了全部项目（含等待整理）", rows.length === 3, rows.map((r) => r.querySelector(".lon-folder-name").textContent).join(" / "));
   check("每行显示各自已收藏数量", rows[0].querySelector(".lon-folder-count").textContent === "3" && rows[1].querySelector(".lon-folder-count").textContent === "18");
   check("默认选中传入的项目", rows[1].classList.contains("is-selected") && rows[1].getAttribute("aria-checked") === "true");
-  check("确认按钮写明了要存进的项目", q(".lon-primary").textContent === "收藏到「工作」", q(".lon-primary").textContent);
-  check("页面清单按顺序列出、并标注数量", shadow.querySelectorAll(".lon-page-list li").length === 2 && /将要收藏的 2 个页面/.test(q(".lon-pages-label").textContent));
-  check("标题与说明文案都在", q(".lon-title").textContent === "收藏到哪个项目？" && /共 2 个标签页/.test(q(".lon-summary").textContent));
+  check("确认按钮写明了要存进的项目", q(".lon-primary").textContent === "保存到「工作」", q(".lon-primary").textContent);
+  check("页面清单按顺序列出、并标注数量", shadow.querySelectorAll(".lon-page-list li").length === 2 && /将要保存的 2 个网页/.test(q(".lon-pages-label").textContent));
+  check("标题与说明文案都在", q(".lon-title").textContent === "保存到哪个项目？" && /共 2 个标签页/.test(q(".lon-summary").textContent));
   check("浅色主题下没有打深色标记", !q(".lon-root").hasAttribute("data-dark"));
   check("列出了取消按钮", q(".lon-ghost").textContent === "取消");
 
@@ -102,7 +102,7 @@ const PAGES = [
   console.log("\n── 交互：切换项目 ──");
   rows[2].dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
   check("点一行就切换选中", shadow.querySelectorAll(".lon-folder")[2].classList.contains("is-selected"));
-  check("确认按钮跟着更新", q(".lon-primary").textContent === "收藏到「设计灵感」", q(".lon-primary").textContent);
+  check("确认按钮跟着更新", q(".lon-primary").textContent === "保存到「设计灵感」", q(".lon-primary").textContent);
 
   console.log("\n── 交互：写了新项目名 → 回车一步新建并收藏 ──");
   const shadowNow = () => document.getElementById("lateron-folder-picker").shadowRoot;
@@ -114,7 +114,7 @@ const PAGES = [
   };
 
   const newField = typeNew(shadow, "  临时收藏  ");
-  check("按钮实时变成「新建「临时收藏」并收藏」", q(".lon-primary").textContent === "新建「临时收藏」并收藏", q(".lon-primary").textContent);
+  check("按钮实时变成「新建「临时收藏」并保存」", q(".lon-primary").textContent === "新建「临时收藏」并保存", q(".lon-primary").textContent);
   check("不再需要单独的「新建」按钮", !q(".lon-new-btn"));
 
   newField.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true, composed: true, cancelable: true }));
@@ -129,7 +129,7 @@ const PAGES = [
   console.log("\n── 交互：点「收藏」按钮 = 同样一步完成 ──");
   window.__overlay({ theme: "light", selected: "work", folders: FOLDERS, pages: PAGES });
   typeNew(shadowNow(), "灵感库");
-  check("按钮提示跟着输入框走", shadowNow().querySelector(".lon-primary").textContent === "新建「灵感库」并收藏", shadowNow().querySelector(".lon-primary").textContent);
+  check("按钮提示跟着输入框走", shadowNow().querySelector(".lon-primary").textContent === "新建「灵感库」并保存", shadowNow().querySelector(".lon-primary").textContent);
   shadowNow().querySelector(".lon-primary").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
   await tick(20);
   const created2 = sent.filter((m) => m.type === "CREATE_PROJECT").at(-1);
@@ -143,7 +143,7 @@ const PAGES = [
   typeNew(pickShadow, "临时想法");
   pickShadow.querySelectorAll(".lon-folder")[1].dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
   check("点了项目就清空输入框", pickShadow.querySelector(".lon-new-input").value === "");
-  check("按钮回到「收藏到「工作」」", pickShadow.querySelector(".lon-primary").textContent === "收藏到「工作」", pickShadow.querySelector(".lon-primary").textContent);
+  check("按钮回到「保存到「工作」」", pickShadow.querySelector(".lon-primary").textContent === "保存到「工作」", pickShadow.querySelector(".lon-primary").textContent);
   document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
   await tick(300);
 
@@ -204,7 +204,7 @@ const PAGES = [
   window.__overlay({ theme: "dark", selected: "", folders: FOLDERS, pages: PAGES });
   const host2 = document.getElementById("lateron-folder-picker");
   check("深色主题下打了深色标记", host2.shadowRoot.querySelector(".lon-root").getAttribute("data-dark") === "1");
-  check("未选中时默认落到「等待整理」", host2.shadowRoot.querySelector(".lon-primary").textContent === "收藏到「等待整理」", host2.shadowRoot.querySelector(".lon-primary").textContent);
+  check("未选中时默认落到「等待整理」", host2.shadowRoot.querySelector(".lon-primary").textContent === "保存到「等待整理」", host2.shadowRoot.querySelector(".lon-primary").textContent);
   const cancelBefore = sent.filter((m) => m.type === "CANCEL_BATCH_SAVE").length;
   document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
   await tick(300);
@@ -228,12 +228,12 @@ const PAGES = [
   };
 
   const sumWithSaved = openLayer({ savedCount: 2 });
-  check("知道有几篇已收藏过时，会说明「一并移进所选项目」", /其中 2 个已经收藏过/.test(sumWithSaved) && /移进你选的项目/.test(sumWithSaved), sumWithSaved);
+  check("知道有几篇已保存过时，会说明「一并移进所选项目」", /其中 2 个已经保存过/.test(sumWithSaved) && /移进你选的项目/.test(sumWithSaved), sumWithSaved);
   document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
   await tick(300);
 
   const sumPlain = openLayer({});
-  check("没有已收藏的页面时，用普通说法", /选好项目后就会开始逐个收藏/.test(sumPlain), sumPlain);
+  check("没有已保存的页面时，用普通说法", /选好项目后就会开始逐个保存/.test(sumPlain), sumPlain);
   document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
   await tick(300);
 
@@ -245,15 +245,15 @@ const PAGES = [
   };
 
   const singleShadow = openSingle({});
-  check("标题改成「把这篇收藏到哪个项目？」", singleShadow.querySelector(".lon-title").textContent === "把这篇收藏到哪个项目？", singleShadow.querySelector(".lon-title").textContent);
-  check("说明文案不再提「标签页」", /选好项目后就会收藏这一篇/.test(singleShadow.querySelector(".lon-summary").textContent), singleShadow.querySelector(".lon-summary").textContent);
+  check("标题改成「把这个网页保存到哪个项目？」", singleShadow.querySelector(".lon-title").textContent === "把这个网页保存到哪个项目？", singleShadow.querySelector(".lon-title").textContent);
+  check("说明文案不再提「标签页」", /选好项目后就会保存这个网页/.test(singleShadow.querySelector(".lon-summary").textContent), singleShadow.querySelector(".lon-summary").textContent);
   check("页面清单被收起（就是眼前这个网页，不必再列一遍）", singleShadow.querySelector(".lon-pages").hidden === true);
-  check("项目列表和确认按钮照常可用", singleShadow.querySelectorAll(".lon-folder").length === 3 && singleShadow.querySelector(".lon-primary").textContent === "收藏到「工作」", singleShadow.querySelector(".lon-primary").textContent);
+  check("项目列表和确认按钮照常可用", singleShadow.querySelectorAll(".lon-folder").length === 3 && singleShadow.querySelector(".lon-primary").textContent === "保存到「工作」", singleShadow.querySelector(".lon-primary").textContent);
   document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
   await tick(300);
 
   const singleSaved = openSingle({ savedCount: 1 });
-  check("这一篇已收藏过时，会说明确认后搬进所选项目", /这篇已经收藏过/.test(singleSaved.querySelector(".lon-summary").textContent), singleSaved.querySelector(".lon-summary").textContent);
+  check("这个网页已保存过时，会说明确认后搬进所选项目", /这个网页已经保存过/.test(singleSaved.querySelector(".lon-summary").textContent), singleSaved.querySelector(".lon-summary").textContent);
   document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
   await tick(300);
 

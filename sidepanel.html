@@ -6,7 +6,7 @@
     <!-- 小红书等站点的图片 CDN 会拒绝来自 chrome-extension:// 的 Referer（返回 403），
          整页统一不发 Referer，收藏的封面与站点图标才能正常显示。 -->
     <meta name="referrer" content="no-referrer" />
-    <title>LaterOn</title>
+    <title>LaterOn · 项目型网页管理</title>
     <link rel="icon" href="icon128.png" type="image/png" />
 
     <!-- ── 首屏「零依赖」样式 ─────────────────────────────────
@@ -198,7 +198,7 @@
            顺便带上实时秒数和久等时的建议；真内容画出来由 JS 移除。 -->
       <div id="bootTip" class="boot-tip" role="status" hidden>
         <span class="boot-dot"></span>
-        <span id="bootTipText" data-i18n="openingSaves">正在打开收藏…</span>
+        <span id="bootTipText" data-i18n="openingSaves">正在打开网页…</span>
         <span id="bootTipTime" class="boot-time"></span>
         <span id="bootTipHint" class="boot-hint"></span>
       </div>
@@ -212,13 +212,13 @@
           <p id="currentSource" data-i18n="currentLoading">正在读取当前网页…</p>
           <h1 id="currentTitle" data-i18n="currentPage">当前页面</h1>
         </div>
-        <button id="saveCurrent" disabled><span>＋</span><span class="save-label" data-i18n="saveCurrent">收藏</span></button>
+        <button id="saveCurrent" disabled><span>＋</span><span class="save-label" data-i18n="saveCurrent">保存</span></button>
       </section>
       <p id="status" role="status"></p>
 
       <label class="search">
         <svg viewBox="0 0 24 24"><path d="m21 21-4.3-4.3m2.3-5.2a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z"/></svg>
-        <input id="searchInput" type="search" data-i18n-placeholder="search" placeholder="搜索收藏" autocomplete="off" />
+        <input id="searchInput" type="search" data-i18n-placeholder="search" placeholder="搜索网页" autocomplete="off" />
       </label>
 
       <div class="filter-row">
@@ -233,8 +233,8 @@
 
       <section id="emptyState" class="empty" hidden>
         <img class="empty-icon" src="icon128.png" alt="" />
-        <h2 data-i18n="sideEmptyTitle">还没有收藏</h2>
-        <p data-i18n="sideEmptyHint">收藏当前网页后，它会出现在这里。</p>
+        <h2 data-i18n="sideEmptyTitle">还没有保存的网页</h2>
+        <p data-i18n="sideEmptyHint">保存当前网页后，它会出现在这里。</p>
       </section>
       <section id="items" class="items" aria-live="polite"></section>
       </div>

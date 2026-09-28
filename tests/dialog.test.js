@@ -11,6 +11,7 @@ const path = require("path");
 const { JSDOM, VirtualConsole } = require("jsdom");
 
 const ROOT = path.resolve(__dirname, "..");
+const i18nSource = fs.readFileSync(`${ROOT}/i18n.js`, "utf8");
 const dialogSource = fs.readFileSync(`${ROOT}/dialog.js`, "utf8");
 const dialogCss = fs.readFileSync(`${ROOT}/dialog.css`, "utf8");
 
@@ -30,6 +31,7 @@ const nativeDialogs = [];
 window.confirm = (message) => { nativeDialogs.push(String(message)); return true; };
 window.alert = (message) => { nativeDialogs.push(String(message)); };
 
+window.eval(i18nSource);
 window.eval(dialogSource);
 
 let failures = 0;

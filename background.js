@@ -104,7 +104,7 @@ async function setOmniboxDefault(text = "") {
   const value = escapeOmniboxText(String(text || "").trim());
   const description = value
     ? (en ? `Search LaterOn for <match>${value}</match>` : `在 LaterOn 中搜索 <match>${value}</match>`)
-    : (en ? "Search your LaterOn saves" : "搜索 LaterOn 收藏");
+    : (en ? "Search your LaterOn pages" : "搜索 LaterOn 网页");
   await chrome.omnibox.setDefaultSuggestion({ description }).catch(() => {});
 }
 
@@ -185,7 +185,7 @@ function setupContextMenus() {
     const language = stored[SETTINGS_KEY]?.language === "en" ? "en" : "zh-CN";
     const titles = language === "en"
       ? { page: "Save this page to LaterOn", all: "Save all tabs in this window to LaterOn" }
-      : { page: "收藏此页面到 LaterOn", all: "收藏本窗口所有标签页到 LaterOn" };
+      : { page: "保存此页面到 LaterOn", all: "保存本窗口所有标签页到 LaterOn" };
     await new Promise((resolve) => {
       try {
         chrome.contextMenus.removeAll(() => {
@@ -398,7 +398,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           ? await chrome.tabs.get(message.tabId).catch(() => null)
           : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
         if (!tab?.id || !isWebUrl(tab.url)) {
-          sendResponse({ ok: false, error: (await usesEnglish()) ? "The current page can’t be saved" : "当前页面无法收藏" });
+          sendResponse({ ok: false, error: (await usesEnglish()) ? "The current page can’t be saved" : "当前页面无法保存" });
           return;
         }
         const result = await quickSave(tab, message.source || "panel");
@@ -494,8 +494,8 @@ async function quickSave(tab, source = "shortcut") {
   const message = saved.refreshed
     ? (en ? `Details updated: ${pillTitle(baseItem.title)}` : `已更新信息：${pillTitle(baseItem.title)}`)
     : saved.duplicated
-      ? (en ? "This page is already saved" : "这篇已经收藏过啦")
-      : (en ? `Saved: ${pillTitle(baseItem.title)}` : `已收藏：${pillTitle(baseItem.title)}`);
+      ? (en ? "This page is already saved" : "这个网页已经保存过了")
+      : (en ? `Saved: ${pillTitle(baseItem.title)}` : `已保存：${pillTitle(baseItem.title)}`);
   await showPagePills(tab.id, [message]).catch(() => {});
   // 把结果回传，好让侧边栏 / 工具栏小窗口的按钮显示正确的字样。
   return { ok: true, duplicated: !!saved.duplicated, refreshed: !!saved.refreshed, updated: !!saved.updated };
@@ -523,8 +523,8 @@ async function showLibraryCommandNotice(tab, command) {
   if (!String(tab.url || "").startsWith(libraryUrl)) return false;
   const en = await usesEnglish();
   const message = command === "toggle-translation"
-    ? (en ? "You’re in the LaterOn library. Open the page you want to translate, then press Alt+2." : "当前是 LaterOn 收藏库，请打开需要翻译的网页后再按 Alt+2")
-    : (en ? "You’re in the LaterOn library. Open the page you want to save, then press Alt+1." : "当前是 LaterOn 收藏库，请先打开想收藏的网页，再按 Alt+1");
+    ? (en ? "You’re in LaterOn. Open the page you want to translate, then press Alt+2." : "当前是 LaterOn，请打开需要翻译的网页后再按 Alt+2")
+    : (en ? "You’re in LaterOn. Open the page you want to save, then press Alt+1." : "当前是 LaterOn，请先打开想保存的网页，再按 Alt+1");
   try {
     const response = await chrome.runtime.sendMessage({
       type: "SHOW_LIBRARY_NOTICE",
@@ -601,7 +601,7 @@ async function showPagePills(tabId, messages) {
         window.setTimeout(hide, 2800 + delay);
       });
     },
-    args: [shown, overflow, en ? `${overflow} more saved` : `还有 ${overflow} 篇已收藏`]
+    args: [shown, overflow, en ? `${overflow} more saved` : `还有 ${overflow} 篇已保存`]
   });
 }
 
@@ -770,12 +770,12 @@ async function saveAllTabsInWindow(source = "shortcut") {
 
     if (!targets.length) {
       await recordDiag({
-        lastStage: "结束（没有可收藏的网页）",
+        lastStage: "结束（没有可保存的网页）",
         lastAdded: 0,
         lastDuplicated: 0,
         lastEnriched: 0,
         lastDegraded: 0,
-        lastError: "当前窗口没有可收藏的网页",
+        lastError: "当前窗口没有可保存的网页",
         lastErrorAt: Date.now(),
         lastResultAt: Date.now()
       });
@@ -801,7 +801,7 @@ async function saveAllTabsInWindow(source = "shortcut") {
 
     // 用户关掉了「先选项目」：直接用上次用过的项目开始。
     if (settings.askFolderOnBatch === false) {
-      await stage({ lastStage: "开始收藏（未启用项目选择）" });
+      await stage({ lastStage: "开始保存（未启用项目选择）" });
       return runBatchSave({
         tabs: targets,
         source,
@@ -915,8 +915,8 @@ async function runBatchSave({ tabs, source = "shortcut", notifyTabId = null, pro
     const targets = tabs || [];
     if (!targets.length) {
       await recordDiag({
-        lastStage: "结束（没有可收藏的网页）",
-        lastError: "这一批里没有可收藏的网页",
+        lastStage: "结束（没有可保存的网页）",
+        lastError: "这一批里没有可保存的网页",
         lastErrorAt: Date.now(),
         lastResultAt: Date.now()
       });
@@ -944,12 +944,12 @@ async function runBatchSave({ tabs, source = "shortcut", notifyTabId = null, pro
     let degraded = 0;
 
     // 收多篇时才播报「开始」；收一篇时静悄悄抓，最后只弹一条结果提示。
-    if (!single) await notify(en ? `Saving ${targets.length} tabs → ${folderLabel}` : `开始收藏 ${targets.length} 个标签页 → ${folderLabel}`);
+    if (!single) await notify(en ? `Saving ${targets.length} tabs → ${folderLabel}` : `开始保存 ${targets.length} 个标签页 → ${folderLabel}`);
 
     for (let i = 0; i < targets.length; i += 1) {
       const tab = targets[i];
       await stage({
-        lastStage: "逐个收藏中",
+        lastStage: "逐个保存中",
         lastProgress: `${i + 1}/${targets.length}`,
         lastAdded: added,
         lastDuplicated: duplicated
@@ -996,7 +996,7 @@ async function runBatchSave({ tabs, source = "shortcut", notifyTabId = null, pro
             : (en ? `Details updated: ${title}` : `已更新信息：${title}`);
           await notify(text, moved ? "move" : "");
         } else {
-          await notify(en ? `Already saved: ${pillTitle(meta.title)}` : `已收藏过：${pillTitle(meta.title)}`, "skip");
+          await notify(en ? `Already saved: ${pillTitle(meta.title)}` : `已保存过：${pillTitle(meta.title)}`, "skip");
         }
         continue;
       }
@@ -1023,7 +1023,7 @@ async function runBatchSave({ tabs, source = "shortcut", notifyTabId = null, pro
       if (isIncomplete(record)) degraded += 1;
       // ③ 成功一篇就通知一篇，并顺手更新角标数字（切到别的标签页也看得到进度）。
       await showActionFeedback(`+${added}`, "#2f9e44", 2600);
-      await notify(en ? `Saved: ${pillTitle(record.title)}` : `已收藏：${pillTitle(record.title)}`);
+      await notify(en ? `Saved: ${pillTitle(record.title)}` : `已保存：${pillTitle(record.title)}`);
     }
 
     // 收尾：角标停一会儿再清掉，页面上再补一条总结。
@@ -1033,14 +1033,14 @@ async function runBatchSave({ tabs, source = "shortcut", notifyTabId = null, pro
     const summary = (() => {
       if (added > 0) {
         const parts = [en ? `${added} added` : `新增 ${added} 篇`];
-        if (movedCount > 0) parts.push(en ? `${movedCount} existing saves moved to “${folderLabel}”` : `${movedCount} 篇已收藏的移入「${folderLabel}」`);
+        if (movedCount > 0) parts.push(en ? `${movedCount} existing pages moved to “${folderLabel}”` : `${movedCount} 篇已保存网页移入「${folderLabel}」`);
         const stayed = duplicated - movedCount;
         if (stayed > 0) parts.push(en ? `${stayed} already in “${folderLabel}”` : `${stayed} 篇本来就在「${folderLabel}」`);
         return en ? `Done: ${parts.join(" · ")}` : `全部完成：${parts.join("，")}`;
       }
-      if (movedCount > 0) return en ? `Done: moved ${movedCount} existing saves to “${folderLabel}”` : `全部完成：把 ${movedCount} 篇已收藏的移入「${folderLabel}」`;
-      if (enriched > 0) return en ? `Done: updated ${enriched} saves` : `全部完成：更新了 ${enriched} 篇的信息`;
-      return en ? "All of these pages were already saved" : "这些网页都收藏过啦";
+      if (movedCount > 0) return en ? `Done: moved ${movedCount} existing pages to “${folderLabel}”` : `全部完成：把 ${movedCount} 篇已保存网页移入「${folderLabel}」`;
+      if (enriched > 0) return en ? `Done: updated ${enriched} pages` : `全部完成：更新了 ${enriched} 篇的信息`;
+      return en ? "All of these pages were already saved" : "这些网页都已经保存过了";
     })();
     // 收一篇时结果已经在上面那条提示里说清楚了，不再重复播报总结。
     if (!single) {
@@ -1246,7 +1246,7 @@ async function cancelPendingBatch() {
   const stored = await chrome.storage.session.get(PENDING_KEY);
   const had = !!stored[PENDING_KEY];
   await chrome.storage.session.remove(PENDING_KEY);
-  if (had) await recordDiag({ lastStage: "已取消（没有收藏任何页面）", lastResultAt: Date.now() });
+  if (had) await recordDiag({ lastStage: "已取消（没有保存任何页面）", lastResultAt: Date.now() });
   return { ok: true, cancelled: had };
 }
 
@@ -1315,7 +1315,7 @@ async function extractTabMetadataById(tabId) {
     tab = null;
   }
   if (!tab) return { ok: false, error: en ? "This tab couldn’t be found" : "找不到这个标签页" };
-  if (!isWebUrl(tab.url)) return { ok: false, error: en ? "This page can’t be saved. Open a regular web page and try again." : "这个页面无法收藏，请打开一个普通网页后重试。" };
+  if (!isWebUrl(tab.url)) return { ok: false, error: en ? "This page can’t be saved. Open a regular web page and try again." : "这个页面无法保存，请打开一个普通网页后重试。" };
   const metadata = await extractTabMetadata(tab);
   return { ok: true, metadata: { ...metadata, url: tab.url } };
 }

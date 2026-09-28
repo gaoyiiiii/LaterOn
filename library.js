@@ -78,16 +78,24 @@ const toast = document.querySelector("#toast");
 const tr = (key, vars) => {
   if (window.LaterOnI18n?.t) return window.LaterOnI18n.t(key, vars);
   const fallback = {
-    noInbox: "还没有要整理的", searchCount: "在全部收藏里找到 {count} 篇 · {unfinished} 篇没看完",
-    scopedCount: "{count} 篇收藏 · {unfinished} 篇没看完", noMatches: "没有找到匹配的收藏",
+    noInbox: "还没有要整理的", searchCount: "在全部网页里找到 {count} 篇 · {unfinished} 篇没看完",
+    scopedCount: "{count} 篇网页 · {unfinished} 篇没看完", noMatches: "没有找到匹配的网页",
     noMatchesHint: "换个关键词，或切换顶部的阅读状态筛选。", quiet: "这里还很安静",
-    quietHint: "打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。",
+    quietHint: "打开一个有价值的网页，点击浏览器工具栏中的 LaterOn 图标即可保存。",
     noBoard: "没有匹配的类目", noBoardHint: "换个关键词，或切换顶部的阅读状态筛选。",
-    boardCount: "{groups} 个项目 · 共 {total} 篇收藏 · {unfinished} 篇没看完", notFinished: "没看完",
-    slogan: "没看完的网页，留到 LaterOn。", inbox: "等待整理", allProjectsOverview: "全部项目",
+    boardCount: "{groups} 个项目 · 共 {total} 篇网页 · {unfinished} 篇没看完", notFinished: "没看完",
+    slogan: "有价值的网页，留给 LaterOn。", inbox: "等待整理", allProjectsOverview: "全部项目",
     openInNewWindow: "在新窗口打开", openingNewWindow: "正在新窗口打开 {n} 篇…",
     openedNewWindow: "已在新窗口打开 {n} 篇", newWindowOpenFailed: "新窗口打开失败，请重试",
-    noValidPages: "选中的收藏里没有可打开的网页"
+    noValidPages: "选中的内容里没有可打开的网页",
+    customSortEnabled: "已切到“自定义顺序”，这次排序已保存",
+    mainlyFrom: "主要来自 {sources}", updatedAt: "{time}更新",
+    coverPicksHint: "点一下加入、点 × 取消，最多 3 张；第 1 张占左边大格，拖动缩略图可以调顺序。",
+    noCoverPicked: "还没挑——现在按项目里的网页自动拼封面。",
+    coverPickLimitError: "封面最多用 {n} 张，先点 × 取消一张。",
+    coverPicksFull: "已经挑满 {n} 张，想换别的先点 × 取消一张。",
+    customCoverActive: "上面那张自定义封面正生效，移除它才会用下面挑的这几张。",
+    projectUpdateCollage: "封面组合", projectChangesSaved: "{changes}已保存"
   };
   return String(fallback[key] || key).replace(/\{(\w+)\}/g, (_, k) => vars?.[k] ?? `{${k}}`);
 };

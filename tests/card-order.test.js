@@ -94,6 +94,10 @@ async function boot({ items, orders = {}, settings = {}, activeProject = "unfile
   window.eval(LIBRARY_SOURCE);
   const tick = (ms = 20) => new Promise((resolve) => window.setTimeout(resolve, ms));
   await tick();
+  // 完整界面固定从“全部项目”首页打开；测试卡片排序前进入目标范围。
+  const targetNav = document.querySelector(`.project-nav[data-project="${activeProject}"]`);
+  targetNav?.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await tick();
   const grid = document.querySelector("#cardGrid");
   grid.getBoundingClientRect = () => ({ left: 0, top: 0, right: 900, bottom: 900, width: 900, height: 900 });
   return {
@@ -330,7 +334,7 @@ async function dragCard({ window, grid, tick }, fromId, index) {
     check("首轮只同步创建 48 张，不一次性阻塞 1000 张",
       app.grid.querySelectorAll(".card").length === 48,
       `${app.grid.querySelectorAll(".card").length} 张`);
-    check("计数立即显示完整的 1000 篇", /1000 篇收藏/.test(app.document.querySelector("#countText")?.textContent || ""));
+    check("计数立即显示完整的 1000 篇", /1000 篇网页/.test(app.document.querySelector("#countText")?.textContent || ""));
     app.runIdle();
     check("空闲批次最终补齐全部卡片", app.grid.querySelectorAll(".card").length === 1000,
       `${app.grid.querySelectorAll(".card").length} 张`);

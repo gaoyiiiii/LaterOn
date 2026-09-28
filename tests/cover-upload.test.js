@@ -11,6 +11,7 @@ const { JSDOM } = require("jsdom");
 const ROOT = path.join(__dirname, "..");
 const read = (name) => fs.readFileSync(path.join(ROOT, name), "utf8");
 const BACKGROUND = read("background.js");
+const I18N_SOURCE = read("i18n.js");
 const DIALOG_SOURCE = read("dialog.js");
 const DIALOG_CSS = read("dialog.css");
 const LIBRARY_SOURCE = read("library.js");
@@ -84,6 +85,7 @@ async function partDialog() {
   const { window } = dom;
   const { document } = window;
   const calls = stubImagePipeline(window);
+  window.eval(I18N_SOURCE);
   window.eval(DIALOG_SOURCE);
 
   const tick = (ms = 20) => new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -338,6 +340,7 @@ async function partLibrary() {
     sidePanel: { open: async () => ({}), close: async () => ({}) }
   };
 
+  window.eval(I18N_SOURCE);
   window.eval(DIALOG_SOURCE);
   window.eval(LIBRARY_SOURCE);
 
@@ -347,6 +350,8 @@ async function partLibrary() {
   const card = (id) => document.querySelector(`.card[data-id="${id}"]`);
   const coverSrc = (id) => card(id)?.querySelector(".cover img.cover-img")?.getAttribute("src") || "";
 
+  await tick();
+  click(document.querySelector('.project-nav[data-project="unfiled"]'));
   await tick();
   check("卡片渲染出来了", !!card("item-1"));
   check("初始用的是自动抓的封面", coverSrc("item-1") === "https://site.com/auto.jpg", coverSrc("item-1"));
