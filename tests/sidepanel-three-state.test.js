@@ -12,6 +12,8 @@ const { JSDOM, VirtualConsole } = require("jsdom");
 const ROOT = path.resolve(__dirname, "..");
 const html = fs.readFileSync(`${ROOT}/sidepanel.html`, "utf8");
 const sidepanelSource = fs.readFileSync(`${ROOT}/sidepanel.js`, "utf8");
+const tabNavigationSource = fs.readFileSync(`${ROOT}/tab-navigation.js`, "utf8");
+const i18nSource = fs.readFileSync(`${ROOT}/i18n.js`, "utf8");
 
 const errors = [];
 const virtualConsole = new VirtualConsole();
@@ -26,6 +28,7 @@ const dom = new JSDOM(html, {
 });
 const { window } = dom;
 const { document } = window;
+window.scrollTo = () => {};
 
 const now = Date.now();
 const store = {
@@ -42,6 +45,8 @@ const store = {
 
 const changeListeners = [];
 const updatedTabs = [];
+const createdTabs = [];
+const browserTabs = [{ id: 1, windowId: 7, active: true, url: "https://current.com" }];
 window.chrome = {
   storage: {
     local: {
@@ -64,8 +69,21 @@ window.chrome = {
     onChanged: { addListener(fn) { changeListeners.push(fn); } }
   },
   tabs: {
-    query: () => Promise.resolve([{ id: 1, windowId: 7, active: true, url: "https://current.com" }]),
-    update: (id, options) => { updatedTabs.push({ id, ...options }); return Promise.resolve({ id }); },
+    query: (queryInfo = {}) => Promise.resolve(queryInfo.active ? browserTabs.filter((tab) => tab.active) : browserTabs.slice()),
+    update: (id, options) => {
+      updatedTabs.push({ id, ...options });
+      if (options.active) browserTabs.forEach((tab) => { tab.active = tab.id === id; });
+      const tab = browserTabs.find((entry) => entry.id === id);
+      if (tab) Object.assign(tab, options);
+      return Promise.resolve(tab || { id, ...options });
+    },
+    create: (options) => {
+      createdTabs.push(options);
+      if (options.active) browserTabs.forEach((tab) => { tab.active = false; });
+      const tab = { id: browserTabs.length + 1, windowId: 7, ...options };
+      browserTabs.push(tab);
+      return Promise.resolve(tab);
+    },
     onActivated: { addListener() {} },
     onUpdated: { addListener() {} }
   },
@@ -91,6 +109,8 @@ const navOf = (filter) => document.querySelector(`.filter[data-filter="${filter}
 const visibleItems = () => [...document.querySelectorAll("#items .item")];
 const ids = () => visibleItems().map((i) => i.dataset.id);
 
+window.eval(i18nSource);
+window.eval(tabNavigationSource);
 window.eval(sidepanelSource);
 
 (async () => {
@@ -134,7 +154,12 @@ window.eval(sidepanelSource);
   click(itemOf("a").querySelector(".open-item"));
   await tick(20);
   check("a 被自动标记为在读", storeItem("a").status === "reading", `status=${storeItem("a").status}`);
-  check("当前标签页被导航到原文", updatedTabs.some((t) => t.url === "https://a.com"));
+  check("当前标签页没有被覆盖", !updatedTabs.some((t) => t.url));
+  check("原文在新的前台标签页打开", createdTabs.some((t) => t.url === "https://a.com" && t.active === true));
+  click(itemOf("a").querySelector(".open-item"));
+  await tick(20);
+  check("再次点击已打开网页时直接切换，不创建重复标签", createdTabs.filter((t) => t.url === "https://a.com").length === 1
+    && updatedTabs.some((t) => t.id === 2 && t.active === true));
 
   console.log("\n── 第 5 步：点开后仍留在「未读」里（没读完就不算已读）──");
   // 此刻：a=reading（第4步）, b=reading, c=done, d=done

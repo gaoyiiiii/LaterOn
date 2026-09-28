@@ -624,7 +624,7 @@ list.addEventListener("click", (event) => {
   else if (event.target.closest(".read-toggle")) updateItem(item.id, { status: nextStatus(item.status) });
   else if (event.target.closest(".open-item")) {
     // 这是一个真实链接：⌘/Ctrl/Shift 点击交还给浏览器，保留标准的新标签页/新窗口行为。
-    // 只有普通左键才接管，继续使用 LaterOn 的“复用已打开标签页”逻辑。
+    // 普通左键也不会覆盖当前网页：LaterOn 先复用已打开标签，否则新建前台标签页。
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     openItem(item);
@@ -1210,8 +1210,14 @@ async function openItem(item) {
     }
     return;
   }
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab?.id) await chrome.tabs.update(tab.id, { url: target });
+  // 侧栏依附在用户正在浏览的网页旁边，普通点击不能把那个网页覆盖掉。
+  // 没有可复用页面时，在当前窗口创建一个新的前台标签页。
+  try {
+    await chrome.tabs.create({ url: target, active: true });
+  } catch {
+    status.textContent = tr("invalidItemUrl");
+    return;
+  }
   // 打开未读的那篇会自动标记为「在读」（读完再由用户手动点按钮标成已完成）。
   if (autoMarkRead && item.status === "unread") await updateItem(item.id, { status: "reading" });
 }
