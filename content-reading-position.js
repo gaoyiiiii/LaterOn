@@ -1,7 +1,9 @@
 // 注入到“已收藏网页”的轻量脚本：记住 scrollY，并在再次打开时询问是否继续。
 // 重复注入是安全的；SPA 切换到另一篇收藏时由 INIT 消息更新目标。
 (function () {
-  if (globalThis.__laterOnReadingPosition) return;
+  // 扩展更新 / 开发时重新加载后，旧内容脚本不会随网页一起消失，但它持有的
+  // chrome.runtime 已经失效。再次注入时先彻底撤掉旧实例，不能仅凭全局标记 return。
+  try { globalThis.__laterOnReadingPosition?.dispose?.(); } catch {}
 
   const state = {
     itemId: null,
@@ -10,7 +12,9 @@
     saveTimer: null,
     prompt: null,
     promptTimer: null,
-    generation: 0
+    generation: 0,
+    disposed: false,
+    dispose: null
   };
   globalThis.__laterOnReadingPosition = state;
 
@@ -20,14 +24,59 @@
     state.prompt = null;
   }
 
+  function isContextInvalidError(error) {
+    return /extension context invalidated|context invalidated/i.test(String(error?.message || error || ""));
+  }
+
+  function dispose() {
+    if (state.disposed) return;
+    state.disposed = true;
+    state.armed = false;
+    clearTimeout(state.saveTimer);
+    clearTimeout(state.promptTimer);
+    removePrompt();
+    window.removeEventListener("scroll", scheduleSave);
+    window.removeEventListener("wheel", userStartedReading);
+    window.removeEventListener("touchstart", userStartedReading);
+    window.removeEventListener("pointerdown", userStartedReading);
+    window.removeEventListener("keydown", userStartedReading);
+    window.removeEventListener("pagehide", sendPosition);
+    try { chrome.runtime.onMessage.removeListener(handleInit); } catch {}
+  }
+  state.dispose = dispose;
+
+  // `chrome.runtime.sendMessage(...).catch(...)` 只处理 Promise 拒绝；扩展上下文失效时
+  // sendMessage 本身会在返回 Promise 之前同步 throw。必须把调用也放进 try/catch。
+  function safeSendMessage(message) {
+    if (state.disposed) return Promise.resolve(null);
+    try {
+      const pending = chrome.runtime.sendMessage(message);
+      return Promise.resolve(pending).catch((error) => {
+        if (isContextInvalidError(error)) dispose();
+        return null;
+      });
+    } catch (error) {
+      // 同步抛错在内容脚本里基本只会发生于扩展更新 / 重载；直接停掉旧实例，
+      // 之后新版本再次注入时会建立一套干净监听。
+      dispose();
+      return Promise.resolve(null);
+    }
+  }
+
+  function safeRuntimeUrl(path) {
+    if (state.disposed) return "";
+    try { return chrome.runtime.getURL(path); }
+    catch { dispose(); return ""; }
+  }
+
   function sendPosition() {
-    if (!state.armed || !state.itemId) return;
+    if (state.disposed || !state.armed || !state.itemId) return;
     const y = Math.max(0, Math.round(window.scrollY || window.pageYOffset || 0));
-    chrome.runtime.sendMessage({ type: "SAVE_READING_POSITION", itemId: state.itemId, y }).catch(() => {});
+    safeSendMessage({ type: "SAVE_READING_POSITION", itemId: state.itemId, y });
   }
 
   function scheduleSave() {
-    if (!state.armed || !state.itemId) return;
+    if (state.disposed || !state.armed || !state.itemId) return;
     clearTimeout(state.saveTimer);
     const generation = state.generation;
     const itemId = state.itemId;
@@ -37,6 +86,7 @@
   }
 
   function userStartedReading(event) {
+    if (state.disposed) return;
     if (state.prompt && event?.composedPath?.().includes(state.prompt)) return;
     state.armed = true;
     removePrompt();
@@ -44,6 +94,7 @@
   }
 
   function continueFromSavedPosition() {
+    if (state.disposed) return;
     const target = state.savedY;
     const generation = state.generation;
     const itemId = state.itemId;
@@ -62,12 +113,14 @@
   }
 
   function showPrompt(language) {
+    if (state.disposed) return;
     removePrompt();
     const host = document.createElement("div");
     host.id = "lateron-reading-position";
     const shadow = host.attachShadow({ mode: "open" });
     const en = language === "en";
-    const iconUrl = chrome.runtime.getURL("icon128.png");
+    const iconUrl = safeRuntimeUrl("icon128.png");
+    if (!iconUrl) return;
     shadow.innerHTML = `
       <style>
         :host{all:initial;position:fixed;right:28px;top:50%;transform:translateY(-50%);z-index:2147483647;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -95,7 +148,8 @@
     state.promptTimer = setTimeout(removePrompt, 12000);
   }
 
-  chrome.runtime.onMessage.addListener((message) => {
+  function handleInit(message) {
+    if (state.disposed) return;
     if (message?.type !== "LATERON_READING_POSITION_INIT") return;
     clearTimeout(state.saveTimer);
     removePrompt();
@@ -111,12 +165,17 @@
     } else {
       state.armed = true;
     }
-  });
+  }
 
-  window.addEventListener("scroll", scheduleSave, { passive: true });
-  window.addEventListener("wheel", userStartedReading, { passive: true });
-  window.addEventListener("touchstart", userStartedReading, { passive: true });
-  window.addEventListener("pointerdown", userStartedReading, { passive: true });
-  window.addEventListener("keydown", userStartedReading, { passive: true });
-  window.addEventListener("pagehide", sendPosition);
+  try {
+    chrome.runtime.onMessage.addListener(handleInit);
+    window.addEventListener("scroll", scheduleSave, { passive: true });
+    window.addEventListener("wheel", userStartedReading, { passive: true });
+    window.addEventListener("touchstart", userStartedReading, { passive: true });
+    window.addEventListener("pointerdown", userStartedReading, { passive: true });
+    window.addEventListener("keydown", userStartedReading, { passive: true });
+    window.addEventListener("pagehide", sendPosition);
+  } catch {
+    dispose();
+  }
 })();

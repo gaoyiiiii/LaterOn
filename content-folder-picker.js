@@ -7,7 +7,18 @@
 // 整个入口包在函数作用域里：chrome.scripting.executeScript 可能在同一网页反复注入本文件，
 // 顶层 const / let 会留在同一个脚本世界里，第二次声明就会直接抛 SyntaxError。
 (() => {
+// 同一网页再次注入前，撤掉上一个实例还在等 payload 的一次性监听。
+// 扩展重载后旧监听若继续响应，会拿着失效的 runtime 再执行一遍浮层逻辑。
+try { window.__laterOnPickerPayloadCleanup?.(); } catch {}
+
 function showFolderPickerOverlay(payload) {
+  // 这个浮层可能在扩展更新后仍留在旧网页里；此时 sendMessage 会在返回 Promise
+  // 之前同步抛错，所以安全包装必须同时覆盖同步 throw 与异步 reject。
+  function safeRuntimeMessage(message) {
+    try { return Promise.resolve(chrome.runtime.sendMessage(message)).catch(() => null); }
+    catch { return Promise.resolve(null); }
+  }
+
   const data = payload || {};
 
   // 主题：跟着扩展设置走；设置为「跟随系统」时看系统偏好。
@@ -33,11 +44,11 @@ function showFolderPickerOverlay(payload) {
     // onCreateProject 按约定返回「项目对象 {id,name}」（不是后台那层 {ok,project} 包装），
     // 所以这里把响应拆开再交出去。
     onCreateProject: async (name) => {
-      const response = await chrome.runtime.sendMessage({ type: "CREATE_PROJECT", name }).catch(() => null);
+      const response = await safeRuntimeMessage({ type: "CREATE_PROJECT", name });
       return response?.project || null;
     },
-    onPick: (projectId) => chrome.runtime.sendMessage({ type: "CONFIRM_BATCH_SAVE", projectId }),
-    onCancel: () => chrome.runtime.sendMessage({ type: "CANCEL_BATCH_SAVE" })
+    onPick: (projectId) => safeRuntimeMessage({ type: "CONFIRM_BATCH_SAVE", projectId }),
+    onCancel: () => safeRuntimeMessage({ type: "CANCEL_BATCH_SAVE" })
   });
 }
 
@@ -48,11 +59,21 @@ function showFolderPickerOverlay(payload) {
     let payload = null;
     try { payload = JSON.parse(node?.textContent || "null"); } catch {}
     node?.remove();
-    if (payload) showFolderPickerOverlay(payload);
+    if (!payload) return false;
+    cleanupPayloadListener();
+    showFolderPickerOverlay(payload);
+    return true;
+  };
+
+  const onPayloadReady = () => consumePickerPayload();
+  const cleanupPayloadListener = () => {
+    document.removeEventListener("lateron-picker-payload-ready", onPayloadReady);
+    if (window.__laterOnPickerPayloadCleanup === cleanupPayloadListener) delete window.__laterOnPickerPayloadCleanup;
   };
 
   // 预览页会直接调用这个入口；重复注入时覆盖同名属性是安全的。
   window.showFolderPickerOverlay = showFolderPickerOverlay;
-  document.addEventListener("lateron-picker-payload-ready", consumePickerPayload, { once: true });
+  window.__laterOnPickerPayloadCleanup = cleanupPayloadListener;
+  document.addEventListener("lateron-picker-payload-ready", onPayloadReady, { once: true });
   consumePickerPayload();
 })();

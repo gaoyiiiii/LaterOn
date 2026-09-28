@@ -15,6 +15,8 @@ const { JSDOM, VirtualConsole } = require("jsdom");
 const ROOT = path.resolve(__dirname, "..");
 const html = fs.readFileSync(`${ROOT}/library.html`, "utf8");
 const librarySource = fs.readFileSync(`${ROOT}/library.js`, "utf8");
+const tabNavigationSource = fs.readFileSync(`${ROOT}/tab-navigation.js`, "utf8");
+const i18nSource = fs.readFileSync(`${ROOT}/i18n.js`, "utf8");
 
 const errors = [];
 const virtualConsole = new VirtualConsole();
@@ -127,6 +129,8 @@ const resetLogs = () => {
   pingCalls.length = 0;
 };
 
+window.eval(i18nSource);
+window.eval(tabNavigationSource);
 window.eval(librarySource);
 
 (async () => {

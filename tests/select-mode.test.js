@@ -14,6 +14,7 @@ const LIBRARY_SOURCE = read("library.js");
 const I18N_SOURCE = read("i18n.js");
 const DIALOG_SOURCE = read("dialog.js");
 const PICKER_SOURCE = read("picker-ui.js");
+const TAB_NAVIGATION_SOURCE = read("tab-navigation.js");
 
 let failures = 0;
 const check = (label, ok, extra = "") => {
@@ -48,7 +49,7 @@ const ITEMS = ["a", "b", "c"].map((key, index) => ({
   const dom = new JSDOM(LIBRARY_HTML, {
     runScripts: "outside-only",
     pretendToBeVisual: true,
-    url: "chrome-extension://lateron/library.html"
+    url: "chrome-extension://lateron/library.html?from=sidepanel&project=unfiled&filter=unread"
   });
   const { window } = dom;
   const { document } = window;
@@ -97,6 +98,7 @@ const ITEMS = ["a", "b", "c"].map((key, index) => ({
   window.eval(I18N_SOURCE);
   window.eval(DIALOG_SOURCE);
   window.eval(PICKER_SOURCE);
+  window.eval(TAB_NAVIGATION_SOURCE);
   window.eval(LIBRARY_SOURCE);
 
   const tick = (ms = 20) => new Promise((resolve) => window.setTimeout(resolve, ms));

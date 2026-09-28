@@ -61,6 +61,8 @@ let renameFocusPending = false;
 let folderMenu = null;        // 项目的「更多 / 右键」菜单
 let folderDragId = null;      // 正在拖拽排序的项目 id（null = 当前没在拖）
 let currentItemId = null;     // 当前正在读的文章 id（来自 CURRENT_ITEM_KEY，两个视图共享）
+// 从侧栏展开全屏时，等目标卡片真正分批渲染出来后再滚过去；普通打开首页不定位。
+let initialLocateItemId = null;
 let covers = {};              // 用户上传的封面：{ 收藏 id: dataURL }（与 COVERS_KEY 对应）
 let folderDragPreview = null; // 跟着光标走的拖拽影像（行本身是透明的，要做一份实体化的）
 let folderDropLine = null;    // 列表里那条「会插到这里」的指示线
@@ -245,20 +247,24 @@ async function init() {
   }
   projects = sortPinnedFirst(result[PROJECTS_KEY] || []);
   orders = result[ORDER_KEY] || {};
-  // 新打开完整界面时明确落在“全部项目”首页，不恢复上一次停留的具体项目。
-  // 已经打开的收藏库标签页被再次聚焦时不会重新初始化，因此仍会保留用户的当前现场。
-  activeProject = "all";
-  pageTitleMode = "home";
+  const launchParams = new URLSearchParams(window.location.search);
+  const launchedFromSidepanel = launchParams.get("from") === "sidepanel";
+  // 普通打开仍落在“全部项目”首页；只有用户从侧栏主动展开时，才延续侧栏的项目现场。
+  activeProject = launchedFromSidepanel
+    ? normalizeProject(launchParams.get("project") || result[ACTIVE_PROJECT_KEY])
+    : "all";
+  pageTitleMode = launchedFromSidepanel ? "section" : "home";
   currentItemId = result[CURRENT_ITEM_KEY] || null;
   const userSettings = result[SETTINGS_KEY] || {};
   sort = userSettings.defaultSort || "newest";
   sortSelect.value = sort;
   autoMarkRead = userSettings.autoMarkRead !== false;
   // 旧版本会在回首页时写入 all，但那不是用户的筛选偏好；升级后首次打开回到未读。
-  filter = result[FILTER_CHOSEN_KEY] ? normalizeFilter(result[FILTER_KEY]) : DEFAULT_FILTER;
+  filter = launchedFromSidepanel
+    ? normalizeFilter(launchParams.get("filter") || result[FILTER_KEY])
+    : (result[FILTER_CHOSEN_KEY] ? normalizeFilter(result[FILTER_KEY]) : DEFAULT_FILTER);
   // 地址栏输入 `lo 关键词` 后，默认回车会把用户带到这页并附上搜索词。
   // 此入口明确是在找收藏，所以临时查看全部阅读状态，不把这个选择写回用户的日常筛选偏好。
-  const launchParams = new URLSearchParams(window.location.search);
   const launchQuery = String(launchParams.get("q") || "").trim();
   if (launchQuery) {
     query = launchQuery.toLowerCase();
@@ -267,6 +273,9 @@ async function init() {
     pageTitleMode = "section";
   }
   syncFilterButtons();
+  // focus 只接受当前共享的正在读条目，防止陈旧链接把另一篇卡片误当成当前文章。
+  const requestedFocus = launchParams.get("focus");
+  initialLocateItemId = launchedFromSidepanel && requestedFocus === currentItemId ? currentItemId : null;
   libraryTabId = activeTabs[0]?.id || null;
   libraryWindowId = activeTabs[0]?.windowId || null;
   render();
@@ -1287,6 +1296,14 @@ function renderCards(visible, start, token) {
     if (grid.children[index] !== card) grid.insertBefore(card, grid.children[index] || null);
   }
   applyCurrentHighlight();
+  if (initialLocateItemId && cardMap.has(initialLocateItemId)) {
+    const targetId = initialLocateItemId;
+    initialLocateItemId = null;
+    requestAnimationFrame(() => locateCard(targetId));
+  } else if (end >= visible.length) {
+    // 当前筛选里没有这篇时尊重筛选，不强行跳档；同时结束这次定位任务。
+    initialLocateItemId = null;
+  }
   if (end < visible.length) nextLibraryRender(() => renderCards(visible, end, token));
 }
 

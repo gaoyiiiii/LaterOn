@@ -16,8 +16,15 @@
   // 新建项目：默认走后台的 CREATE_PROJECT（content script 和扩展页都通用）；
   // 调用方也可以自己传 onCreateProject 覆盖（比如扩展页想顺带刷新本地列表）。
   async function defaultCreateProject(name) {
-    const response = await chrome.runtime.sendMessage({ type: "CREATE_PROJECT", name }).catch(() => null);
+    let response = null;
+    try { response = await chrome.runtime.sendMessage({ type: "CREATE_PROJECT", name }); }
+    catch { /* 扩展更新后旧网页里的浮层可能还在；上下文失效时安静失败 */ }
     return response?.project || null;
+  }
+
+  function safeRuntimeUrl(path) {
+    try { return chrome.runtime.getURL(path); }
+    catch { return ""; }
   }
 
   function openFolderPicker(options) {
@@ -76,9 +83,10 @@
     // 品牌标识（图标 + LaterOn）只在「整屏弹窗」里出现——那是网页里 Alt+1 收藏时弹的那个，
     // 用户需要它说明这是谁弹的窗。贴按钮的浮层（收藏库卡片上点「所属项目」）不出这一行：
     // 人已经在收藏库里了，顶部再写一遍品牌纯属重复，还把项目列表往下挤了一截。
+    const brandIcon = safeRuntimeUrl("icon128.png");
     const brandHtml = isPopover
       ? ""
-      : `<div class="lon-brand"><img class="lon-logo" src="${chrome.runtime.getURL("icon128.png")}" width="34" height="34" alt="" />LaterOn</div>`;
+      : `<div class="lon-brand">${brandIcon ? `<img class="lon-logo" src="${brandIcon}" width="34" height="34" alt="" />` : ""}LaterOn</div>`;
 
     const root = document.createElement("div");
     root.className = "lon-root" + (isPopover ? " lon-popover" : "");
@@ -309,7 +317,8 @@
       const name = pendingNewName();
       if (!name) return { ok: true, projectId: selected || null };
       const create = data.onCreateProject || defaultCreateProject;
-      const project = await create(name);
+      let project = null;
+      try { project = await create(name); } catch { /* 调用方失效时留在浮层里显示失败 */ }
       if (!project || !project.id) return { ok: false, error: copy.createFailed };
       if (!folders.some((folder) => folder.id === project.id)) {
         folders = [...folders, { id: project.id, name: project.name, count: 0 }];

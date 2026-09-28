@@ -11,6 +11,7 @@ const { window } = dom;
 const messages = [];
 const scrollCalls = [];
 let listener = null;
+let removedListeners = 0;
 let scrollY = 0;
 Object.defineProperty(window, "scrollY", { get: () => scrollY });
 Object.defineProperty(window, "pageYOffset", { get: () => scrollY });
@@ -18,7 +19,10 @@ window.scrollTo = (options) => { scrollCalls.push(options); scrollY = Number(opt
 window.chrome = {
   runtime: {
     getURL(file) { return `chrome-extension://lateron/${file}`; },
-    onMessage: { addListener(fn) { listener = fn; } },
+    onMessage: {
+      addListener(fn) { listener = fn; },
+      removeListener(fn) { if (listener === fn) listener = null; removedListeners += 1; }
+    },
     sendMessage(message) { messages.push(message); return Promise.resolve({ ok: true }); }
   }
 };
@@ -65,6 +69,27 @@ const tick = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
   listener({ type: "LATERON_READING_POSITION_INIT", itemId: "c", y: 0, language: "en" });
   check("位置还在顶部时不打扰用户", !window.document.querySelector("#lateron-reading-position"));
+
+  console.log("\n── 扩展更新 / 重载后的失效上下文 ──");
+  listener({ type: "LATERON_READING_POSITION_INIT", itemId: "stale", y: 0, language: "zh-CN" });
+  window.chrome.runtime.sendMessage = () => { throw new Error("Extension context invalidated."); };
+  window.dispatchEvent(new window.WheelEvent("wheel"));
+  scrollY = 480;
+  window.dispatchEvent(new window.Event("scroll"));
+  await tick(550);
+  check("同步抛出的 context invalidated 被吃掉，不再进入扩展错误页", window.__laterOnReadingPosition.disposed === true);
+  check("失效后主动撤掉 runtime 与页面监听", listener === null && removedListeners > 0, `remove=${removedListeners}`);
+
+  // 模拟扩展新版本再次给同一网页注入脚本：旧全局标记不能挡住新实例。
+  window.chrome.runtime.sendMessage = (message) => { messages.push(message); return Promise.resolve({ ok: true }); };
+  window.eval(source);
+  check("重新注入会建立新实例", !!listener && window.__laterOnReadingPosition.disposed === false);
+  listener({ type: "LATERON_READING_POSITION_INIT", itemId: "fresh", y: 0, language: "zh-CN" });
+  window.dispatchEvent(new window.WheelEvent("wheel"));
+  scrollY = 520;
+  window.dispatchEvent(new window.Event("scroll"));
+  await tick(550);
+  check("新实例可以继续保存位置", messages.at(-1)?.itemId === "fresh" && messages.at(-1)?.y === 520, JSON.stringify(messages.at(-1)));
 
   console.log(failures ? `\n❌ 有 ${failures} 项失败` : "\n🎉 全部通过");
   if (failures) process.exitCode = 1;

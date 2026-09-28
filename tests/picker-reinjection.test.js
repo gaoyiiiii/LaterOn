@@ -14,6 +14,8 @@ const context = vm.createContext({
     }
   },
   document: {
+    addEventListener() {},
+    removeEventListener() {},
     getElementById(id) {
       if (id !== "lateron-picker-payload-data" || !payload) return null;
       const node = {

@@ -46,6 +46,14 @@ main { padding:14px 13px 30px; }
 .items { display:flex; flex-direction:column; gap:8px; }
 .item { position:relative; overflow:hidden; border:1px solid var(--line); border-radius:12px; background:var(--card); transition:border-color .15s, transform .15s; }
 .item:hover { border-color:var(--subtle); transform:translateY(-1px); }
+.items.is-reordering .item { transition:transform .16s ease, opacity .16s ease, border-color .15s; }
+.items.is-reordering .item:hover { border-color:var(--line); }
+.item.dragging { opacity:.2; }
+.card-drag-preview {
+  position:fixed; left:-10000px; top:-10000px; z-index:-1;
+  margin:0; pointer-events:none; opacity:.92;
+  box-shadow:0 18px 42px rgba(36,27,20,.22);
+}
 .open-item { display:grid; grid-template-columns:92px minmax(0,1fr); width:100%; border:0; padding:0; background:transparent; color:inherit; text-align:left; text-decoration:none; }
 .open-item, .open-item * { -webkit-user-drag:none; }
 /* 高度不写死：卡片实际比 92px 高（右边文字多几行时尤其明显），

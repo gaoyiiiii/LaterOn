@@ -76,6 +76,11 @@ const nextFrame = (fn) => (typeof requestAnimationFrame === "function" ? request
 const nowMs = () => (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now());
 let searchTimer = null;
 let itemContextMenu = null;
+// 侧栏卡片拖拽：只在拖动开始时记录一次布局，过程中用 transform 预览位置，
+// 不反复挪 DOM，避免卡片在鼠标下方来回跳动。
+let cardDrag = null;
+let cardDragPreview = null;
+let suppressCardClickUntil = 0;
 
 // 三档：未读 / 在读 / 已读（已完成）。点「标为已读」按钮 = 标记完成，再点取消；
 // 「在读」由点开文章自动进入——这样「点过但没读完」不再被算作已读。
@@ -598,7 +603,15 @@ document.querySelector("#openLibrary").addEventListener("click", async () => {
   let libraryOpened = false;
   try {
     const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const response = await chrome.runtime.sendMessage({ type: "OPEN_LIBRARY" });
+    const response = await chrome.runtime.sendMessage({
+      type: "OPEN_LIBRARY",
+      context: {
+        source: "sidepanel",
+        projectId: activeProject,
+        filter,
+        focusItemId: currentItemId
+      }
+    });
     if (!response?.ok || !activeTab?.windowId) throw new Error("完整界面未能打开");
     libraryOpened = true;
     await chrome.sidePanel.close({ windowId: activeTab.windowId });
@@ -617,6 +630,12 @@ document.querySelector("#searchInput").addEventListener("input", (event) => {
 list.addEventListener("click", (event) => {
   const article = event.target.closest(".item");
   if (!article) return;
+  // 浏览器通常会在拖拽结束后抑制 click，但不同平台行为不完全一致；
+  // 这里再兜底一次，避免松手排序时误把文章打开。
+  if (Date.now() < suppressCardClickUntil) {
+    event.preventDefault();
+    return;
+  }
   const item = items.find((entry) => entry.id === article.dataset.id);
   if (!item) return;
   if (event.target.closest(".delete")) deleteItem(item.id);
@@ -630,6 +649,197 @@ list.addEventListener("click", (event) => {
     openItem(item);
   }
 });
+
+// ── 侧栏卡片拖拽排序 ─────────────────────────────────────
+// 整张卡片都是拖动区域；按钮、下拉和输入控件仍只执行它们自己的操作。
+list.addEventListener("dragstart", (event) => {
+  const article = event.target.closest(".item");
+  if (!article) return;
+  // 搜索结果会跨越多个项目，此时没有唯一的排序范围；禁止在搜索结果里改顺序，
+  // 避免把别的项目的卡片误写进当前项目的顺序。
+  if (query) {
+    event.preventDefault();
+    return;
+  }
+  if (event.target.closest("button, select, input, textarea")) {
+    event.preventDefault();
+    return;
+  }
+  const id = article.dataset.id;
+  if (!id) return;
+
+  const elements = [...list.querySelectorAll(".item")];
+  cardDrag = {
+    id,
+    slot: null,
+    ids: elements.map((element) => element.dataset.id),
+    rects: elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        left: rect.left + window.scrollX,
+        top: rect.top + window.scrollY,
+        right: rect.right + window.scrollX,
+        bottom: rect.bottom + window.scrollY,
+        width: rect.width,
+        height: rect.height
+      };
+    })
+  };
+
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", id);
+  }
+  const bounds = article.getBoundingClientRect();
+  cardDragPreview = article.cloneNode(true);
+  cardDragPreview.removeAttribute("draggable");
+  cardDragPreview.classList.remove("dragging", "is-current");
+  cardDragPreview.classList.add("card-drag-preview");
+  cardDragPreview.style.width = `${bounds.width}px`;
+  cardDragPreview.style.height = `${bounds.height}px`;
+  document.body.append(cardDragPreview);
+  event.dataTransfer?.setDragImage?.(
+    cardDragPreview,
+    Math.max(0, Math.min(bounds.width, event.clientX - bounds.left)),
+    Math.max(0, Math.min(bounds.height, event.clientY - bounds.top))
+  );
+  list.classList.add("is-reordering");
+  requestAnimationFrame(() => article.classList.add("dragging"));
+});
+
+list.addEventListener("dragover", (event) => {
+  if (!cardDrag?.rects?.length) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+  const index = sidepanelInsertionIndex(
+    (Number.isFinite(event.clientX) ? event.clientX : 0) + window.scrollX,
+    (Number.isFinite(event.clientY) ? event.clientY : 0) + window.scrollY
+  );
+  if (index === cardDrag.slot) return;
+  cardDrag.slot = index;
+  previewSidepanelOrder(index);
+});
+
+list.addEventListener("drop", (event) => {
+  if (!cardDrag) return;
+  event.preventDefault();
+  const index = cardDrag.slot ?? sidepanelInsertionIndex(
+    (Number.isFinite(event.clientX) ? event.clientX : 0) + window.scrollX,
+    (Number.isFinite(event.clientY) ? event.clientY : 0) + window.scrollY
+  );
+  commitSidepanelCardOrder(index).catch(() => {
+    finishSidepanelDrag();
+    render();
+  });
+});
+
+list.addEventListener("dragend", finishSidepanelDrag);
+
+function sidepanelInsertionIndex(x, y) {
+  if (!cardDrag?.rects) return 0;
+  const fromIndex = cardDrag.ids.indexOf(cardDrag.id);
+  const isGrid = cardDrag.rects.some((rect, index) =>
+    cardDrag.rects.some((candidate, candidateIndex) => candidateIndex !== index && Math.abs(candidate.top - rect.top) < 2)
+  );
+  for (let index = 0; index < cardDrag.ids.length; index += 1) {
+    if (index === fromIndex) continue;
+    const rect = cardDrag.rects[index];
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) continue;
+    const restIndex = index < fromIndex ? index : index - 1;
+    // 窄侧栏按上下半区判断；拖宽后变成网格，则沿用左右半区判断。
+    return isGrid
+      ? (x >= rect.left + rect.width / 2 ? restIndex + 1 : restIndex)
+      : (y >= rect.top + rect.height / 2 ? restIndex + 1 : restIndex);
+  }
+  if (cardDrag.slot !== null) return cardDrag.slot;
+  return cardDrag.rects.length && y < cardDrag.rects[0].top ? 0 : cardDrag.ids.length - 1;
+}
+
+function previewSidepanelOrder(dropIndex) {
+  if (!cardDrag?.rects) return;
+  const fromIndex = cardDrag.ids.indexOf(cardDrag.id);
+  if (fromIndex === -1) return;
+  for (let index = 0; index < cardDrag.ids.length; index += 1) {
+    const element = itemMap.get(cardDrag.ids[index]);
+    if (!element) continue;
+    let targetIndex;
+    if (index === fromIndex) targetIndex = dropIndex;
+    else {
+      const restIndex = index < fromIndex ? index : index - 1;
+      targetIndex = restIndex < dropIndex ? restIndex : restIndex + 1;
+    }
+    const from = cardDrag.rects[index];
+    const target = cardDrag.rects[targetIndex];
+    element.style.transform = `translate(${target.left - from.left}px, ${target.top - from.top}px)`;
+  }
+}
+
+function clearSidepanelOrderPreview() {
+  if (cardDrag?.ids) {
+    for (const id of cardDrag.ids) {
+      const element = itemMap.get(id);
+      if (element) element.style.transform = "";
+    }
+  }
+  list.classList.remove("is-reordering");
+  document.querySelectorAll(".item.dragging").forEach((element) => element.classList.remove("dragging"));
+}
+
+function finishSidepanelDrag() {
+  if (!cardDrag && !cardDragPreview) return;
+  clearSidepanelOrderPreview();
+  cardDragPreview?.remove();
+  cardDragPreview = null;
+  cardDrag = null;
+  suppressCardClickUntil = Date.now() + 250;
+}
+
+function sidepanelOrderScope() {
+  return activeProject || "unfiled";
+}
+
+function sidepanelScopeOrder(scopedItems) {
+  const saved = Array.isArray(orders[sidepanelOrderScope()]) ? orders[sidepanelOrderScope()] : [];
+  const ids = new Set(scopedItems.map((item) => item.id));
+  const known = saved.filter((id) => ids.has(id));
+  const knownSet = new Set(known);
+  const rest = scopedItems
+    .filter((item) => !knownSet.has(item.id))
+    .sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0))
+    .map((item) => item.id);
+  return [...known, ...rest];
+}
+
+async function commitSidepanelCardOrder(dropIndex) {
+  const draggedId = cardDrag?.id;
+  if (!draggedId || dropIndex == null) return;
+  const visibleIds = [...list.querySelectorAll(".item")]
+    .map((article) => article.dataset.id)
+    .filter((id) => id && id !== draggedId);
+  const anchorId = visibleIds[dropIndex] ?? null;
+  const scoped = items.filter((item) => activeProject === "unfiled" ? !item.projectId : item.projectId === activeProject);
+  const full = sidepanelScopeOrder(scoped).filter((id) => id !== draggedId);
+  const anchorIndex = anchorId ? full.indexOf(anchorId) : -1;
+  const nextOrder = anchorIndex === -1
+    ? [...full, draggedId]
+    : [...full.slice(0, anchorIndex), draggedId, ...full.slice(anchorIndex)];
+  const nextOrders = { ...orders, [sidepanelOrderScope()]: nextOrder };
+  const wasCustom = sortMode === "custom";
+
+  // 先让本地界面落到最终位置，再异步写共享存储；这样松手不会先弹回原位。
+  orders = nextOrders;
+  sortMode = "custom";
+  finishSidepanelDrag();
+  render();
+  status.textContent = tr(wasCustom ? "orderSaved" : "customSortEnabled");
+
+  const stored = await chrome.storage.local.get(SETTINGS_KEY);
+  const settings = stored[SETTINGS_KEY] || {};
+  await chrome.storage.local.set({
+    [ORDER_KEY]: nextOrders,
+    [SETTINGS_KEY]: { ...settings, defaultSort: "custom" }
+  });
+}
 
 list.addEventListener("contextmenu", (event) => {
   const link = event.target.closest(".open-item");
@@ -1076,6 +1286,7 @@ function createItem(item) {
   const fragment = template.content.cloneNode(true);
   const article = fragment.querySelector(".item");
   article.dataset.id = item.id;
+  article.draggable = true;
   const openLink = fragment.querySelector(".open-item");
   openLink.href = safeTarget(item.url) || "#";
   fragment.querySelector("h2").textContent = item.title;
