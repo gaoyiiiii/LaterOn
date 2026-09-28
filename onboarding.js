@@ -21,7 +21,7 @@
     const steps = [
       { icon: "+", title: "guideStepSaveTitle", body: "guideStepSaveBody", hint: "guideStepSaveHint" },
       { icon: "◎", title: "guideStepInboxTitle", body: "guideStepInboxBody", hint: "guideStepInboxHint" },
-      { icon: "↗", title: "guideStepReadTitle", body: "guideStepReadBody", hint: "guideStepReadHint" }
+      { icon: "⛶", title: "guideStepReadTitle", body: "guideStepReadBody", hint: "guideStepReadHint" }
     ];
 
     const root = document.createElement("div");

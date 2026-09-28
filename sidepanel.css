@@ -21,9 +21,11 @@ main { padding:14px 13px 30px; }
 .current-copy { min-width:0; }
 .current-copy p { overflow:hidden; margin:0 0 4px; color:var(--muted); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
 .current-copy h1 { display:-webkit-box; overflow:hidden; margin:0; font-size:12px; line-height:1.4; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
-#saveCurrent { display:flex; align-items:center; gap:4px; border:0; border-radius:9px; padding:8px 9px; background:var(--active-bg); color:var(--active-text); font-size:11px; font-weight:700; }
+#saveCurrent { display:flex; align-items:center; gap:4px; border:1px solid transparent; border-radius:9px; padding:8px 9px; background:var(--active-bg); color:var(--active-text); font-size:11px; font-weight:700; transition:background .15s,color .15s,border-color .15s; }
 #saveCurrent:disabled { opacity:.35; cursor:wait; }
 #saveCurrent.done { background:#2d7a4f; }
+#saveCurrent.saved { border-color:var(--line); background:var(--accent-soft); color:var(--accent); }
+#saveCurrent.saved:disabled { opacity:1; cursor:default; }
 #status { min-height:13px; margin:5px 3px 2px; color:var(--accent); font-size:10px; }
 .search { display:flex; align-items:center; margin-top:8px; padding:9px 10px; border:1px solid var(--line); border-radius:10px; background:var(--field); }
 .search svg { width:15px; fill:none; stroke:var(--muted); stroke-linecap:round; stroke-width:1.8; }

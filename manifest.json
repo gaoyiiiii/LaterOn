@@ -28,6 +28,9 @@
       "128": "icon128.png"
     }
   },
+  "omnibox": {
+    "keyword": "lo"
+  },
   "side_panel": {
     "default_path": "sidepanel.html"
   },

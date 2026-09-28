@@ -28,6 +28,7 @@ const { document } = window;
 const sent = [];
 window.chrome = {
   runtime: {
+    getURL(file) { return `chrome-extension://lateron/${file}`; },
     sendMessage(message) {
       sent.push(message);
       if (message?.type === "CREATE_PROJECT") {
@@ -257,11 +258,11 @@ const PAGES = [
   await tick(300);
 
   console.log("\n── 品牌标识只出现在整屏弹窗里 ──");
-  // 整屏弹窗（网页里 Alt+1 收藏）：用户得先知道这是谁弹的窗，所以顶部保留「↗ LaterOn」。
+  // 整屏弹窗（网页里 Alt+1 收藏）：用户得先知道这是谁弹的窗，所以顶部保留当前 LaterOn 图标和品牌名。
   window.__overlay({ theme: "light", selected: "work", folders: FOLDERS, pages: PAGES });
   const modalShadow = document.getElementById("lateron-folder-picker").shadowRoot;
   const modalBrand = modalShadow.querySelector(".lon-brand");
-  check("整屏收藏弹窗保留「↗ LaterOn」品牌标识", !!modalBrand && /LaterOn/.test(modalBrand.textContent), modalBrand?.textContent);
+  check("整屏收藏弹窗保留当前 LaterOn 品牌标识", !!modalBrand?.querySelector('img[src*="icon128.png"]') && /LaterOn/.test(modalBrand.textContent), modalBrand?.textContent);
   document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
   await tick(300);
 

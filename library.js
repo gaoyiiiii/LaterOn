@@ -83,8 +83,11 @@ const tr = (key, vars) => {
     noMatchesHint: "换个关键词，或切换顶部的阅读状态筛选。", quiet: "这里还很安静",
     quietHint: "打开一个想稍后阅读的网页，点击浏览器工具栏中的 LaterOn 图标即可收藏。",
     noBoard: "没有匹配的类目", noBoardHint: "换个关键词，或切换顶部的阅读状态筛选。",
-    boardCount: "{groups} 个类目 · 共 {total} 篇收藏 · {unfinished} 篇没看完", notFinished: "没看完",
-    slogan: "没看完的网页，留到 LaterOn。", inbox: "等待整理", allProjectsOverview: "全部项目"
+    boardCount: "{groups} 个项目 · 共 {total} 篇收藏 · {unfinished} 篇没看完", notFinished: "没看完",
+    slogan: "没看完的网页，留到 LaterOn。", inbox: "等待整理", allProjectsOverview: "全部项目",
+    openInNewWindow: "在新窗口打开", openingNewWindow: "正在新窗口打开 {n} 篇…",
+    openedNewWindow: "已在新窗口打开 {n} 篇", newWindowOpenFailed: "新窗口打开失败，请重试",
+    noValidPages: "选中的收藏里没有可打开的网页"
   };
   return String(fallback[key] || key).replace(/\{(\w+)\}/g, (_, k) => vars?.[k] ?? `{${k}}`);
 };
@@ -234,8 +237,10 @@ async function init() {
   }
   projects = sortPinnedFirst(result[PROJECTS_KEY] || []);
   orders = result[ORDER_KEY] || {};
-  activeProject = normalizeProject(result[ACTIVE_PROJECT_KEY]);
-  pageTitleMode = activeProject === "all" ? "home" : "section";
+  // 新打开完整界面时明确落在“全部项目”首页，不恢复上一次停留的具体项目。
+  // 已经打开的收藏库标签页被再次聚焦时不会重新初始化，因此仍会保留用户的当前现场。
+  activeProject = "all";
+  pageTitleMode = "home";
   currentItemId = result[CURRENT_ITEM_KEY] || null;
   const userSettings = result[SETTINGS_KEY] || {};
   sort = userSettings.defaultSort || "newest";
@@ -243,6 +248,16 @@ async function init() {
   autoMarkRead = userSettings.autoMarkRead !== false;
   // 旧版本会在回首页时写入 all，但那不是用户的筛选偏好；升级后首次打开回到未读。
   filter = result[FILTER_CHOSEN_KEY] ? normalizeFilter(result[FILTER_KEY]) : DEFAULT_FILTER;
+  // 地址栏输入 `lo 关键词` 后，默认回车会把用户带到这页并附上搜索词。
+  // 此入口明确是在找收藏，所以临时查看全部阅读状态，不把这个选择写回用户的日常筛选偏好。
+  const launchParams = new URLSearchParams(window.location.search);
+  const launchQuery = String(launchParams.get("q") || "").trim();
+  if (launchQuery) {
+    query = launchQuery.toLowerCase();
+    searchInput.value = launchQuery;
+    if (launchParams.get("from") === "omnibox") filter = "all";
+    pageTitleMode = "section";
+  }
   syncFilterButtons();
   libraryTabId = activeTabs[0]?.id || null;
   libraryWindowId = activeTabs[0]?.windowId || null;
@@ -367,7 +382,7 @@ searchInput.addEventListener("input", () => {
 });
 
 // 点左上角的 LaterOn 标识 = 回「全屏首页」。
-// 首页 = 这一页刚打开时的那一屏：全部项目（图板总览）+ 筛选回到「全部」+ 没有搜索词 + 滚到顶。
+// 首页 = 这一页刚打开时的那一屏：全部项目（图板总览）+ 筛选回到「未读」+ 没有搜索词 + 滚到顶。
 // 之所以要一次性复位这么多：钻进某个项目或筛到「未读」之后，用户对「怎么退回去」是没有把握的，
 // 点品牌标识就是那个万能的后退——不用去猜自己刚才点过什么。
 function goHome() {
@@ -2117,16 +2132,24 @@ async function openItem(event, item) {
   chrome.storage.local.set({ [CURRENT_ITEM_KEY]: item.id });
 
   const windowId = await resolveWindowId();
-  if (!(await openSidePanel(windowId))) {
+  const openTab = await globalThis.LaterOnTabs.findOpen(target, { excludeTabId: libraryTabId });
+  const destinationWindowId = openTab?.windowId ?? windowId;
+  if (!(await openSidePanel(destinationWindowId))) {
     // 侧栏打不开（极少数情况）：至少别让这次点击落空。
     showToast(tr("sidePanelFallback"));
-    await chrome.tabs.create({ url: target, openerTabId: libraryTabId || undefined });
+    if (openTab) await globalThis.LaterOnTabs.activate(openTab);
+    else await chrome.tabs.create({ url: target, openerTabId: libraryTabId || undefined });
     return;
   }
 
   // 等侧栏脚本就绪后再跳转，避免侧栏刚打开时读到「正在导航」的空页面；超时也照样跳。
-  await waitForSidePanelReady(windowId);
+  await waitForSidePanelReady(destinationWindowId);
   if (autoMarkRead && item.status === "unread") await updateItem(item.id, { status: "reading" });
+  // 同一网页已经开着时直接回到它；不牺牲当前收藏库标签，也不制造重复页面。
+  if (openTab) {
+    await globalThis.LaterOnTabs.activate(openTab);
+    return;
+  }
   if (libraryTabId) await chrome.tabs.update(libraryTabId, { url: target });
   else await chrome.tabs.create({ url: target });
 }
@@ -2353,6 +2376,29 @@ async function bulkDelete() {
   showToast(tr("bulkDeleted", { n: ids.size }));
 }
 
+function selectedItemsInViewOrder() {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const orderedIds = [...grid.querySelectorAll(".card[data-id]")].map((card) => card.dataset.id);
+  return orderedIds.filter((id) => selectedIds.has(id)).map((id) => byId.get(id)).filter(Boolean);
+}
+
+async function bulkOpenInNewWindow() {
+  if (!selectedIds.size) return;
+  const selected = selectedItemsInViewOrder();
+  const targets = selected.map((item) => safeTarget(item.url)).filter(Boolean);
+  if (!targets.length) { showToast(tr("noValidPages")); return; }
+
+  showToast(tr("openingNewWindow", { n: targets.length }));
+  try {
+    const created = await chrome.windows.create({ url: targets, focused: true, type: "normal" });
+    if (created?.id == null) throw new Error("No window was created");
+    finishBulk();
+    showToast(tr("openedNewWindow", { n: targets.length }));
+  } catch {
+    showToast(tr("newWindowOpenFailed"));
+  }
+}
+
 function finishBulk() {
   selectedIds.clear();
   setSelectMode(false);
@@ -2369,6 +2415,7 @@ document.querySelector("#bulkSelectAll")?.addEventListener("click", () => {
 });
 document.querySelector("#bulkRead")?.addEventListener("click", () => bulkUpdate({ status: "done" }));
 document.querySelector("#bulkUnread")?.addEventListener("click", () => bulkUpdate({ status: "unread" }));
+document.querySelector("#bulkOpenWindow")?.addEventListener("click", bulkOpenInNewWindow);
 document.querySelector("#bulkProject")?.addEventListener("click", openBulkProjectPicker);
 document.querySelector("#bulkDelete")?.addEventListener("click", bulkDelete);
 document.querySelector("#bulkDone")?.addEventListener("click", () => setSelectMode(false));

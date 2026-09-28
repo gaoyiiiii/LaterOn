@@ -68,8 +68,10 @@ let renderToken = 0;
 let pendingLocate = false;    // 有一个定位任务在等（可能被列表没画完卡着）
 let renderComplete = false;   // 当前这一轮渲染是不是已经把整张列表画完了
 let locateTimer = null;       // 滚动动画结束后复查用的定时器
-// 顶部吸顶标题栏的高度：卡片被它压住也算「看不见」。
-const TOPBAR_H = 58;
+// 顶部吸顶标题栏的窄栏兜底高度。实际定位会实时量 header：
+// 侧栏拖宽后它会变成 64px，再写死 58px 就会让卡片上沿藏在吸顶栏下面。
+const TOPBAR_FALLBACK_H = 58;
+const LOCATE_EDGE_GAP = 10;
 const nextFrame = (fn) => (typeof requestAnimationFrame === "function" ? requestAnimationFrame(fn) : setTimeout(fn, 16));
 const nowMs = () => (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now());
 let searchTimer = null;
@@ -270,6 +272,7 @@ async function init() {
   // 不等待它，避免一次冷 storage 读取把侧栏首屏拖到几秒之后。
   languagePromise.then(() => {
     window.LaterOnI18n?.applyStatic();
+    if (currentItem) syncSaveButtonState(!!currentItemId);
     if (sidePanelReady || cacheHit) {
       render();
       renderProjectFilters();
@@ -361,6 +364,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     items = normalizeItems(changes[STORAGE_KEY].newValue || []);
     render();
     renderProjectFilters();
+    if (currentItem?.url) syncCurrentTabItem(currentItem.url);
   }
   if (area === "local" && changes[COVERS_KEY]) {
     covers = changes[COVERS_KEY].newValue || {};
@@ -489,7 +493,6 @@ function applyCurrentPage(result, generation) {
   document.querySelector("#currentTitle").textContent = currentItem.title;
   document.querySelector("#currentSource").textContent = currentItem.source;
   if (currentItem.image) setCurrentThumb(currentItem.image);
-  saveButton.disabled = false;
 }
 
 chrome.tabs.onActivated.addListener(() => loadCurrentPage());
@@ -500,13 +503,23 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
 function resetCurrentPage() {
   currentItem = null;
   saveButton.disabled = true;
-  saveButton.classList.remove("done");
+  saveButton.classList.remove("done", "saved");
   saveButton.querySelector("span").textContent = "＋";
   saveButton.querySelector(".save-label").textContent = tr("saveCurrent");
   document.querySelector("#currentTitle").textContent = tr("currentPage");
   document.querySelector("#currentSource").textContent = tr("currentLoading");
   resetCurrentThumb();
   status.textContent = "";
+}
+
+function syncSaveButtonState(isSaved) {
+  saveButton.classList.remove("done");
+  saveButton.classList.toggle("saved", isSaved);
+  saveButton.disabled = isSaved || !currentItem;
+  saveButton.querySelector("span").textContent = isSaved ? "✓" : "＋";
+  saveButton.querySelector(".save-label").textContent = tr(isSaved ? "saved" : "saveCurrent");
+  saveButton.title = tr(isSaved ? "saved" : "saveCurrent");
+  saveButton.setAttribute("aria-label", tr(isSaved ? "saved" : "saveCurrent"));
 }
 
 function fallbackMetadata(tab) {
@@ -530,10 +543,24 @@ function syncCurrentTabItem(url) {
     ? items.find((item) => normalize(item.url) === normalized)
     : null;
   const nextId = matched?.id || null;
+  const previousId = currentItemId;
   currentItemId = nextId;
+  syncSaveButtonState(!!matched);
 
-  if (nextId) {
-    // render() 之后会由 applyCurrentAndLocate 负责定位；这里先把高亮同步到已存在的卡片。
+  if (matched) {
+    if (previousId !== nextId) chrome.storage.local.set({ [CURRENT_ITEM_KEY]: nextId }).catch(() => {});
+    // 切换到另一个已收藏标签页时，目标文章可能属于另一个项目。
+    // 必须先切换项目再定位，否则它会被旧项目的筛选挡住，卡片根本不在 DOM 里。
+    const targetProject = normalizeProject(matched.projectId || "unfiled");
+    if (targetProject !== activeProject) {
+      activeProject = targetProject;
+      renderProjectFilters();
+      render();
+      // 与全屏界面共享当前项目；侧栏跟随标签页后，下次打开也继续停在这里。
+      chrome.storage.local.set({ [ACTIVE_PROJECT_KEY]: activeProject }).catch(() => {});
+    }
+    // render() 之后由 applyCurrentAndLocate 负责高亮与定位；
+    // 项目没变时则直接复用已经画好的卡片。
     applyCurrentAndLocate();
     return;
   }
@@ -546,7 +573,7 @@ function syncCurrentTabItem(url) {
 }
 
 saveButton.addEventListener("click", async () => {
-  if (!currentItem) return;
+  if (!currentItem || currentItemId) return;
   saveButton.disabled = true;
   // 统一交给后台处理（和快捷键、右键菜单同一条链路）：
   // 设置里打开「收藏单篇前先选项目」时，点这里同样会先在网页里弹出选项目浮层。
@@ -558,11 +585,7 @@ saveButton.addEventListener("click", async () => {
     return;
   }
   if (response?.ok) {
-    saveButton.classList.add("done");
-    saveButton.querySelector("span").textContent = "✓";
-    saveButton.querySelector(".save-label").textContent = response.duplicated
-      ? (response.refreshed ? tr("infoUpdated") : tr("alreadySaved"))
-      : (response.updated ? tr("updated") : tr("saved"));
+    syncSaveButtonState(true);
     status.textContent = "";
   } else {
     saveButton.disabled = false;
@@ -697,6 +720,8 @@ function finishRender(token) {
 // 分两步：卡片已经画出来就立刻定位（快路径）；还没画到 / 列表没铺完，
 // 就挂一个定位任务，等整张列表画完（finishRender）再定位。
 function applyCurrentAndLocate() {
+  // 当前文章变了，上一篇的延迟复查也必须作废，否则会把新定位抢回去。
+  clearTimeout(locateTimer);
   for (const [id, article] of itemMap) {
     article.dataset.currentLabel = tr("currentReading");
     article.classList.toggle("is-current", id === currentItemId);
@@ -714,8 +739,20 @@ function locateCurrent(attempt = 0) {
     if (renderComplete) { pendingLocate = false; saveLocateDiag({ found: false, attempts: attempt }); }
     return;
   }
-  // 已经在视野里就别乱跳。
+  // 已经在视野里先别乱跳，但不立刻宣布完成：侧栏刚展开、
+  // 宽度媒体查询或封面完成布局时，卡片还可能被再挤到吸顶栏下面。
+  // 延迟复查一次，如果位置变了就用瞬时滚动补正。
   if (isCardInView(article)) {
+    if (attempt === 0) {
+      locateTimer = setTimeout(() => {
+        if (!pendingLocate) return;
+        const target = itemMap.get(currentItemId);
+        if (target && !isCardInView(target)) { locateCurrent(1); return; }
+        pendingLocate = false;
+        saveLocateDiag({ found: Boolean(target), inView: Boolean(target), scrolled: false, attempts: 0 });
+      }, 320);
+      return;
+    }
     pendingLocate = false;
     saveLocateDiag({ found: true, inView: true, scrolled: attempt > 0, attempts: attempt });
     return;
@@ -748,8 +785,10 @@ function scrollCardToCenter(article, smooth) {
   const viewport = window.innerHeight || 0;
   if (!viewport || !rect.height) return;
   const current = window.scrollY || window.pageYOffset || 0;
-  // 目标：把卡片放到视口中间
-  let target = current + rect.top - (viewport - rect.height) / 2;
+  const visibleTop = visibleTopInset();
+  const visibleHeight = Math.max(0, viewport - visibleTop);
+  // 目标：把卡片放到「吸顶栏以下」那块真正可见区域的中间。
+  let target = current + rect.top - visibleTop - (visibleHeight - rect.height) / 2;
   // 别滚出文档范围（滚到底就停在那儿）
   const docHeight = document.documentElement?.scrollHeight || document.body?.scrollHeight || 0;
   const max = docHeight - viewport;
@@ -763,13 +802,20 @@ function scrollCardToCenter(article, smooth) {
   }
 }
 
-// 卡片是不是整个都落在可视区域里（顶部被吸顶标题栏压住不算）。
+// 实时量出顶部不可见区域，多留 10px 呼吸空间，避免高亮边框贴着栏底。
+function visibleTopInset() {
+  const headerRect = document.querySelector("header")?.getBoundingClientRect?.();
+  const measured = Number(headerRect?.bottom);
+  return (Number.isFinite(measured) && measured > 0 ? measured : TOPBAR_FALLBACK_H) + LOCATE_EDGE_GAP;
+}
+
+// 卡片是不是整个都落在真正可见区域里（被吸顶栏压住不算）。
 function isCardInView(article) {
   const rect = article.getBoundingClientRect();
   const viewport = window.innerHeight || 0;
   // 量不出来（还没排版）就别乱动，等下一次机会。
   if (!viewport || !rect.height) return true;
-  return rect.top >= TOPBAR_H - 1 && rect.bottom <= viewport + 1;
+  return rect.top >= visibleTopInset() - 1 && rect.bottom <= viewport + 1;
 }
 
 // 定位到底成没成，记一笔：设置页「自检信息 → 侧栏『滚到正在读』」能看到，不用猜。
@@ -1057,6 +1103,16 @@ async function openItem(item) {
   }
   // 记下「正在读这篇」——全屏界面据此高亮并滚动定位，两个视图保持一致。
   chrome.storage.local.set({ [CURRENT_ITEM_KEY]: item.id });
+  const openTab = await globalThis.LaterOnTabs.findOpen(target);
+  if (openTab) {
+    if (autoMarkRead && item.status === "unread") await updateItem(item.id, { status: "reading" });
+    await globalThis.LaterOnTabs.activate(openTab);
+    // 如果命中的页面在另一个窗口，也让 LaterOn 侧栏跟到那个窗口。
+    if (openTab.windowId != null && typeof chrome.sidePanel?.open === "function") {
+      await chrome.sidePanel.open({ windowId: openTab.windowId }).catch(() => null);
+    }
+    return;
+  }
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab?.id) await chrome.tabs.update(tab.id, { url: target });
   // 打开未读的那篇会自动标记为「在读」（读完再由用户手动点按钮标成已完成）。

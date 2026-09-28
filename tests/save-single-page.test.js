@@ -70,7 +70,8 @@ const chrome = {
       },
       async set(obj) { Object.assign(session, obj); },
       async remove(key) { delete session[key]; }
-    }
+    },
+    onChanged: { addListener() {} }
   },
   tabs: {
     query: () => Promise.resolve([tab]),
@@ -156,7 +157,11 @@ function sendFromPage(message) {
   });
 }
 
-const sandbox = { chrome, crypto: webcrypto, URL, setTimeout, clearTimeout, console, Date, Promise, JSON, Set, Map };
+const sandbox = {
+  chrome, crypto: webcrypto, URL, setTimeout, clearTimeout, console, Date, Promise, JSON, Set, Map,
+  importScripts() {},
+  LaterOnUrl: { normalize(value) { try { const url = new URL(value); url.hash = ""; return url.href.replace(/\/$/, ""); } catch { return String(value || ""); } } }
+};
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 vm.runInContext(src, sandbox, { filename: "background.js" });

@@ -213,7 +213,7 @@ async function init() {
       confirmText: t("wipeConfirmBtn")
     });
     if (!confirmed) return;
-    await chrome.storage.local.remove(["laterOnCovers", "laterOnOrder", "laterOnCurrentItem"]);
+    await chrome.storage.local.remove(["laterOnCovers", "laterOnOrder", "laterOnCurrentItem", "laterOnReadingPositions"]);
     await chrome.storage.local.set({ laterOnItems: [] });
     try { localStorage.removeItem("laterOnPanelCache"); } catch { /* 清缓存失败不影响清空收藏 */ }
     await LaterOnDialog.alert({

@@ -13,7 +13,10 @@ const { JSDOM, VirtualConsole } = require("jsdom");
 const ROOT = path.resolve(__dirname, "..");
 const html = fs.readFileSync(`${ROOT}/library.html`, "utf8");
 const librarySource = fs.readFileSync(`${ROOT}/library.js`, "utf8");
+const i18nSource = fs.readFileSync(`${ROOT}/i18n.js`, "utf8");
 const dialogSource = fs.readFileSync(`${ROOT}/dialog.js`, "utf8");
+const urlSource = fs.readFileSync(`${ROOT}/url-utils.js`, "utf8");
+const tabNavigationSource = fs.readFileSync(`${ROOT}/tab-navigation.js`, "utf8");
 
 const errors = [];
 const virtualConsole = new VirtualConsole();
@@ -49,7 +52,9 @@ const store = {
     { id: "read", name: "阅读", createdAt: 2 },
     { id: "empty", name: "空抽屉", createdAt: 3 }   // 一篇收藏都没有 → 仍应作为项目图板出现
   ],
-  laterOnActiveProject: "all",
+  // 即使上次停在具体项目，新打开完整界面也应从“全部项目”首页开始。
+  laterOnActiveProject: "work",
+  laterOnCurrentItem: "r1",
   laterOnSettings: {},
   laterOnFilter: "all",
   laterOnFilterChosen: true,
@@ -78,9 +83,17 @@ window.chrome = {
   },
   tabs: {
     query: () => Promise.resolve([{ id: 1, windowId: 1 }]),
+    getCurrent: () => Promise.resolve({ id: 1, windowId: 1 }),
+    update: (_id, info) => Promise.resolve({ id: 1, windowId: 1, ...info }),
     create: () => Promise.resolve({ id: 2 })
   },
-  runtime: { getURL: (p) => `chrome-extension://lateron/${p}`, onMessage: { addListener() {} } }
+  windows: { getCurrent: () => Promise.resolve({ id: 1 }) },
+  sidePanel: { open: () => Promise.resolve() },
+  runtime: {
+    getURL: (p) => `chrome-extension://lateron/${p}`,
+    sendMessage: (message) => Promise.resolve(message?.type === "PING_SIDEPANEL" ? { ready: true } : { ok: true }),
+    onMessage: { addListener() {} }
+  }
 };
 
 let failures = 0;
@@ -128,7 +141,10 @@ async function pickCoverFile(file) {
   await tick(60);
 }
 
+window.eval(i18nSource);
 window.eval(dialogSource);
+window.eval(urlSource);
+window.eval(tabNavigationSource);
 window.eval(librarySource);
 
 const boardGrid = () => document.querySelector("#boardGrid");
@@ -144,6 +160,7 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   console.log("── 全部项目默认就是图板视图 ──");
   check("首次打开标签页显示品牌名和 slogan", document.title === "LaterOn - 没看完的网页，留到 LaterOn。", document.title);
   check("打开就是图板视图（全部项目 = 图板）", !boardGrid().hidden && cardGrid().hidden);
+  check("不恢复上次停留的具体项目，默认打开“全部项目”首页", document.querySelector('.project-nav[data-project="all"]').classList.contains("active"));
   check("已经没有手动切换的视图按钮", !document.querySelector("#viewSwitch") && !document.querySelector(".view-btn"));
   check("排序下拉在图板视图下收起（顺序对图板没意义）", document.querySelector("#sortSelect").hidden);
   // 子项目已有明确的缩进层级，所以首页也常显，方便直接切换和接收拖拽。
@@ -151,6 +168,7 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   check("等待整理和全部项目使用新版矢量图标", !!document.querySelector('.inbox-icon svg.nav-art-icon mask') && !!document.querySelector('.all-icon svg.nav-art-icon mask'));
   check("侧栏不再出现项目标题与加号", !document.querySelector("#toggleProjects") && !document.querySelector("#showProjectForm"));
   check("图板末尾提供虚线新建入口", boardGrid().lastElementChild?.classList.contains("board-create"));
+  check("首页不再出现重复浏览器职责的“最近在看”", !document.querySelector("#recentSection"));
 
   console.log("\n── 一个类目一张图板 ──");
   check("全部项目包含 3 张图板", boardCards().length === 3, boardCards().map((c) => c.dataset.project).join(","));
@@ -158,7 +176,7 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   check("图板上写着类目名", text(boardOf("work"), ".board-name") === "工作", text(boardOf("work"), ".board-name"));
   check("「等待整理」不再单独占一块图板", !boardOf("unfiled"));
   // 等待整理那 1 篇不进任何图板；全部项目统计只描述项目图板本身。
-  check("顶部计数改成按类目算且不混入等待整理", /3 个类目 · 共 5 篇收藏 · 4 篇没看完/.test(document.querySelector("#countText").textContent) && !document.querySelector("#countText").textContent.includes("等待整理"), document.querySelector("#countText").textContent);
+  check("顶部计数使用“项目”且不混入等待整理", /3 个项目 · 共 5 篇收藏 · 4 篇没看完/.test(document.querySelector("#countText").textContent) && !document.querySelector("#countText").textContent.includes("等待整理"), document.querySelector("#countText").textContent);
   // 侧栏：全屏页面里「等待整理」要钉在最上面，而且有内容时整块高亮
   const inbox = document.querySelector(".inbox-card");
   check("侧栏有「等待整理」这块，而且钉在最上面", !!inbox && document.querySelector(".project-sidebar").firstElementChild === inbox);
@@ -193,8 +211,8 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   const workNote = boardOf("work").querySelector(".board-note");
   check("没写过简介时自动生成一句概览", /主要来自 少数派/.test(workNote.textContent), workNote.textContent);
   check("自动生成的简介标成 is-auto（显示更淡）", workNote.classList.contains("is-auto"));
-  check("篇数写在最下面", text(boardOf("work"), ".board-meta") === "4 篇 · 3 篇没看完", text(boardOf("work"), ".board-meta"));
-  check("读完了的类目写「都读完了」", text(boardOf("read"), ".board-meta") === "1 篇 · 1 篇没看完", text(boardOf("read"), ".board-meta"));
+  check("篇数写在最下面", text(boardOf("work"), ".board-meta") === "4 篇 · 3 没看完", text(boardOf("work"), ".board-meta"));
+  check("未读类目写明还有几篇没看完", text(boardOf("read"), ".board-meta") === "1 篇 · 1 没看完", text(boardOf("read"), ".board-meta"));
 
   console.log("\n── 自己写一句简介 ──");
   click(boardOf("work").querySelector(".board-edit"));
@@ -209,7 +227,7 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   const coverPreview = dialog().querySelector(".lod-cover-preview img");
   check("封面默认显示项目在用的那张，而不是「无封面」",
     coverPreview?.getAttribute("src") === "https://example.com/1.jpg", coverPreview?.getAttribute("src"));
-  check("并说明这张是按项目内容自动取的", /自动取的/.test(dialog().querySelector(".lod-cover-note").textContent),
+  check("封面区域提供上传和压缩说明", /本地图片|压缩/.test(dialog().querySelector(".lod-cover-note").textContent),
     dialog().querySelector(".lod-cover-note").textContent);
   check("自动取的封面不给「移除」（移了还是它，按钮会骗人）",
     dialog().querySelectorAll(".lod-cover-btn")[1].disabled === true);
@@ -276,7 +294,7 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   check("当前筛选下没有内容的类目也不显示", !boardOf("read"));
   click(document.querySelector('.nav-item[data-filter="all"]'));
   await tick(30);
-  check("切回全部又恢复 4 篇", text(boardOf("work"), ".board-meta") === "4 篇 · 3 篇没看完");
+  check("切回全部又恢复 4 篇", text(boardOf("work"), ".board-meta") === "4 篇 · 3 没看完");
 
   console.log("\n── 点左上角品牌标识 = 回全屏首页 ──");
   // 先把页面弄「脏」：钻进某个项目 + 筛选拨到「未读」+ 搜索框里留个字。
@@ -303,7 +321,7 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   check("回到「全部项目」", store.laterOnActiveProject === "all", String(store.laterOnActiveProject));
   check("点 Logo 回首页后标签页恢复品牌名和 slogan", document.title === "LaterOn - 没看完的网页，留到 LaterOn。", document.title);
   check("视图跟着变回图板", !boardGrid().hidden && cardGrid().hidden);
-  check("筛选复到「全部」", store.laterOnFilter === "all", String(store.laterOnFilter));
+  check("筛选复到默认的「未读」", store.laterOnFilter === "unread", String(store.laterOnFilter));
   check("搜索词被清空", searchBox.value === "");
   check("搜索没有残留（图板上又看得见类目了）", boardGrid().querySelectorAll(".board-card").length > 0,
     String(boardGrid().querySelectorAll(".board-card").length));
@@ -311,7 +329,7 @@ const text = (el, selector) => el?.querySelector(selector)?.textContent || "";
   check("滚回了页面顶部", scrollCalls.length === 1 && scrollCalls[0].top === 0, JSON.stringify(scrollCalls));
 
   // 反向验证用：把 library.js 里 goHome() 的清搜索那一行删掉，上面「搜索词被清空」必须变红。
-  check("goHome 里确实清了搜索词", /if \(searchInput\.value\) searchInput\.value = "";/.test(librarySource));
+  check("goHome 里确实调用了清搜索", /function goHome\(\)\s*\{\s*clearSearch\(\);/.test(librarySource));
 
   console.log("\n── 页面错误 ──");
   check("整个过程没有出现未捕获的错误", errors.length === 0, errors.join(" | "));

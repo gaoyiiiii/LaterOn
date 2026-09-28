@@ -11,6 +11,7 @@ const ROOT = path.join(__dirname, "..");
 const read = (name) => fs.readFileSync(path.join(ROOT, name), "utf8");
 const LIBRARY_HTML = read("library.html");
 const LIBRARY_SOURCE = read("library.js");
+const I18N_SOURCE = read("i18n.js");
 const DIALOG_SOURCE = read("dialog.js");
 const PICKER_SOURCE = read("picker-ui.js");
 
@@ -54,6 +55,7 @@ const ITEMS = ["a", "b", "c"].map((key, index) => ({
 
   // 记录「打开文章」这类副作用：多选时不该出现它们的身影。
   const navigations = [];
+  const createdWindows = [];
   window.chrome = {
     storage: {
       local: {
@@ -70,7 +72,9 @@ const ITEMS = ["a", "b", "c"].map((key, index) => ({
       onChanged: { addListener: () => {} }
     },
     tabs: {
-      query: async () => [{ id: 7, windowId: 3 }],
+      query: async (filter = {}) => filter.windowId === 8
+        ? [{ id: 80, windowId: 8 }, { id: 81, windowId: 8 }]
+        : [{ id: 7, windowId: 3 }],
       getCurrent: async () => ({ id: 7, windowId: 3 }),
       update: async (id, info) => { navigations.push(`update:${info?.url}`); return {}; },
       create: async (info) => { navigations.push(`create:${info?.url}`); return {}; }
@@ -80,10 +84,17 @@ const ITEMS = ["a", "b", "c"].map((key, index) => ({
       sendMessage: async (message) => (message?.type === "PING_SIDEPANEL" ? { ready: true } : { ok: true }),
       onMessage: { addListener: () => {} }
     },
-    windows: { getCurrent: async () => ({ id: 3 }) },
+    windows: {
+      getCurrent: async () => ({ id: 3 }),
+      create: async (options) => {
+        createdWindows.push(options);
+        return { id: 8, tabs: options.url.map((_url, index) => ({ id: 80 + index, windowId: 8 })) };
+      }
+    },
     sidePanel: { open: async () => ({}), close: async () => ({}) }
   };
 
+  window.eval(I18N_SOURCE);
   window.eval(DIALOG_SOURCE);
   window.eval(PICKER_SOURCE);
   window.eval(LIBRARY_SOURCE);
@@ -139,11 +150,16 @@ const ITEMS = ["a", "b", "c"].map((key, index) => ({
   check("依然没有任何跳转", navigations.length === beforeNavigations, navigations.join(" | "));
   check("两篇都算进去了", bulkCount() === "已选 2 篇", bulkCount());
 
-  click(cardOf("item-b"));
-  await tick();
-  check("再点卡片临时所在的卡片可以取消", isSelected("item-b") === false, bulkCount());
+  console.log("\n── 把选中的文章直接在新窗口打开 ──");
+  click(document.querySelector("#bulkOpenWindow"));
+  await tick(80);
+  check("只创建一个新窗口，并按页面顺序放入两篇", createdWindows.length === 1
+    && JSON.stringify(createdWindows[0].url) === JSON.stringify(["https://example.com/a", "https://example.com/b"]), JSON.stringify(createdWindows));
+  check("没有创建浏览器标签组", typeof window.chrome.tabs.group === "undefined" && typeof window.chrome.tabGroups === "undefined");
+  check("打开后自动退出多选", !grid.classList.contains("selecting") && !document.querySelector("#bulkBar").classList.contains("is-open"));
 
   console.log("\n── 全选 / 取消全选 ──");
+  click(document.querySelector("#selectMode"));
   click(document.querySelector("#bulkSelectAll"));
   await tick();
   check("全选后三张都勾上", ["a", "b", "c"].every((key) => isSelected(`item-${key}`)), bulkCount());

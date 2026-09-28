@@ -7,6 +7,8 @@
 //  4) 那篇被筛选条件挡在外面 → 安静放弃，不报错
 //  5) 在别处点开另一篇 → 跟着高亮并滚过去
 //  6) 定位结果会记进 laterOnLocateDiag（设置页「自检信息」能看）
+//  7) 切到另一个项目里的已收藏标签页 → 先自动切项目，再高亮定位文章
+//  8) 已收藏页顶部显示“已收藏”，未收藏页才显示“收藏”操作
 // 运行：NODE_PATH=<jsdom 路径> node tests/panel-locate-current.test.js
 const fs = require("fs");
 const path = require("path");
@@ -14,7 +16,10 @@ const { JSDOM, VirtualConsole } = require("jsdom");
 
 const ROOT = path.resolve(__dirname, "..");
 const html = fs.readFileSync(`${ROOT}/sidepanel.html`, "utf8");
+const i18nSource = fs.readFileSync(`${ROOT}/i18n.js`, "utf8");
 const sidepanelSource = fs.readFileSync(`${ROOT}/sidepanel.js`, "utf8");
+const urlSource = fs.readFileSync(`${ROOT}/url-utils.js`, "utf8");
+const tabNavigationSource = fs.readFileSync(`${ROOT}/tab-navigation.js`, "utf8");
 
 let failures = 0;
 const check = (label, ok, extra = "") => {
@@ -28,9 +33,14 @@ const CARD_H = 100;      // 一张卡片占的高度（含间距）
 const CARD_INNER = 92;   // 卡片自身高度
 const HEAD_H = 238;      // 列表上方那一堆（收藏条 / 搜索 / 筛选 / 项目）的高度
 const VIEWPORT = 800;
+const STICKY_H = 58;
+const EDGE_GAP = 10;
 
 // 把第 index 张卡滚到视口中间，页面应该停在哪个 scrollY
-const expectedTop = (index) => Math.max(0, HEAD_H + index * CARD_H - (VIEWPORT - CARD_INNER) / 2);
+const expectedTop = (index, stickyBottom = STICKY_H) => {
+  const visibleTop = stickyBottom + EDGE_GAP;
+  return Math.max(0, HEAD_H + index * CARD_H - visibleTop - (VIEWPORT - visibleTop - CARD_INNER) / 2);
+};
 
 function makeItem(overrides = {}) {
   return {
@@ -44,7 +54,7 @@ function makeItem(overrides = {}) {
 //  - 每张卡片按它在列表里的序号算出 top（第 n 张 = HEAD_H + n * CARD_H - 当前滚动距离）
 //  - window.scrollTo 真的会改变「滚动距离」，这样事后能量出它到底进没进视野
 //  - dropSmooth=true 时「平滑滚动」什么都不做，用来模拟浏览器把这次滚动丢掉了
-function boot({ store, dropSmooth = false }) {
+function boot({ store, dropSmooth = false, activeTab: initialTab = null, stickyBottom = STICKY_H }) {
   const errors = [];
   const virtualConsole = new VirtualConsole();
   virtualConsole.on("jsdomError", (error) => errors.push(String(error?.message || error)));
@@ -79,6 +89,9 @@ function boot({ store, dropSmooth = false }) {
   Object.defineProperty(window, "pageYOffset", { configurable: true, get: () => scrollY });
 
   window.Element.prototype.getBoundingClientRect = function () {
+    if (this.matches?.("header")) {
+      return { top: 0, bottom: stickyBottom, height: stickyBottom, left: 0, right: 280, width: 280, x: 0, y: 0, toJSON() {} };
+    }
     const index = cardIndex(this);
     if (index < 0) return { top: 0, bottom: 0, height: 0, left: 0, right: 280, width: 280, x: 0, y: 0, toJSON() {} };
     const top = HEAD_H + index * CARD_H - scrollY;
@@ -98,6 +111,11 @@ function boot({ store, dropSmooth = false }) {
   };
 
   const changeListeners = [];
+  // 大多数定位用例只在验证存储里的 CURRENT_ITEM_KEY，不模拟浏览器当前页。
+  // 这时 query 返回空数组，避免一个无关 URL 把预设的当前文章清掉。
+  let activeTab = initialTab;
+  let activatedListener = null;
+  let updatedListener = null;
   window.chrome = {
     storage: {
       local: {
@@ -114,10 +132,10 @@ function boot({ store, dropSmooth = false }) {
       onChanged: { addListener: (fn) => changeListeners.push(fn) }
     },
     tabs: {
-      query: () => Promise.resolve([{ id: 1, windowId: 7, active: true, url: "https://current.com" }]),
+      query: () => Promise.resolve(activeTab ? [activeTab] : []),
       update: () => Promise.resolve({}),
-      onActivated: { addListener() {} },
-      onUpdated: { addListener() {} }
+      onActivated: { addListener(fn) { activatedListener = fn; } },
+      onUpdated: { addListener(fn) { updatedListener = fn; } }
     },
     windows: { getCurrent: () => Promise.resolve({ id: 7 }) },
     runtime: {
@@ -127,6 +145,9 @@ function boot({ store, dropSmooth = false }) {
     }
   };
 
+  window.eval(i18nSource);
+  window.eval(urlSource);
+  window.eval(tabNavigationSource);
   window.eval(sidepanelSource);
 
   return {
@@ -140,11 +161,19 @@ function boot({ store, dropSmooth = false }) {
       const card = document.querySelector(`.item[data-id="${id}"]`);
       if (!card) return null;
       const rect = card.getBoundingClientRect();
-      return rect.top >= 57 && rect.bottom <= VIEWPORT + 1;
+      return rect.top >= stickyBottom + EDGE_GAP - 1 && rect.bottom <= VIEWPORT + 1;
     },
     isHighlighted(id) {
       const card = document.querySelector(`.item[data-id="${id}"]`);
       return !!card && card.classList.contains("is-current");
+    },
+    switchTab(tab) {
+      activeTab = { id: 1, windowId: 7, active: true, ...tab };
+      activatedListener?.({ tabId: activeTab.id, windowId: activeTab.windowId });
+    },
+    updateTab(changeInfo, tab = {}) {
+      activeTab = { ...activeTab, ...tab, active: true };
+      updatedListener?.(activeTab.id, changeInfo, activeTab);
     }
   };
 }
@@ -160,6 +189,7 @@ function bigStore(currentIndex, overrides = {}) {
     laterOnActiveProject: "all",
     laterOnSettings: {},
     laterOnCovers: {},
+    laterOnFilterChosen: true,
     laterOnCurrentItem: currentIndex == null ? null : `a-${currentIndex}`,
     ...overrides
   };
@@ -224,6 +254,56 @@ function bigStore(currentIndex, overrides = {}) {
   await tick(1500);
   check("被筛选挡住时诊断里写明「没找到」", envF.store.laterOnLocateDiag?.found === false,
     JSON.stringify(envF.store.laterOnLocateDiag));
+
+  // ═══ ⑦ 切换浏览器标签页：目标收藏在另一个项目里 ═══
+  console.log("\n── ⑦ 切到另一个项目的已收藏网页 → 自动切项目并定位 ──");
+  const crossProjectStore = {
+    laterOnItems: [
+      makeItem({ id: "work-1", title: "工作文章", projectId: "work", url: "https://example.com/work" }),
+      makeItem({ id: "read-1", title: "阅读文章", projectId: "read", url: "https://example.com/read", savedAt: now - 1000 })
+    ],
+    laterOnProjects: [
+      { id: "work", name: "工作" },
+      { id: "read", name: "阅读" }
+    ],
+    laterOnActiveProject: "work",
+    laterOnSettings: {},
+    laterOnCovers: {},
+    laterOnCurrentItem: "work-1"
+  };
+  const envG = boot({
+    store: crossProjectStore,
+    activeTab: { id: 1, windowId: 7, active: true, url: "https://example.com/work", title: "工作文章" }
+  });
+  await tick(300);
+  check("起点在「工作」项目", envG.store.laterOnActiveProject === "work" && envG.isHighlighted("work-1"));
+  envG.switchTab({ id: 2, url: "https://example.com/read", title: "阅读文章" });
+  await tick(500);
+  const activeProjectName = envG.document.querySelector("#projectFilters .project-filter.active .project-name")?.textContent;
+  check("侧栏自动切到目标文章所属的「阅读」项目",
+    envG.store.laterOnActiveProject === "read" && activeProjectName === "阅读",
+    `store=${envG.store.laterOnActiveProject} / active=${activeProjectName}`);
+  check("旧项目文章被筛掉，目标文章已出现并高亮",
+    !envG.document.querySelector('.item[data-id="work-1"]') && envG.isHighlighted("read-1"));
+  check("目标文章定位在可视区域", envG.inView("read-1") === true, String(envG.inView("read-1")));
+  const saveButton = envG.document.querySelector("#saveCurrent");
+  check("已收藏页面顶部明确显示“已收藏”", saveButton.disabled && saveButton.classList.contains("saved")
+    && saveButton.querySelector(".save-label").textContent === "已收藏", saveButton.textContent.trim());
+  envG.switchTab({ id: 3, url: "https://example.com/new", title: "还没收藏的文章" });
+  await tick(300);
+  check("未收藏页面恢复为可点击的“收藏”按钮", !saveButton.disabled && !saveButton.classList.contains("saved")
+    && saveButton.querySelector(".save-label").textContent === "收藏", saveButton.textContent.trim());
+
+  // ═══ ⑧ 侧栏拖宽 / 顶部栏变高后仍然不会遮住卡片 ═══
+  console.log("\n── ⑧ 顶部吸顶区变高 → 按实际可见区域重新居中 ──");
+  const wideStickyBottom = 96;
+  const envH = boot({ store: bigStore(45), stickyBottom: wideStickyBottom });
+  await tick(1500);
+  const wideLastScroll = envH.scrollCalls[envH.scrollCalls.length - 1];
+  check("定位使用实测顶部栏高度，而不是写死 58px",
+    wideLastScroll?.top === expectedTop(45, wideStickyBottom),
+    `实际 ${JSON.stringify(wideLastScroll)} / 期望 ${expectedTop(45, wideStickyBottom)}`);
+  check("高亮卡片完整落在吸顶栏下方", envH.inView("a-45") === true, String(envH.inView("a-45")));
 
   console.log(`\n${failures === 0 ? "🎉 全部通过" : `❌ 有 ${failures} 项没通过`}`);
   process.exit(failures ? 1 : 0);

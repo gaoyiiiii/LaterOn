@@ -11,6 +11,7 @@ const read = (name) => fs.readFileSync(path.join(ROOT, name), "utf8");
 const themeVars = read("theme-vars.css");
 const dialogCss = read("dialog.css");
 const dialogJs = read("dialog.js");
+const iconData = fs.readFileSync(path.join(ROOT, "icon128.png")).toString("base64");
 
 const html = `<!doctype html>
 <html lang="zh-CN">
@@ -35,10 +36,8 @@ ${themeVars}
       .demo { max-width: 760px; margin: 0 auto; }
       .demo-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 26px; }
       .demo-logo {
-        display: grid; place-items: center; flex: none;
+        display: block; flex: none; object-fit: cover;
         width: 40px; height: 40px; border-radius: 13px;
-        background: linear-gradient(140deg, #ff7a52, #ff4f2e);
-        color: #fff; font-size: 21px; line-height: 1;
         box-shadow: 0 10px 22px -10px rgba(255,80,50,.85);
       }
       .demo-head h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.4px; }
@@ -77,7 +76,7 @@ ${dialogCss}
   <body>
     <div class="demo">
       <div class="demo-head">
-        <span class="demo-logo">↗</span>
+        <img class="demo-logo" src="data:image/png;base64,${iconData}" alt="" />
         <div>
           <h1>LaterOn 弹窗效果预览</h1>
           <p>下面是应用里真实使用的弹窗组件，点任意按钮即可看到实际效果。</p>

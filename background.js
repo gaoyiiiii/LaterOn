@@ -1,9 +1,10 @@
-importScripts("url-utils.js");
+importScripts("url-utils.js", "reading-position-background.js");
 const normalizeUrl = LaterOnUrl.normalize;
 
 const STORAGE_KEY = "laterOnItems";
 const PROJECTS_KEY = "laterOnProjects";
 const SETTINGS_KEY = "laterOnSettings";
+const CURRENT_ITEM_KEY = "laterOnCurrentItem";
 async function usesEnglish() {
   try { return (await chrome.storage.local.get(SETTINGS_KEY))[SETTINGS_KEY]?.language === "en"; }
   catch { return false; }
@@ -36,6 +37,123 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "loading" || typeof changeInfo.url === "string") injectedCssTabs.delete(tabId);
 });
 chrome.tabs.onRemoved.addListener((tabId) => injectedCssTabs.delete(tabId));
+
+// ── 工具栏图标反馈 ──────────────────────────────────────────
+// 品牌图标保持干净，不再常驻显示“当前网页已收藏”的 ✓；只有用户主动收藏时的
+// 进度或错误会短暂出现，结束后恢复无角标的默认状态。
+let actionFeedbackTimer = null;
+let actionFeedbackUntil = 0;
+
+async function resetActionAppearance() {
+  if (Date.now() < actionFeedbackUntil) return;
+  const en = await usesEnglish();
+  const baseTitle = en ? "Open the LaterOn side panel" : "打开 LaterOn 侧栏";
+  await chrome.action?.setBadgeText?.({ text: "" });
+  await chrome.action?.setTitle?.({ title: baseTitle });
+}
+
+async function showActionFeedback(text, color, duration) {
+  actionFeedbackUntil = Date.now() + duration;
+  clearTimeout(actionFeedbackTimer);
+  await chrome.action?.setBadgeText?.({ text });
+  await chrome.action?.setBadgeBackgroundColor?.({ color });
+  actionFeedbackTimer = setTimeout(() => {
+    actionFeedbackUntil = 0;
+    resetActionAppearance().catch(() => {});
+  }, duration);
+}
+
+resetActionAppearance().catch(() => {});
+
+// ── 地址栏搜索：输入 `lo` + 空格后直接查 LaterOn ─────────────
+function escapeOmniboxText(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function omniboxMatches(items, projects, text) {
+  const words = String(text || "").trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  const projectNames = new Map((projects || []).map((project) => [project.id, project.name]));
+  return (items || [])
+    .filter((item) => isWebUrl(item.url))
+    .map((item) => {
+      const title = String(item.title || item.url || "");
+      const project = projectNames.get(item.projectId) || "";
+      const haystack = `${title} ${item.description || ""} ${item.source || ""} ${item.url || ""} ${project}`.toLocaleLowerCase();
+      if (words.some((word) => !haystack.includes(word))) return null;
+      const loweredTitle = title.toLocaleLowerCase();
+      const phrase = words.join(" ");
+      const score = !words.length ? 0
+        : loweredTitle.startsWith(phrase) ? 4
+          : loweredTitle.includes(phrase) ? 3
+            : words.every((word) => loweredTitle.includes(word)) ? 2 : 1;
+      return { item, project, score };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score || Number(b.item.savedAt || 0) - Number(a.item.savedAt || 0))
+    .slice(0, 5);
+}
+
+async function setOmniboxDefault(text = "") {
+  if (!chrome.omnibox?.setDefaultSuggestion) return;
+  const en = await usesEnglish();
+  const value = escapeOmniboxText(String(text || "").trim());
+  const description = value
+    ? (en ? `Search LaterOn for <match>${value}</match>` : `在 LaterOn 中搜索 <match>${value}</match>`)
+    : (en ? "Search your LaterOn saves" : "搜索 LaterOn 收藏");
+  await chrome.omnibox.setDefaultSuggestion({ description }).catch(() => {});
+}
+
+let omniboxGeneration = 0;
+chrome.omnibox?.onInputStarted?.addListener(() => { setOmniboxDefault().catch(() => {}); });
+chrome.omnibox?.onInputChanged?.addListener((text, suggest) => {
+  const generation = ++omniboxGeneration;
+  Promise.all([
+    chrome.storage.local.get([STORAGE_KEY, PROJECTS_KEY]),
+    usesEnglish(),
+    setOmniboxDefault(text)
+  ]).then(([stored, en]) => {
+    if (generation !== omniboxGeneration) return;
+    const inbox = en ? "Inbox" : "等待整理";
+    const suggestions = omniboxMatches(stored[STORAGE_KEY] || [], stored[PROJECTS_KEY] || [], text).map(({ item, project }) => ({
+      content: item.url,
+      description: `<match>${escapeOmniboxText(String(item.title || item.url).slice(0, 100))}</match> <dim>— ${escapeOmniboxText(project || inbox)} · ${escapeOmniboxText(item.source || "")}</dim>`
+    }));
+    suggest(suggestions);
+  }).catch(() => suggest([]));
+});
+
+async function openFromOmnibox(url, disposition) {
+  if (disposition === "newForegroundTab" || disposition === "newBackgroundTab") {
+    await chrome.tabs.create({ url, active: disposition === "newForegroundTab" });
+    return;
+  }
+  try { await chrome.tabs.update({ url }); }
+  catch { await chrome.tabs.create({ url }); }
+}
+
+chrome.omnibox?.onInputEntered?.addListener((text, disposition) => {
+  (async () => {
+    const value = String(text || "").trim();
+    if (isWebUrl(value)) {
+      const stored = await chrome.storage.local.get(STORAGE_KEY);
+      const item = (stored[STORAGE_KEY] || []).find((entry) => normalizeUrl(entry.url) === normalizeUrl(value));
+      if (item && isWebUrl(item.url)) {
+        await chrome.storage.local.set({ [CURRENT_ITEM_KEY]: item.id });
+        await openFromOmnibox(item.url, disposition);
+        return;
+      }
+    }
+    const url = new URL(chrome.runtime.getURL("library.html"));
+    if (value) url.searchParams.set("q", value);
+    url.searchParams.set("from", "omnibox");
+    await openFromOmnibox(url.href, disposition);
+  })().catch(() => {});
+});
 
 // ── 诊断记录 ────────────────────────────────────────────────
 // 快捷键有可能被 macOS 或其他软件半路截走，导致「按了没反应」。
@@ -185,6 +303,7 @@ purgeExpiredItems().catch(() => {});
 // 设置里把天数调小了立即生效（不用等下一次定时）。
 chrome.storage.onChanged?.addListener((changes, area) => {
   if (area === "local" && changes[SETTINGS_KEY]) purgeExpiredItems().catch(() => {});
+  if (area === "local" && changes[SETTINGS_KEY]) resetActionAppearance().catch(() => {});
 });
 
 // ── 新标签页劫持（已移除）──
@@ -393,9 +512,7 @@ async function toggleTranslation(tab) {
 }
 
 async function showActionError() {
-  await chrome.action.setBadgeText({ text: "!" });
-  await chrome.action.setBadgeBackgroundColor({ color: "#d94841" });
-  setTimeout(() => chrome.action.setBadgeText({ text: "" }).catch(() => {}), 2200);
+  await showActionFeedback("!", "#d94841", 2200);
 }
 
 // 给全屏收藏库发送页内提示。runtime.sendMessage 能到达扩展自己的页面，
@@ -630,9 +747,7 @@ async function saveItem(item, options = {}) {
 
   // 批量收藏（silent）时由调用方统一显示角标，避免角标反复闪动。
   if (!options.silent) {
-    await chrome.action.setBadgeText({ text: "✓" });
-    await chrome.action.setBadgeBackgroundColor({ color: "#111111" });
-    setTimeout(() => chrome.action.setBadgeText({ text: "" }).catch(() => {}), 1600);
+    await showActionFeedback("✓", "#111111", 1600);
   }
   return { ok: true, item: normalized, updated: false, duplicated: false };
 }
@@ -907,15 +1022,12 @@ async function runBatchSave({ tabs, source = "shortcut", notifyTabId = null, pro
       added += 1;
       if (isIncomplete(record)) degraded += 1;
       // ③ 成功一篇就通知一篇，并顺手更新角标数字（切到别的标签页也看得到进度）。
-      await chrome.action.setBadgeText({ text: `+${added}` });
-      await chrome.action.setBadgeBackgroundColor({ color: "#2f9e44" });
+      await showActionFeedback(`+${added}`, "#2f9e44", 2600);
       await notify(en ? `Saved: ${pillTitle(record.title)}` : `已收藏：${pillTitle(record.title)}`);
     }
 
     // 收尾：角标停一会儿再清掉，页面上再补一条总结。
-    await chrome.action.setBadgeText({ text: added > 0 ? `+${added}` : "✓" });
-    await chrome.action.setBadgeBackgroundColor({ color: added > 0 ? "#2f9e44" : "#111111" });
-    setTimeout(() => chrome.action.setBadgeText({ text: "" }).catch(() => {}), 2600);
+    await showActionFeedback(added > 0 ? `+${added}` : "✓", added > 0 ? "#2f9e44" : "#111111", 2600);
 
     // 收尾总结：把「新收进来的」和「已收藏过、这次搬了家 / 本来就在这儿」的都说清楚。
     const summary = (() => {
@@ -1467,10 +1579,12 @@ async function readTabMetadata(tab) {
 }
 
 async function ensureLegacyCleanup() {
-  const flagKey = "laterOnCleanedLegacyContent";
+  const flagKey = "laterOnCleanupV165";
   const stored = await chrome.storage.local.get(flagKey);
   if (stored[flagKey]) return;
   await cleanupLegacyContent();
+  // “最近在看”已撤下；升级时顺手删除曾经保存的 id 列表，不留下无用数据。
+  await chrome.storage.local.remove("laterOnRecentItems");
   await chrome.storage.local.set({ [flagKey]: true });
 }
 

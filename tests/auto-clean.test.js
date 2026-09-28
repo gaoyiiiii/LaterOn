@@ -58,7 +58,8 @@ const mockChrome = {
 };
 
 const sandbox = {
-  chrome: mockChrome, console,
+  chrome: mockChrome, console, importScripts() {},
+  LaterOnUrl: { normalize(value) { try { const url = new URL(value); url.hash = ""; return url.href.replace(/\/$/, ""); } catch { return String(value || ""); } } },
   setTimeout, clearTimeout, setInterval, clearInterval,
   Promise, URL, Set, Map, RegExp, JSON, Object, Array, Math, Date,
   parseInt, parseFloat, isNaN, String, Number, Boolean, Symbol, Error
