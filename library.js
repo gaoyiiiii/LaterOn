@@ -2037,7 +2037,7 @@ function openItemMenu(itemId, x, y) {
   // 「标为已读」和「移动到项目」在卡片上本来就有明显的按钮，不重复占用右键菜单。
   menu.append(
     title,
-    menuItem(tr("itemOpen"), "open", () => openItem({ preventDefault() {}, metaKey: false, ctrlKey: false }, item)),
+    menuItem(tr("itemOpen"), "open", () => openItemInNewTab(item)),
     menuItem(tr("itemEdit"), "pencil", () => editItem(item)),
     menuItem(picked ? tr("itemDeselect") : tr("itemSelect"), picked ? "deselect" : "multi", () => startMultiSelect(item.id, card, !picked)),
     menuItem(tr("delete"), "trash", () => deleteItem(item.id), true)
@@ -2046,6 +2046,12 @@ function openItemMenu(itemId, x, y) {
   positionMenu(menu, x, y);
   folderMenu = menu;
   requestAnimationFrame(() => menu.classList.add("is-open"));
+}
+
+async function openItemInNewTab(item) {
+  const target = safeTarget(item.url);
+  if (!target) { showToast(tr("invalidUrlShort")); return; }
+  await chrome.tabs.create({ url: target, active: false, openerTabId: libraryTabId || undefined });
 }
 
 // 菜单贴边时自动往回收，保证整块完整可见（项目菜单和收藏菜单共用）。

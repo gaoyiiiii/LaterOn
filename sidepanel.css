@@ -46,7 +46,8 @@ main { padding:14px 13px 30px; }
 .items { display:flex; flex-direction:column; gap:8px; }
 .item { position:relative; overflow:hidden; border:1px solid var(--line); border-radius:12px; background:var(--card); transition:border-color .15s, transform .15s; }
 .item:hover { border-color:var(--subtle); transform:translateY(-1px); }
-.open-item { display:grid; grid-template-columns:92px minmax(0,1fr); width:100%; border:0; padding:0; background:transparent; color:inherit; text-align:left; }
+.open-item { display:grid; grid-template-columns:92px minmax(0,1fr); width:100%; border:0; padding:0; background:transparent; color:inherit; text-align:left; text-decoration:none; }
+.open-item, .open-item * { -webkit-user-drag:none; }
 /* 高度不写死：卡片实际比 92px 高（右边文字多几行时尤其明显），
    写死就会在封面底下留一截空白。这里让它跟着卡片高度撑满（最低仍是 92px）。
    注意 position:relative —— 封面与占位都改成绝对定位（下面的 .thumb-placeholder /
@@ -81,6 +82,27 @@ main { padding:14px 13px 30px; }
 .edit:hover { background:var(--btn-soft); color:var(--ink); }
 .delete:hover { background:var(--accent-soft); color:var(--accent); }
 .edit svg, .delete svg { width:14px; fill:none; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:1.6; }
+/* 与全屏页面共用同一套右键菜单视觉；侧栏只保留打开、编辑、删除三项。 */
+.folder-menu {
+  position:fixed; z-index:80; min-width:172px; padding:6px;
+  border:1px solid var(--card-line); border-radius:15px;
+  background:var(--card); box-shadow:var(--shadow-md);
+  opacity:0; transform:translateY(-5px) scale(.98); transform-origin:top left;
+  transition:opacity .16s ease, transform .16s ease;
+}
+.folder-menu.is-open { opacity:1; transform:none; }
+.folder-menu-item {
+  display:flex; align-items:center; gap:9px; width:100%;
+  border:0; border-radius:10px; padding:8px 9px; background:transparent;
+  color:var(--field-text); font-family:inherit; font-size:12.5px; text-align:left;
+  transition:background .12s, color .12s;
+}
+.folder-menu-item:hover, .folder-menu-item:focus-visible { outline:0; background:var(--btn-soft); color:var(--ink); }
+.folder-menu-item svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.folder-menu-item.danger { color:#d94841; }
+.folder-menu-item.danger:hover { background:rgba(217,72,65,.1); color:#c93a2c; }
+[data-theme="dark"] .folder-menu-item.danger { color:#ff8272; }
+[data-theme="dark"] .folder-menu-item.danger:hover { background:rgba(255,110,90,.16); color:#ff9b8c; }
 /* ── 骨架屏 ──────────────────────────────────────────────
    数据还没到位时，先按真实界面的完整轮廓画一份灰色占位：
    顶部收藏条 → 搜索框 → 筛选 → 项目 → 卡片。每块的尺寸都对真界面，

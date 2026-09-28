@@ -75,6 +75,7 @@ const LOCATE_EDGE_GAP = 10;
 const nextFrame = (fn) => (typeof requestAnimationFrame === "function" ? requestAnimationFrame(fn) : setTimeout(fn, 16));
 const nowMs = () => (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now());
 let searchTimer = null;
+let itemContextMenu = null;
 
 // 三档：未读 / 在读 / 已读（已完成）。点「标为已读」按钮 = 标记完成，再点取消；
 // 「在读」由点开文章自动进入——这样「点过但没读完」不再被算作已读。
@@ -621,8 +622,101 @@ list.addEventListener("click", (event) => {
   if (event.target.closest(".delete")) deleteItem(item.id);
   else if (event.target.closest(".edit")) editItem(item);
   else if (event.target.closest(".read-toggle")) updateItem(item.id, { status: nextStatus(item.status) });
-  else if (event.target.closest(".open-item")) openItem(item);
+  else if (event.target.closest(".open-item")) {
+    // 这是一个真实链接：⌘/Ctrl/Shift 点击交还给浏览器，保留标准的新标签页/新窗口行为。
+    // 只有普通左键才接管，继续使用 LaterOn 的“复用已打开标签页”逻辑。
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    openItem(item);
+  }
 });
+
+list.addEventListener("contextmenu", (event) => {
+  const link = event.target.closest(".open-item");
+  const article = link?.closest(".item");
+  if (!article) return;
+  const item = items.find((entry) => entry.id === article.dataset.id);
+  if (!item || !safeTarget(item.url)) return;
+  // 侧栏卡片的封面和文字都属于同一个网页入口。用自己的菜单取代浏览器针对
+  // “选中文字 / 单独图片”的菜单，避免出现复制图片、查询文字等无关动作。
+  event.preventDefault();
+  event.stopPropagation();
+  showItemContextMenu(item, event.clientX, event.clientY);
+});
+
+function closeItemContextMenu() {
+  itemContextMenu?.remove();
+  itemContextMenu = null;
+}
+
+function showItemContextMenu(item, x, y) {
+  closeItemContextMenu();
+  const menu = document.createElement("div");
+  menu.className = "folder-menu";
+  menu.setAttribute("role", "menu");
+  menu.append(
+    sidepanelMenuItem(tr("openInNewTab"), "open", () => openItemInNewTab(item)),
+    sidepanelMenuItem(tr("itemEdit"), "pencil", () => editItem(item)),
+    sidepanelMenuItem(tr("delete"), "trash", () => deleteItem(item.id), true)
+  );
+  document.body.append(menu);
+  itemContextMenu = menu;
+
+  const margin = 8;
+  const rect = menu.getBoundingClientRect();
+  const width = rect.width || 172;
+  const height = rect.height || 120;
+  menu.style.left = `${Math.min(Math.max(margin, x - width), Math.max(margin, window.innerWidth - width - margin))}px`;
+  menu.style.top = `${Math.min(Math.max(margin, y), Math.max(margin, window.innerHeight - height - margin))}px`;
+  requestAnimationFrame(() => menu.classList.add("is-open"));
+  menu.querySelector("button")?.focus({ preventScroll: true });
+}
+
+function sidepanelMenuItem(label, icon, onPick, danger = false) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `folder-menu-item${danger ? " danger" : ""}`;
+  button.setAttribute("role", "menuitem");
+  const paths = {
+    open: "M14 5h5v5M19 5l-8 8M17 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h5",
+    pencil: "M4 20h4L20 8l-4-4L4 16zM14 6l4 4",
+    trash: "M4 7h16m-10 4v6m4-6v6M9 7l1-3h4l1 3m3 0-1 13H7L6 7"
+  };
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", paths[icon] || paths.open);
+  svg.append(path);
+  const text = document.createElement("span");
+  text.textContent = label;
+  button.append(svg, text);
+  button.addEventListener("click", () => {
+    closeItemContextMenu();
+    onPick();
+  });
+  return button;
+}
+
+async function openItemInNewTab(item) {
+  const target = safeTarget(item.url);
+  if (!target) { status.textContent = tr("invalidItemUrl"); return; }
+  try {
+    // 和浏览器原生 ⌘/Ctrl + 点击一致：在当前窗口后台新建标签，不打断侧栏里的浏览。
+    await chrome.tabs.create({ url: target, active: false });
+  } catch {
+    status.textContent = tr("invalidItemUrl");
+  }
+}
+
+document.addEventListener("pointerdown", (event) => {
+  if (itemContextMenu && !itemContextMenu.contains(event.target)) closeItemContextMenu();
+}, true);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeItemContextMenu();
+});
+document.addEventListener("scroll", closeItemContextMenu, true);
+window.addEventListener("blur", closeItemContextMenu);
+window.addEventListener("resize", closeItemContextMenu);
 document.querySelectorAll(".filters .filter").forEach((button) => button.addEventListener("click", () => {
   setFilter(button.dataset.filter);
 }));
@@ -982,6 +1076,8 @@ function createItem(item) {
   const fragment = template.content.cloneNode(true);
   const article = fragment.querySelector(".item");
   article.dataset.id = item.id;
+  const openLink = fragment.querySelector(".open-item");
+  openLink.href = safeTarget(item.url) || "#";
   fragment.querySelector("h2").textContent = item.title;
   setText(fragment.querySelector(".description"), item.description);
   fragment.querySelector(".source").textContent = item.source;
@@ -1015,6 +1111,7 @@ function updateItemCard(article, item) {
   // 卡片 DOM 是复用的，不同步的话改完标题/摘要会一直显示旧文字。
   setText(article.querySelector("h2"), item.title);
   setText(article.querySelector(".description"), item.description);
+  article.querySelector(".open-item").href = safeTarget(item.url) || "#";
   applyThumb(article, item);
 }
 

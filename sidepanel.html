@@ -242,14 +242,14 @@
 
     <template id="itemTemplate">
       <article class="item">
-        <button class="open-item" data-i18n-title="openCurrentTab" title="在当前标签页打开">
+        <a class="open-item" target="_blank" rel="noreferrer" data-i18n-title="openCurrentTab" title="在当前标签页打开">
           <div class="thumb"><div class="thumb-placeholder"><img class="thumb-logo" src="article-cover-placeholder.png" alt="" /></div></div>
           <div class="copy">
             <div class="meta"><img alt="" referrerpolicy="no-referrer" /><span class="source"></span><span class="dot">·</span><time></time></div>
             <h2></h2>
             <p class="description"></p>
           </div>
-        </button>
+        </a>
         <!-- 和全屏界面同一颗按钮：文字直接写清「标为已读 / 标为未读」（文字由 JS 填） -->
         <button class="read-toggle" aria-label="标为已读" title="标为已读"></button>
         <button class="edit" data-i18n-title="editItemAria" data-i18n-aria-label="editItemAria" title="编辑标题和摘要" aria-label="编辑标题和摘要">

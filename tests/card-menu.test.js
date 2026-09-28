@@ -1,5 +1,5 @@
 // 单篇收藏的右键菜单（把真实的 library.js 放进假 DOM 跑）：
-//  1) 卡片上右键 → 弹出菜单，六项齐全（打开 / 标记已读 / 编辑 / 移动 / 多选 / 删除）
+//  1) 卡片上右键 → 弹出菜单（新标签页打开 / 编辑 / 多选 / 删除）
 //  2) 点「多选」→ 进入多选模式（顶部按钮激活、底部批量条展开、这一篇已勾上）
 //  3) 多选状态下再右键 → 那一项变成「取消选择」，点了就取消勾选
 //  4) 点「标为已读」→ 这一篇真的变成已读
@@ -117,8 +117,8 @@ const stored = (id) => store.laterOnItems.find((item) => item.id === id);
   check("菜单标题是这一篇的标题", menu()?.querySelector(".folder-menu-title")?.textContent === "文章一", menu()?.querySelector(".folder-menu-title")?.textContent);
   const labels = menuLabels();
   // 「标为已读」和「移动到项目」刻意不放进来：卡片上本来就有这两个按钮。
-  check("四项：打开 / 编辑 / 多选 / 删除",
-    labels.join(" · ") === "打开 · 编辑标题与摘要 · 多选 · 删除", labels.join(" · "));
+  check("四项：新标签页打开 / 编辑 / 多选 / 删除",
+    labels.join(" · ") === "在新标签页打开 · 编辑标题与摘要 · 多选 · 删除", labels.join(" · "));
   check("用的是和图板项目菜单同一个 .folder-menu 样式", /^\.folder-menu\s*\{/m.test(libraryCss));
 
   console.log("\n── 第 2 步：点「多选」→ 进入多选模式并勾上这一篇 ──");
@@ -143,12 +143,12 @@ const stored = (id) => store.laterOnItems.find((item) => item.id === id);
   await tick();
   check("退出多选后卡片不再处于选中态", !document.querySelector(".grid")?.classList.contains("selecting"));
 
-  console.log("\n── 第 4 步：点「打开」→ 这一篇真的被打开 ──");
+  console.log("\n── 第 4 步：点「在新标签页打开」→ 这一篇真的在新标签打开 ──");
   rightClick(cardOf("i1"));
   await tick();
-  click(pickByLabel("打开"));
+  click(pickByLabel("在新标签页打开"));
   await tick();
-  check("当前标签页导航到原文", openedUrls.includes("https://a.com/1"), JSON.stringify(openedUrls));
+  check("新标签页打开原文", createdTabs.some((tab) => tab.url === "https://a.com/1"), JSON.stringify(createdTabs));
 
   console.log("\n── 第 5 步：Esc / 点别处都能关掉菜单 ──");
   rightClick(cardOf("i2"));
