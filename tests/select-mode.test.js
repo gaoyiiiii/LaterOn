@@ -159,9 +159,18 @@ const ITEMS = ["a", "b", "c"].map((key, index) => ({
     && JSON.stringify(createdWindows[0].url) === JSON.stringify(["https://example.com/a", "https://example.com/b"]), JSON.stringify(createdWindows));
   check("没有创建浏览器标签组", typeof window.chrome.tabs.group === "undefined" && typeof window.chrome.tabGroups === "undefined");
   check("打开后自动退出多选", !grid.classList.contains("selecting") && !document.querySelector("#bulkBar").classList.contains("is-open"));
+  check("打开后卡片不再保留高亮", ["a", "b", "c"].every((key) => !isSelected(`item-${key}`)));
+  check("打开后勾选框也全部复位", ["a", "b", "c"].every((key) => checkBoxOf(`item-${key}`).checked === false));
 
   console.log("\n── 全选 / 取消全选 ──");
   click(document.querySelector("#selectMode"));
+  await tick();
+  check("重新进入多选不会记住上次勾选", bulkCount() === "已选 0 篇"
+    && ["a", "b", "c"].every((key) => !isSelected(`item-${key}`)), bulkCount());
+  click(badgeOf("item-a"));
+  click(badgeOf("item-a"));
+  await tick();
+  check("之前高亮过的卡片仍可正常勾选和取消", !isSelected("item-a") && !checkBoxOf("item-a").checked && bulkCount() === "已选 0 篇", bulkCount());
   click(document.querySelector("#bulkSelectAll"));
   await tick();
   check("全选后三张都勾上", ["a", "b", "c"].every((key) => isSelected(`item-${key}`)), bulkCount());

@@ -2318,13 +2318,24 @@ async function deleteItem(id) {
 }
 
 // ── 批量操作 ─────────────────────────────────────────────
+function clearSelection() {
+  selectedIds.clear();
+  // 选择是一次性会话状态，不能只清 Set：卡片 DOM 是复用的，
+  // 留下 .selected / checked 就会变成“看起来选中，实际没选中”的幽灵勾选。
+  grid.querySelectorAll(".card.selected").forEach((card) => card.classList.remove("selected"));
+  grid.querySelectorAll(".select-check:checked").forEach((check) => { check.checked = false; });
+}
+
 function setSelectMode(on) {
-  selectMode = on;
-  grid.classList.toggle("selecting", on);
-  document.querySelector("#selectMode")?.classList.toggle("active", on);
+  const next = Boolean(on);
+  // 每次新进入多选都从空状态开始；任何退出路径都同时清理
+  // 内部数据和可视状态，包括“完成”、点页面空白处和批量操作完成。
+  if (!next || !selectMode) clearSelection();
+  selectMode = next;
+  grid.classList.toggle("selecting", next);
+  document.querySelector("#selectMode")?.classList.toggle("active", next);
   const bar = document.querySelector("#bulkBar");
-  if (bar) bar.classList.toggle("is-open", on);
-  if (!on) selectedIds.clear();
+  if (bar) bar.classList.toggle("is-open", next);
   updateSelectionUI();
 }
 
@@ -2431,7 +2442,6 @@ async function bulkOpenInNewWindow() {
 }
 
 function finishBulk() {
-  selectedIds.clear();
   setSelectMode(false);
 }
 
