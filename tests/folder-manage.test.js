@@ -140,6 +140,33 @@ const cardFolderOptions = () => [...document.querySelectorAll(".card .project-se
   check("行里显示名字与数量", rowOf("work")?.querySelector(".project-name").textContent === "工作" && rowOf("work")?.querySelector("strong").textContent === "2");
   check("行里带「⋯」更多按钮", !!rowOf("work")?.querySelector(".project-more"));
 
+  console.log("\n── 首次搜索的项目选中值 ──");
+  check("搜索前位于全部项目图板，结果卡片尚未创建", store.laterOnActiveProject === "all" && !document.querySelector("#boardGrid").hidden && document.querySelectorAll("#cardGrid .card").length === 0);
+  const projectIdsBeforeSearch = JSON.stringify(store.laterOnItems.map(({ id, projectId }) => ({ id, projectId })));
+  const filterBeforeSearch = store.laterOnFilter;
+  const filterChosenBeforeSearch = store.laterOnFilterChosen;
+  const searchInput = document.querySelector("#searchInput");
+  const search = async (value) => {
+    searchInput.value = value;
+    searchInput.dispatchEvent(new window.Event("input", { bubbles: true }));
+    await tick(180); // 等待 120ms 搜索防抖及卡片渲染，不额外触发更新。
+  };
+  const checkProjectSelection = (label) => {
+    check(`${label}：三篇文章都出现在结果中`, document.querySelectorAll("#cardGrid .card").length === 3);
+    for (const [id, value, name] of [["i1", "work", "工作"], ["i2", "", "等待整理"], ["i3", "work", "工作"]]) {
+      const select = document.querySelector(`#cardGrid .card[data-id="${id}"] .project-select`);
+      check(`${label}：${id} 选中「${name}」`, select?.value === value && select?.selectedOptions[0]?.textContent === name, `${select?.value} / ${select?.selectedOptions[0]?.textContent}`);
+    }
+    check(`${label}：收藏的项目归属没有改变`, JSON.stringify(store.laterOnItems.map(({ id, projectId }) => ({ id, projectId }))) === projectIdsBeforeSearch);
+  };
+  await search("文章");
+  checkProjectSelection("一次输入后的首次渲染");
+  await search("文章 ");
+  checkProjectSelection("追加空格后的刷新");
+  await search("");
+  check("清空搜索后恢复全部项目图板", store.laterOnActiveProject === "all" && !document.querySelector("#boardGrid").hidden && document.querySelector("#cardGrid").hidden);
+  check("搜索未改变原有筛选状态", store.laterOnFilter === filterBeforeSearch && store.laterOnFilterChosen === filterChosenBeforeSearch);
+
   console.log("\n── 新建项目：图板末尾虚线加号 ──");
   const createBoard = document.querySelector(".board-create");
   check("全部项目图板末尾有新建入口", !!createBoard && createBoard === document.querySelector("#boardGrid").lastElementChild);
