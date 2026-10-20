@@ -99,6 +99,7 @@ const ids = () => visibleCards().map((c) => c.dataset.id);
 require('./helpers/item-mutation')(window);
 
 window.eval(fs.readFileSync(`${ROOT}/i18n.js`, "utf8"));
+require("./helpers/data-mutation")(window);
 window.eval(librarySource);
 
 (async () => {

@@ -10,7 +10,8 @@ const metadata = read("content-metadata.js");
 const translation = read("content-translation.js");
 const picker = read("content-folder-picker.js");
 
-assert.ok(Buffer.byteLength(background) < 80000, `background.js 重新膨胀到 ${Buffer.byteLength(background)} bytes`);
+// The AI integration adds collection routing and message dispatch; provider and task code stay in separate modules.
+assert.ok(Buffer.byteLength(background) < 86000, `background.js 重新膨胀到 ${Buffer.byteLength(background)} bytes`);
 assert.ok(!background.includes("function extractPageMetadataForShortcut"), "网页提取函数不应在后台冷启动时解析");
 assert.ok(!background.includes("function togglePageTranslation"), "翻译函数不应在后台冷启动时解析");
 assert.ok(!background.includes("function showFolderPickerOverlay"), "批量选择浮层不应在后台冷启动时解析");

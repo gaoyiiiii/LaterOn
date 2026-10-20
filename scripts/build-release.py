@@ -20,6 +20,23 @@ RUNTIME_FILES = (
     "manifest.json",
     "article-cover-placeholder.png",
     "background.js",
+    "ai-core.js",
+    "ai-background.js",
+    "ai-text.js",
+    "ai-settings.js",
+    "ai-status.js",
+    "ai-records.js",
+    "ai-records.css",
+    "ai-history.html",
+    "ai-history.js",
+    "content-ai-extract.js",
+    "data-background.js",
+    "data-client.js",
+    "models.html",
+    "models.js",
+    "models.css",
+    "vendor/Readability.js",
+    "vendor/LICENSE.md",
     "boot.js",
     "content-folder-picker.js",
     "content-metadata.js",
@@ -119,7 +136,7 @@ def validate_archive(archive: Path, expected: set[str]) -> None:
             extra = sorted(set(names) - expected)
             raise RuntimeError(f"Release ZIP contents differ from allowlist; missing={missing}, extra={extra}")
         for name in names:
-            if name in FORBIDDEN_NAMES or name.endswith(".md") or name.startswith(FORBIDDEN_PREFIXES):
+            if name in FORBIDDEN_NAMES or (name.endswith(".md") and name != "vendor/LICENSE.md") or name.startswith(FORBIDDEN_PREFIXES):
                 raise RuntimeError(f"Development-only file leaked into release ZIP: {name}")
         json.loads(package.read("manifest.json").decode("utf-8"))
 

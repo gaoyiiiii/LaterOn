@@ -45,6 +45,7 @@ window.scrollTo = () => {};
 window.eval(read("i18n.js"));
 window.eval(read("dialog.js"));
 window.eval(read("picker-ui.js"));
+require("./helpers/data-mutation")(window);
 window.eval(read("library.js"));
 
 let failures = 0;

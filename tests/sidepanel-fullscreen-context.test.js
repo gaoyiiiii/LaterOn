@@ -60,6 +60,7 @@ function mount(url) {
   window.eval(read("dialog.js"));
   window.eval(read("picker-ui.js"));
   require('./helpers/item-mutation')(window);
+  require("./helpers/data-mutation")(window);
   window.eval(librarySource);
   return { dom, window, store, scrolled, errors };
 }

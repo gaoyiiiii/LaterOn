@@ -93,6 +93,7 @@ function mount(html, source, url) {
   dom.window.scrollTo = () => {};
   ensureUuid(dom.window);
   require('./helpers/item-mutation')(dom.window);
+  require("./helpers/data-mutation")(dom.window);
   dom.window.eval(source);
   return dom.window;
 }

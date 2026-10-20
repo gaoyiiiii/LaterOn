@@ -178,7 +178,7 @@ async function migrateLegacyCovers(rawItems) {
     const stored = await chrome.storage.local.get(COVERS_KEY);
     const merged = { ...(stored[COVERS_KEY] || {}), ...moved };
     covers = merged;
-    await chrome.storage.local.set({ [STORAGE_KEY]: next, [COVERS_KEY]: merged });
+    await window.LaterOnData("migrate-items", { items: next, covers: merged });
   } catch { /* 搬不动就先用老数据，不影响显示 */ }
   return next;
 }
@@ -248,7 +248,7 @@ async function init() {
   items = normalizeItems(rawItems);
   // 补齐的 doneAt 要写回存储，否则下次打开又变回「没有时间」，永远不会被清除。
   if (items.some((item, i) => item.doneAt && !Number(rawItems[i]?.doneAt))) {
-    chrome.storage.local.set({ [STORAGE_KEY]: items });
+    window.LaterOnData("migrate-items", { items }).catch(() => {});
   }
   projects = sortPinnedFirst(result[PROJECTS_KEY] || []);
   orders = result[ORDER_KEY] || {};
@@ -285,6 +285,8 @@ async function init() {
   libraryWindowId = activeTabs[0]?.windowId || null;
   render();
   renderProjects();
+  const editId = new URLSearchParams(location.search).get("editProject");
+  if (editId && projects.some(p => p.id === editId)) await editBoard(editId);
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -362,7 +364,7 @@ document.querySelector("#openSettings")?.addEventListener("click", async (event)
   else chrome.tabs.create({ url });
 });
 
-async function createProject(nameValue) {
+async function createProject(nameValue, noteValue) {
   const name = String(nameValue || "").trim();
   if (!name) return;
   // 同名就不重复建，直接跳到那个项目。
@@ -372,12 +374,16 @@ async function createProject(nameValue) {
     showToast(tr("projectExists", { name }));
     return;
   }
-  const project = { id: crypto.randomUUID(), name, createdAt: Date.now() };
-  projects = [...projects, project];
+  const note = String(noteValue || "").trim();
+  if (!note || note.length > 2000) return;
+  let project;
   try {
-    await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
+    const response = await chrome.runtime.sendMessage({ type: "CREATE_PROJECT", name, note });
+    if (!response?.ok) throw new Error(response?.error || tr("createProjectFailed"));
+    project = response.project;
+    projects = [...projects.filter(p => p.id !== project.id), project];
   } catch {
-    projects = projects.filter((entry) => entry.id !== project.id);
+    projects = projects.filter((entry) => entry.id !== project?.id);
     showToast(tr("createProjectFailed"));
     return;
   }
@@ -389,10 +395,10 @@ async function promptCreateProject() {
   const result = await LaterOnDialog.prompt({
     title: tr("newProject"),
     message: tr("newProjectHint"),
-    fields: [{ name: "name", label: tr("projectNameLabel"), placeholder: tr("projectNamePlaceholder"), maxLength: 28 }],
+    fields: [{ name: "name", label: tr("projectNameLabel"), placeholder: tr("projectNamePlaceholder"), maxLength: 28, required: true }, { name: "note", label: tr("projectNoteLabel"), placeholder: tr("projectNotePlaceholder"), multiline: true, rows: 4, maxLength: 2000, required: true }],
     confirmText: tr("create")
   });
-  if (result?.ok) await createProject(result.values?.name);
+  if (result?.ok) await createProject(result.values?.name, result.values?.note);
 }
 
 document.querySelectorAll(".nav-item").forEach((button) => {
@@ -775,7 +781,7 @@ async function commitBoardOrder(dropIndex) {
   boardGrid.classList.add("no-transition");
   clearReorderPreview();
   projects = nextProjects;
-  await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
+  await window.LaterOnData("project-order", { order: projects.map(p => p.id) });
   render();
   renderProjects();   // 侧栏的项目列表跟着换，两边顺序始终一致
   showToast(tr("movedToPosition", { name, n: next.indexOf(draggedId) + 1 }));
@@ -1221,7 +1227,8 @@ async function editBoard(projectId) {
         placeholder: tr("projectNotePlaceholder"),
         multiline: true,
         rows: 3,
-        maxLength: 200
+        maxLength: 2000,
+        required: !!String(project.note || "").trim()
       }
     ],
     cover: {
@@ -1278,7 +1285,8 @@ async function editBoard(projectId) {
     }
     return updated;
   });
-  await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
+  const editedProject = projects.find(p => p.id === projectId);
+  await window.LaterOnData("project-update", { id: projectId, patch: { name: finalName, ...(noteChanged ? { note: nextNote } : {}), ...(coverChanged ? { cover: nextCover } : {}), ...(pickChanged ? { coverPick: editedProject.coverPick || [] } : {}) } });
   render();
   // 提示按实际改了什么来写，不啰嗦。
   const changed = [
@@ -1418,6 +1426,7 @@ function createCard(item) {
   readToggle.textContent = readToggleLabel(item.status);
   readToggle.setAttribute("aria-label", readToggleLabel(item.status));
   fillProjectSelect(projectSelect, item.projectId || "");
+  projectSelect.value = item.projectId || "";
   card.classList.toggle("selected", selectedIds.has(item.id));
   const check = card.querySelector(".select-check");
   if (check) check.checked = selectedIds.has(item.id);
@@ -1586,7 +1595,7 @@ async function toggleProjectPin(id) {
   }
   projects = next;
   renderProjects();
-  await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
+  await window.LaterOnData("project-update", { id, patch: { pinned: !!moved.pinned, pinFrom: moved.pinFrom ?? null }, order: projects.map(p => p.id) });
   showToast(tr(moved.pinned ? "pinDone" : "unpinDone", { name: project.name }));
 }
 
@@ -1856,7 +1865,7 @@ async function commitFolderOrder() {
   rest.splice(at, 0, dragged);
   if (rest.every((project, i) => project.id === projects[i].id)) return; // 位置没变，不用写库
   projects = rest;
-  await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
+  await window.LaterOnData("project-order", { order: projects.map(p => p.id) });
   showToast(tr("movedToPosition", { name: dragged.name, n: rest.indexOf(dragged) + 1 }));
 }
 
@@ -1993,7 +2002,7 @@ async function commitRename(id, input) {
   }
   projects = projects.map((entry) => entry.id === id ? { ...entry, name } : entry);
   renderProjects();
-  await chrome.storage.local.set({ [PROJECTS_KEY]: projects });
+  await window.LaterOnData("project-update", { id, patch: { name } });
   showToast(tr("renamedTo", { name }));
 }
 
@@ -2002,8 +2011,8 @@ async function toggleProjectArchive(id) {
   if (!project) return;
   const archived = !project.archived;
   const next = projects.map((entry) => entry.id === id ? { ...entry, archived } : entry);
-  await chrome.storage.local.set({ [PROJECTS_KEY]: next });
-  projects = next;
+  const saved = await window.LaterOnData("project-update", { id, patch: { archived } });
+  projects = saved.projects;
   selectProject(archived ? "archive" : id);
   showToast(tr(archived ? "projectArchived" : "projectRestored"));
 }
@@ -2021,16 +2030,8 @@ async function deleteProject(id) {
     confirmText: tr("deleteProject")
   });
   if (!confirmed) return;
-  projects = projects.filter((entry) => entry.id !== id);
-  const deletedIds = new Set(items.filter((item) => item.projectId === id).map((item) => item.id));
-  items = items.filter((item) => !deletedIds.has(item.id));
-  covers = Object.fromEntries(Object.entries(covers).filter(([itemId]) => !deletedIds.has(itemId)));
-  orders = Object.fromEntries(Object.entries(orders)
-    .filter(([scope]) => scope !== id)
-    .map(([scope, ids]) => [scope, ids.filter((itemId) => !deletedIds.has(itemId))]));
-  const patch = { [PROJECTS_KEY]: projects, [STORAGE_KEY]: items, [COVERS_KEY]: covers, [ORDER_KEY]: orders };
-  if (deletedIds.has(currentItemId)) patch[CURRENT_ITEM_KEY] = null;
-  await chrome.storage.local.set(patch);
+  const result = await window.LaterOnData("project-delete", { id });
+  projects = result.projects; items = result.items; covers = result.covers; orders = result.orders;
   if (activeProject === id) {
     activeProject = "all";
     await chrome.storage.local.set({ [ACTIVE_PROJECT_KEY]: "all" });
@@ -2299,8 +2300,8 @@ function projectPickerFolders() {
   ];
 }
 
-async function createProjectFromPicker(name) {
-  const response = await chrome.runtime.sendMessage({ type: "CREATE_PROJECT", name }).catch(() => null);
+async function createProjectFromPicker(name, note) {
+  const response = await chrome.runtime.sendMessage({ type: "CREATE_PROJECT", name, note }).catch(() => null);
   return response?.project || null;
 }
 

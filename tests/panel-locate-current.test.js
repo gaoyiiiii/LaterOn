@@ -149,6 +149,7 @@ function boot({ store, dropSmooth = false, activeTab: initialTab = null, stickyB
   window.eval(urlSource);
   window.eval(tabNavigationSource);
   require('./helpers/item-mutation')(window);
+  require("./helpers/data-mutation")(window);
   window.eval(sidepanelSource);
 
   return {

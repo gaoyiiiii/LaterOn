@@ -15,9 +15,9 @@
 
   // 新建项目：默认走后台的 CREATE_PROJECT（content script 和扩展页都通用）；
   // 调用方也可以自己传 onCreateProject 覆盖（比如扩展页想顺带刷新本地列表）。
-  async function defaultCreateProject(name) {
+  async function defaultCreateProject(name, note) {
     let response = null;
-    try { response = await chrome.runtime.sendMessage({ type: "CREATE_PROJECT", name }); }
+    try { response = await chrome.runtime.sendMessage({ type: "CREATE_PROJECT", name, note }); }
     catch { /* 扩展更新后旧网页里的浮层可能还在；上下文失效时安静失败 */ }
     return response?.project || null;
   }
@@ -68,6 +68,7 @@
     let selected = typeof data.selected === "string" ? data.selected : "";
     let busy = false;
     let closed = false;
+    let aiSelected = false;
 
     const host = document.createElement("div");
     host.id = HOST_ID;
@@ -107,9 +108,11 @@
           <div class="lon-folders" role="radiogroup" aria-label="${copy.projects}">
             <div class="lon-folder-list"></div>
             <input class="lon-new-input" maxlength="28" placeholder="" aria-label="${copy.newProject}" />
+            <textarea class="lon-new-note" maxlength="2000" rows="3" hidden aria-label="${language === 'en' ? 'Project description (required)' : '项目简介（必填）'}" placeholder="${language === 'en' ? 'Describe the topics, scope and exclusions.' : '项目简介（必填）：说明收录主题、范围和排除内容。'}"></textarea>
           </div>
         </div>
         <footer class="lon-foot">
+          <button type="button" class="lon-ai" ${data.allowAI && !isPopover ? '' : 'hidden'}>${language === 'en' ? 'AI classification' : 'AI 分类'}</button>
           <button type="button" class="lon-ghost">${copy.cancel}</button>
           <button type="button" class="lon-primary"></button>
         </footer>
@@ -124,8 +127,8 @@
     const pagesLabel = $(".lon-pages-label");
     const pageList = $(".lon-page-list");
     const folderList = $(".lon-folder-list");
-    const newForm = $(".lon-new");
     const newInput = $(".lon-new-input");
+    const newNote = $(".lon-new-note");
     const confirmBtn = $(".lon-primary");
     const cancelBtn = $(".lon-ghost");
 
@@ -170,6 +173,9 @@
     };
     const applyLabel = () => {
       const name = pendingNewName();
+      newNote.hidden = !name;
+      $(".lon-ai").setAttribute("aria-pressed", String(aiSelected));
+      if (aiSelected && !name) { confirmBtn.textContent = busy ? copy.processing : (language === "en" ? "Add and classify" : "添加并分类"); return; }
       if (name) {
         confirmBtn.textContent = busy
           ? copy.processing
@@ -240,11 +246,13 @@
         button.append(icon, name, count, tick);
 
         button.addEventListener("click", () => {
+          aiSelected = false;
           newInput.value = "";
           selected = folder.id;
           renderFolders();
         });
         button.addEventListener("dblclick", () => {
+          aiSelected = false;
           selected = folder.id;
           renderFolders();
           submitSelection();
@@ -316,9 +324,10 @@
     const resolveProjectId = async () => {
       const name = pendingNewName();
       if (!name) return { ok: true, projectId: selected || null };
+      if (!newNote.value.trim()) return { ok: false, error: language === "en" ? "Please enter a project description." : "请填写项目简介。" };
       const create = data.onCreateProject || defaultCreateProject;
       let project = null;
-      try { project = await create(name); } catch { /* 调用方失效时留在浮层里显示失败 */ }
+      try { project = await create(name, newNote.value.trim()); } catch { /* 调用方失效时留在浮层里显示失败 */ }
       if (!project || !project.id) return { ok: false, error: copy.createFailed };
       if (!folders.some((folder) => folder.id === project.id)) {
         folders = [...folders, { id: project.id, name: project.name, count: 0 }];
@@ -345,7 +354,7 @@
       // 留在浮层里说明原因，让用户再操作一次；其余情况（成功 / 没返回值）直接关掉。
       let result;
       try {
-        result = data.onPick ? await data.onPick(target.projectId, selectedName()) : null;
+        result = data.onPick ? await data.onPick(aiSelected ? null : target.projectId, selectedName(), aiSelected ? "ai" : "manual") : null;
       } catch (error) {
         result = { ok: false, error: (error && error.message) || copy.failed };
       }
@@ -368,7 +377,7 @@
 
     // 键盘事件统一在捕获阶段处理：比页面自己的快捷键听得早，抢得到；
     // 用 composedPath 判断焦点是否在浮层的输入框里（Shadow DOM 里的 target 会被重定向）。
-    const typingInInput = (event) => event.composedPath().includes(newInput);
+    const typingInInput = (event) => event.composedPath().includes(newInput) || event.composedPath().includes(newNote);
 
     function onKeydown(event) {
       if (closed) return;
@@ -410,7 +419,9 @@
     const swallowTyping = (event) => event.stopPropagation();
     newInput.addEventListener("keyup", swallowTyping);
     newInput.addEventListener("keypress", swallowTyping);
-    newInput.addEventListener("input", () => { if (!busy) applyLabel(); });
+    newInput.addEventListener("input", () => { aiSelected = false; if (!busy) applyLabel(); });
+    for (const name of ["keydown", "keyup", "keypress"]) newNote.addEventListener(name, swallowTyping);
+    $(".lon-ai").addEventListener("click", () => { if (busy) return; aiSelected = true; newInput.value = ""; selected = ""; renderFolders(); });
     newInput.addEventListener("keydown", (event) => {
       if (event.isComposing || event.keyCode === 229) { swallowTyping(event); return; }
       if (event.key === "Enter") {
@@ -513,6 +524,10 @@
       }
       .lon-title { margin: 12px 0 0; font-size: 20px; font-weight: 800; letter-spacing: -.4px; line-height: 1.3; color: var(--lon-ink); }
       .lon-summary { margin: 7px 0 0; color: var(--lon-muted); font-size: 12.5px; line-height: 1.6; }
+      .lon-new-note { box-sizing:border-box; width:100%; border:1px solid var(--lon-line); border-radius:12px; background:var(--lon-field); color:var(--lon-ink); font:inherit; padding:10px; resize:vertical; }
+      .lon-new-note[hidden], .lon-ai[hidden] { display:none; }
+      .lon-ai[aria-pressed="true"] { outline:2px solid currentColor; }
+      .lon-ai { padding:9px 12px; border:1px solid var(--lon-line); border-radius:12px; background:transparent; color:inherit; font:inherit; cursor:pointer; }
 
       .lon-pages { border: 1px solid var(--lon-line); border-radius: 14px; background: var(--lon-soft); padding: 10px 13px; }
       .lon-pages[hidden] { display: none; }
@@ -597,6 +612,8 @@
         .lon-root { padding: 12px; }
         .lon-panel { gap: 12px; padding: 18px 16px 14px; border-radius: 18px; }
         .lon-title { font-size: 18px; }
+        .lon-foot:has(.lon-ai:not([hidden])) { display: grid; grid-template-columns: 1fr 1.7fr; }
+        .lon-foot .lon-ai:not([hidden]) { grid-column: 1 / -1; }
       }
     `;
   }

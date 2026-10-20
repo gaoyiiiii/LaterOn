@@ -112,6 +112,7 @@ const ids = () => visibleItems().map((i) => i.dataset.id);
 window.eval(i18nSource);
 window.eval(tabNavigationSource);
 require('./helpers/item-mutation')(window);
+require("./helpers/data-mutation")(window);
 window.eval(sidepanelSource);
 
 (async () => {

@@ -562,6 +562,15 @@
 
   function settleWith(result) {
     if (!settle) return;
+    if (result === true) {
+      const missing = fieldInputs.find(entry => current.fields?.find(f => f.name === entry.name)?.required && !entry.el.value.trim());
+      if (missing) {
+        hintEl.textContent = document.documentElement.lang === "en" ? "Please complete the required fields." : "请填写所有必填项。";
+        hintEl.hidden = false;
+        missing.el.focus();
+        return;
+      }
+    }
     const done = settle;
     const resolved = current;
     // 表单模式不返回布尔值，而是 { ok, values } —— 调用方要拿到用户填的内容。

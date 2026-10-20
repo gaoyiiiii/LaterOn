@@ -118,6 +118,7 @@ const dragEvent = (el, type, dataTransfer) => {
 window.eval(i18nSource);
 window.eval(dialogSource);
 require('./helpers/item-mutation')(window);
+require("./helpers/data-mutation")(window);
 window.eval(librarySource);
 
 const projectRows = () => [...document.querySelectorAll("#projectList .project-row")];
@@ -148,6 +149,7 @@ const cardFolderOptions = () => [...document.querySelectorAll(".card .project-se
   const nameInput = document.querySelector('.lod-root:not([hidden]) [data-field="name"]');
   check("点虚线加号打开应用内弹窗", !!nameInput);
   nameInput.value = "  设计灵感  ";
+  document.querySelector('.lod-root:not([hidden]) [data-field="note"]').value = "界面设计、版式和视觉参考";
   click(document.querySelector(".lod-root:not([hidden]) .lod-ok"));
   await tick(300);
   const design = folderByName("设计灵感");
@@ -169,6 +171,7 @@ const cardFolderOptions = () => [...document.querySelectorAll(".card .project-se
   await tick();
   const duplicateNameInput = document.querySelector('.lod-root:not([hidden]) [data-field="name"]');
   duplicateNameInput.value = "工作";
+  document.querySelector('.lod-root:not([hidden]) [data-field="note"]').value = "工作相关资料";
   click(document.querySelector(".lod-root:not([hidden]) .lod-ok"));
   await tick(300);
   check("重名不会再建一个", store.laterOnProjects.filter((p) => p.name === "工作").length === 1);

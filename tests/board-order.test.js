@@ -76,6 +76,7 @@ async function boot(store) {
   };
   window.eval(dialogSource);
   require('./helpers/item-mutation')(window);
+  require("./helpers/data-mutation")(window);
   window.eval(librarySource);
   const tick = (ms = 20) => new Promise((resolve) => window.setTimeout(resolve, ms));
   await tick();

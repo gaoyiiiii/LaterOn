@@ -103,6 +103,7 @@ const ITEMS = ["a", "b", "c"].map((key, index) => ({
   window.eval(PICKER_SOURCE);
   window.eval(TAB_NAVIGATION_SOURCE);
   require('./helpers/item-mutation')(window);
+  require("./helpers/data-mutation")(window);
   window.eval(LIBRARY_SOURCE);
 
   const tick = (ms = 20) => new Promise((resolve) => window.setTimeout(resolve, ms));

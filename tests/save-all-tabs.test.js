@@ -305,7 +305,7 @@ const check = (label, ok, extra = "") => {
   const again = await sendFromPage({ type: "CONFIRM_BATCH_SAVE", projectId: FOLDER_ID });
   check("没有待处理批次时，确认会被拒绝", again?.ok === false, JSON.stringify(again));
 
-  const created = await sendFromPage({ type: "CREATE_PROJECT", name: "  临时收藏  " });
+  const created = await sendFromPage({ type: "CREATE_PROJECT", name: "  临时收藏  ", note: "临时保存等待进一步阅读的资料" });
   check("新建项目成功（名称去掉首尾空格）", created?.ok === true && created.project?.name === "临时收藏", JSON.stringify(created?.project));
   check("新项目写进同一份数据、形状一致", (store.laterOnProjects || []).some((p) => p.id === created.project.id && typeof p.createdAt === "number"), (store.laterOnProjects || []).map((p) => p.name).join(" / "));
   const sameName = await sendFromPage({ type: "CREATE_PROJECT", name: "临时收藏" });

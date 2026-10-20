@@ -114,6 +114,7 @@ require('./helpers/item-mutation')(window);
 
 window.eval(fs.readFileSync(`${ROOT}/i18n.js`, "utf8"));
 window.scrollTo = () => {};
+require("./helpers/data-mutation")(window);
 window.eval(sidepanelSource);
 
 (async () => {

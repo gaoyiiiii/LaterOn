@@ -152,6 +152,7 @@ const midOf = (index) => topOf(index) + ROW_HEIGHT / 2;
 window.eval(i18nSource);
 window.eval(dialogSource);
 require('./helpers/item-mutation')(window);
+require("./helpers/data-mutation")(window);
 window.eval(librarySource);
 
 (async () => {

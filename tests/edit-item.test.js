@@ -14,7 +14,7 @@ const BACKGROUND = read("background.js");
 const I18N_SOURCE = read("i18n.js");
 const DIALOG_SOURCE = read("dialog.js");
 const DIALOG_CSS = read("dialog.css");
-const LIBRARY_SOURCE = read("library.js");
+const LIBRARY_SOURCE = read("library.js").replace(/\r\n/g, "\n");
 const LIBRARY_HTML = read("library.html");
 
 let failures = 0;
@@ -245,6 +245,7 @@ async function partLibrary() {
   window.eval(I18N_SOURCE);
   window.eval(DIALOG_SOURCE);
   require('./helpers/item-mutation')(window);
+  require("./helpers/data-mutation")(window);
   window.eval(LIBRARY_SOURCE);
 
   const tick = (ms = 20) => new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -332,7 +333,7 @@ function partWiring() {
   console.log("\n── ④ 各个入口是否都接上了 ──");
   const libraryHtml = read("library.html");
   const sidepanelHtml = read("sidepanel.html");
-  const sidepanelJs = read("sidepanel.js");
+  const sidepanelJs = read("sidepanel.js").replace(/\r\n/g, "\n");
 
   const libraryCss = read("library.css");
   check("收藏库卡片模板里有编辑按钮", /class="edit"/.test(libraryHtml));

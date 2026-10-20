@@ -126,6 +126,7 @@ function boot({ store, pendingGet = false, cache = null, bootStartOffsetMs = 0, 
   window.eval(fs.readFileSync(`${ROOT}/dialog.js`, "utf8"));
   require('./helpers/item-mutation')(window);
   window.eval(fs.readFileSync(`${ROOT}/i18n.js`, "utf8"));
+  require("./helpers/data-mutation")(window);
   window.eval(sidepanelSource);
 
   return {
@@ -260,6 +261,7 @@ function boot({ store, pendingGet = false, cache = null, bootStartOffsetMs = 0, 
   };
   const envF = boot({ store: diagStore });
   await tick(40);
+  for (let n = 0; n < 50 && !diagStore.laterOnPanelDiag; n++) await tick(20);
   const record = diagStore.laterOnPanelDiag;
   check("写入了侧栏打开耗时记录", !!record && typeof record.total === "number", JSON.stringify(record));
   check("记录了「页面准备」用时", typeof record?.page === "number");

@@ -40,14 +40,15 @@ function showFolderPickerOverlay(payload) {
     selected,
     pages,
     savedCount,
+    allowAI: data.allowAI === true,
     // 新建项目 / 确认收藏 / 取消收藏：都走后台那一套，行为和以前完全一致。
     // onCreateProject 按约定返回「项目对象 {id,name}」（不是后台那层 {ok,project} 包装），
     // 所以这里把响应拆开再交出去。
-    onCreateProject: async (name) => {
-      const response = await safeRuntimeMessage({ type: "CREATE_PROJECT", name });
+    onCreateProject: async (name, note) => {
+      const response = await safeRuntimeMessage({ type: "CREATE_PROJECT", name, note });
       return response?.project || null;
     },
-    onPick: (projectId) => safeRuntimeMessage({ type: "CONFIRM_BATCH_SAVE", projectId }),
+    onPick: (projectId, _name, mode) => safeRuntimeMessage({ type: "CONFIRM_BATCH_SAVE", projectId, mode }),
     onCancel: () => safeRuntimeMessage({ type: "CANCEL_BATCH_SAVE" })
   });
 }

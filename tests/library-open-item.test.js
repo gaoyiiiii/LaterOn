@@ -132,6 +132,7 @@ const resetLogs = () => {
 window.eval(i18nSource);
 window.eval(tabNavigationSource);
 require('./helpers/item-mutation')(window);
+require("./helpers/data-mutation")(window);
 window.eval(librarySource);
 
 (async () => {
@@ -139,6 +140,7 @@ window.eval(librarySource);
   document.querySelector('.project-nav[data-project="work"]')
     .dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
   await tick(30);
+  check("首次渲染归属控件与实际项目一致", document.querySelector('.card[data-id="i1"] .project-select')?.value === 'work');
 
   console.log("── 第 1 步：点标题链接 → 切侧栏 + 当前标签页跳转 ──");
   resetLogs();

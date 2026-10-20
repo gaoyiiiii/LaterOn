@@ -1,0 +1,25 @@
+.ai-records .ai-record { border-top:1px solid var(--line); margin-top:14px; padding:14px 0 0; overflow-wrap:anywhere; }
+.ai-records .ai-record > summary { cursor:pointer; font-size:14px; line-height:1.6; font-weight:500; }
+.record-title { font-weight:600; }
+.record-meta { display:flex; flex-wrap:wrap; gap:4px 14px; padding-left:15px; margin-top:5px; font-size:13px; color:var(--support); }
+.record-meta time { white-space:nowrap; }
+.record-body { padding:12px 0 0 15px; font-size:13px; color:var(--support); }
+.record-fields { display:grid; grid-template-columns:auto minmax(0,1fr); gap:7px 12px; margin:0; }
+.record-fields dt { color:var(--support); }
+.record-fields dd { margin:0; color:var(--ink); white-space:pre-wrap; }
+.record-body .record-extraction-note { margin:5px 0 0; color:var(--support); font-size:13px; line-height:1.75; }
+.record-extraction { padding-bottom:5px; }
+.record-scores { border-collapse:collapse; width:100%; margin-top:16px; font-size:13px; }
+.record-scores caption { text-align:left; font-weight:600; color:var(--ink); margin-bottom:7px; }
+.record-scores th,.record-scores td { padding:6px 0; border-bottom:1px solid var(--hairline); text-align:left; }
+.record-scores th { font-weight:500; color:var(--support); }
+.record-scores th:last-child,.record-scores td:last-child { text-align:right; white-space:nowrap; padding-left:12px; font-variant-numeric:tabular-nums; }
+.record-body .record-score-note { margin:9px 0 0; font-size:12.5px; color:var(--support); }
+.history-link { display:inline-block; margin-top:16px; color:var(--accent); font-size:13px; text-underline-offset:3px; }
+.history-link:hover { color:var(--ink); }
+.records-empty { font-size:13px; color:var(--support); margin-top:12px; }
+.history-main { max-width:900px; }
+.history-panel { padding:10px 26px 24px; }
+.history-panel .ai-record:first-child { border-top:0; }
+.history-description { max-width:680px; }
+@media(max-width:560px) { .history-panel { padding:6px 18px 20px; }.record-fields { grid-template-columns:1fr; gap:3px; }.record-fields dd { margin-bottom:7px; }.record-body { padding-left:0; } }

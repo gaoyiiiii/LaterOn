@@ -1,6 +1,13 @@
 .DS_Store
 .workbuddy/
 dist/
+node_modules/
+.venv/
+.cache/
+.playwright-cli/
+output/
+tests-*-run.log
+test-*.log
 tests/board-preview.html
 tests/dialog-preview.html
 tests/picker-preview.html

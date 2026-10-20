@@ -1,5 +1,7 @@
-importScripts("url-utils.js", "reading-position-background.js");
+importScripts("url-utils.js", "reading-position-background.js", "ai-core.js", "ai-background.js", "data-background.js");
 const normalizeUrl = LaterOnUrl.normalize;
+let laterOnAI = null;
+let mutateData = null;
 
 const STORAGE_KEY = "laterOnItems";
 const PROJECTS_KEY = "laterOnProjects";
@@ -30,6 +32,8 @@ async function mutateItems({ operation, ids, patch = {} }) {
         affected++;
         const next = { ...patch };
         delete next.id;
+        delete next.projectRevision;
+        if (Object.prototype.hasOwnProperty.call(next, "projectId")) next.projectRevision = (item.projectRevision || 0) + 1;
         if (next.status) {
           next.read = next.status === "done";
           next.doneAt = next.status === "done"
@@ -380,6 +384,17 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 ensureLegacyCleanup().catch(() => {});
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message.type?.startsWith("AI_")) {
+    if (!laterOnAI) { sendResponse({ ok: false, error: "notConfigured" }); return; }
+    laterOnAI.message(message, _sender).then(data => sendResponse({ ok: true, data }))
+      .catch(error => sendResponse({ ok: false, error: /^[a-zA-Z_0-9]+$/.test(error.message) ? error.message : "internalError" }));
+    return true;
+  }
+  if (message.type === "DATA_MUTATION") {
+    if (!laterOnAI?.trusted(_sender) || !mutateData) { sendResponse({ ok: false, error: "forbidden" }); return; }
+    mutateData(message).then(sendResponse).catch(error => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
   if (message.type === "MUTATE_ITEMS") {
     mutateItems(message)
       .then(sendResponse)
@@ -410,7 +425,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         // 窗口已经关掉时端口可能已断开，忽略即可。
       }
     };
-    confirmBatchSave(message.projectId || null, reply)
+    confirmBatchSave(message.projectId || null, reply, message.mode)
       .then((result) => reply(result && result.ok === false ? result : { ok: true }))
       .catch((error) => reply({ ok: false, error: String(error?.message || error) }));
     return true;
@@ -423,7 +438,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
   // 网页里的选项目浮层点了「新建」：统一由后台写库，保证数据和收藏库一致。
   if (message.type === "CREATE_PROJECT") {
-    createProject(message.name)
+    createProject(message.name, message.note)
       .then(sendResponse)
       .catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;
@@ -513,9 +528,13 @@ async function handleCommand(command, commandTab) {
 
 async function quickSave(tab, source = "shortcut") {
   const en = await usesEnglish();
+  const aiReady = laterOnAI && await laterOnAI.ready();
+  if (aiReady && source !== "panel") {
+    return runBatchSave({ tabs: [tab], source, notifyTabId: tab.id, mode: "ai" });
+  }
   // 设置里打开了「收藏单篇前先选项目」：跟整窗收藏走同一套流程——
   // 只在当前网页里弹出选项目浮层，用户选好之后再真正开始收藏。
-  if (await shouldAskFolderForSingle()) {
+  if (aiReady || await shouldAskFolderForSingle()) {
     const storedItems = (await chrome.storage.local.get(STORAGE_KEY))[STORAGE_KEY] || [];
     const knownUrls = new Set(storedItems.map((entry) => normalizeUrl(entry.url)));
     const savedCount = knownUrls.has(normalizeUrl(tab.url || "")) ? 1 : 0;
@@ -845,6 +864,7 @@ async function saveAllTabsInWindow(source = "shortcut") {
     }
 
     const activeTab = tabs.find((tab) => tab.active) || targets[0];
+    if (laterOnAI && await laterOnAI.ready()) return runBatchSave({ tabs: targets, source, notifyTabId: activeTab?.id, mode: "ai" });
     const settings = (await chrome.storage.local.get(SETTINGS_KEY))[SETTINGS_KEY] || {};
     const savedProject = (await chrome.storage.local.get(LAST_PROJECT_KEY))[LAST_PROJECT_KEY] || "";
     // 上次用过的项目可能已经被删掉了：先校验一次，
@@ -959,7 +979,7 @@ async function askFolderThenSave({ tabs, source = "shortcut", activeTab = null, 
 //  2. 顺序处理可以「完成一篇就立刻通知一篇」，进度马上看得见，感知上快得多；
 //  3. 某一篇卡住（未加载完、被冻结）只影响它自己，不会拖住后面的标签。
 // 与单篇收藏一样抓取标题 / 摘要 / 封面 / 图标；不抓取正文；已收藏过的网址自动去重。
-async function runBatchSave({ tabs, source = "shortcut", notifyTabId = null, projectId = null, projectName = "" }) {
+async function runBatchSave({ tabs, source = "shortcut", notifyTabId = null, projectId = null, projectName = "", mode = "manual" }) {
   const en = await usesEnglish();
   // 每一步都记一笔：万一中途卡住或失败，去设置页就能看出停在哪一步。
   const stage = (patch) => recordDiag({ lastTrigger: source, lastStageAt: Date.now(), ...patch });
@@ -967,7 +987,8 @@ async function runBatchSave({ tabs, source = "shortcut", notifyTabId = null, pro
   // 此时「当前活动标签页」已经变成那个弹窗了。
   const notify = (text, kind = "") => notifyTab(notifyTabId, text, kind);
   // 这一批要存进哪个项目（用于提示文案）。
-  const folderLabel = projectName || (en ? "Inbox" : "等待整理");
+  const folderLabel = mode === "ai" ? (en ? "Inbox · AI sorting" : "等待整理 · AI 分类中") : projectName || (en ? "Inbox" : "等待整理");
+  if (mode === "ai") projectId = null;
   // 只收一篇时（设置里打开了「收藏单篇前先选项目」）提示从简：
   // 跟以前「一键收藏」一样只弹一条结果，不再多出「开始收藏」「全部完成」两条。
   const single = (tabs || []).length === 1;
@@ -1027,9 +1048,9 @@ async function runBatchSave({ tabs, source = "shortcut", notifyTabId = null, pro
         if (existing) {
           const refreshed = mergeDuplicateMetadata(existing, meta);
           const target = projectId || null;
-          const moved = (existing.projectId || null) !== target;
-          if (moved) existing.projectId = target;
-          if (refreshed || moved) await chrome.storage.local.set({ [STORAGE_KEY]: items });
+          const moved = mode !== "ai" && (existing.projectId || null) !== target;
+          if (mode !== "ai") { existing.projectId = target; existing.projectRevision = (existing.projectRevision || 0) + 1; }
+          if (refreshed || mode !== "ai") await chrome.storage.local.set({ [STORAGE_KEY]: items });
           return { record: existing, duplicated: true, refreshed, moved };
         }
         const record = {
@@ -1050,6 +1071,10 @@ async function runBatchSave({ tabs, source = "shortcut", notifyTabId = null, pro
         return { record, duplicated: false };
       });
       const { record, refreshed, moved } = saved;
+      if (mode === "ai" && !saved.duplicated) {
+        try { await laterOnAI?.enqueue(record, tab); }
+        catch { await recordDiag({ lastError: "AI task could not be queued; page remains saved" }); }
+      }
       if (saved.duplicated) {
         duplicated += 1;
         if (isIncomplete(record)) degraded += 1;
@@ -1182,6 +1207,7 @@ async function showPickerOverlay(tab, payload) {
     if (selected && !folders.some((folder) => folder.id === selected)) selected = "";
 
     const pickerPayload = {
+      allowAI: !!(laterOnAI && await laterOnAI.ready()),
       theme: settings.theme || "light",
       language: settings.language === "en" ? "en" : "zh-CN",
       selected,
@@ -1248,7 +1274,8 @@ async function showPickerOverlay(tab, payload) {
 }
 
 // 新建项目（浮层和收藏库共用同一份数据，形状保持一致）。
-async function createProject(name) {
+async function createProject(name, note) {
+  return queueItemWrite(async () => {
   const clean = String(name || "").replace(/\s+/g, " ").trim().slice(0, 28);
   if (!clean) return { ok: false, error: (await usesEnglish()) ? "Project name can’t be empty" : "项目名称不能为空" };
 
@@ -1258,16 +1285,19 @@ async function createProject(name) {
   const existing = projects.find((project) => project.name === clean && !project.archived);
   if (existing) return { ok: true, project: existing, existed: true };
 
-  const project = { id: crypto.randomUUID(), name: clean, createdAt: Date.now() };
+  const description = String(note || "").trim();
+  if (!description || description.length > 2000) throw new Error((await usesEnglish()) ? "Please enter a project description (up to 2,000 characters)." : "请填写项目简介（最多 2,000 字符）。");
+  const project = { id: crypto.randomUUID(), name: clean, note: description, createdAt: Date.now() };
   await chrome.storage.local.set({ [PROJECTS_KEY]: [...projects, project] });
   return { ok: true, project, existed: false };
+  });
 }
 
 // 体积较大的网页执行代码已移到 content-folder-picker.js，仅在实际使用时注入目标网页。
 
 // 取出「等待选择项目」的那一批标签页，并记录用户选的项目。
 // 返回 null 表示没有待处理的批次（重复点击 / 已过期）。
-async function claimPendingBatch(projectId) {
+async function claimPendingBatch(projectId, mode = "manual") {
   const stored = await chrome.storage.session.get(PENDING_KEY);
   const pending = stored[PENDING_KEY];
   if (!pending || !pending.tabs?.length) return null;
@@ -1275,11 +1305,12 @@ async function claimPendingBatch(projectId) {
     await chrome.storage.session.remove(PENDING_KEY);
     return null;
   }
-  await chrome.storage.session.remove(PENDING_KEY);
-
   // 用户选的项目在这段时间里可能被删掉了（浮层最长会停留 10 分钟），
   // 这里再校验一次：不存在就退回「待整理」，不给收藏留下悬空的归属。
-  const chosen = await resolveProject(projectId);
+  if (mode === "ai" && !(laterOnAI && await laterOnAI.ready())) throw new Error("AI is not ready / AI 尚未就绪");
+  // 校验失败时保留待收藏批次，让用户仍可改为手动选择项目。
+  await chrome.storage.session.remove(PENDING_KEY);
+  const chosen = await resolveProject(mode === "ai" ? null : projectId);
 
   if (chosen.id) await chrome.storage.local.set({ [LAST_PROJECT_KEY]: chosen.id });
   else await chrome.storage.local.remove(LAST_PROJECT_KEY);
@@ -1289,7 +1320,8 @@ async function claimPendingBatch(projectId) {
     source: pending.source || "shortcut",
     notifyTabId: pending.notifyTabId ?? null,
     projectId: chosen.id,
-    projectName: chosen.name
+    projectName: chosen.name,
+    mode: mode === "ai" ? "ai" : "manual"
   };
 }
 
@@ -1302,8 +1334,8 @@ async function cancelPendingBatch() {
 }
 
 // 确认收藏：先回执（好让选项目的小窗口立刻关闭），再在后台继续一篇一篇地收藏。
-async function confirmBatchSave(projectId, onAccepted) {
-  const claimed = await claimPendingBatch(projectId);
+async function confirmBatchSave(projectId, onAccepted, mode = "manual") {
+  const claimed = await claimPendingBatch(projectId, mode);
   if (!claimed) return { ok: false, error: (await usesEnglish()) ? "This batch has already been processed" : "这一批标签页已经处理过了" };
   if (typeof onAccepted === "function") onAccepted({ ok: true, tabCount: claimed.tabs.length });
   return runBatchSave(claimed);
@@ -1642,6 +1674,7 @@ async function ensureLegacyCleanup() {
 // 一次性迁移清理：1.14.0 起不再保存网页正文，把旧版本可能残留的
 // contentHtml / wordCount / byline 字段从已有收藏上移除，释放本地空间。
 async function cleanupLegacyContent() {
+  return queueItemWrite(async () => {
   const result = await chrome.storage.local.get(STORAGE_KEY);
   const items = result[STORAGE_KEY] || [];
   let changed = false;
@@ -1652,6 +1685,7 @@ async function cleanupLegacyContent() {
     return rest;
   });
   if (changed) await chrome.storage.local.set({ [STORAGE_KEY]: cleaned });
+  });
 }
 
 function safeHostname(url) {
@@ -1704,3 +1738,8 @@ async function openLibrary(context = null) {
 // 体积较大的网页执行代码已移到 content-metadata.js，仅在实际使用时注入目标网页。
 
 // 体积较大的网页执行代码已移到 content-translation.js，仅在实际使用时注入目标网页。
+
+if (typeof createLaterOnAI === "function") {
+  laterOnAI = createLaterOnAI({ queueItemWrite });
+  mutateData = createLaterOnData({ queueItemWrite, normalizeUrl });
+}

@@ -146,6 +146,7 @@ window.eval(dialogSource);
 window.eval(urlSource);
 window.eval(tabNavigationSource);
 require('./helpers/item-mutation')(window);
+require("./helpers/data-mutation")(window);
 window.eval(librarySource);
 
 const boardGrid = () => document.querySelector("#boardGrid");

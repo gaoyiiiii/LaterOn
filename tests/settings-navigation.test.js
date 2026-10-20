@@ -82,6 +82,7 @@ function makeChrome(window, store, extra = {}) {
       Object.defineProperty(window, "crypto", { configurable: true, value: { randomUUID: () => "fake-" + Math.random().toString(36).slice(2) } });
     }
     require('./helpers/item-mutation')(window);
+    require("./helpers/data-mutation")(window);
     window.eval(librarySource);
     await tick();
 
@@ -111,6 +112,7 @@ function makeChrome(window, store, extra = {}) {
       Object.defineProperty(window, "crypto", { configurable: true, value: { randomUUID: () => "fake-" + Math.random().toString(36).slice(2) } });
     }
     require('./helpers/item-mutation')(window);
+    require("./helpers/data-mutation")(window);
     window.eval(librarySource);
     await tick();
 
@@ -144,6 +146,9 @@ function makeChrome(window, store, extra = {}) {
     Object.defineProperty(window.history, "length", { configurable: true, value: 2 });
 
 
+    require("./helpers/data-mutation")(window);
+
+
     window.eval(settingsSource);
     await tick();
 
@@ -172,6 +177,7 @@ function makeChrome(window, store, extra = {}) {
     const store = { laterOnSettings: { theme: "light" }, laterOnItems: [], laterOnProjects: [], laterOnActiveProject: "work" };
     window.chrome = makeChrome(window, store, logs);
     window.eval(themeSource);
+    require("./helpers/data-mutation")(window);
     window.eval(settingsSource);
     await tick();
 

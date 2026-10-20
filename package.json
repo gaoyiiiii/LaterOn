@@ -1,0 +1,16 @@
+{
+  "name": "lateron",
+  "private": true,
+  "scripts": {
+    "test": "node scripts/test.cjs",
+    "vendor": "node scripts/vendor.cjs",
+    "postinstall": "npm run vendor"
+  },
+  "dependencies": {
+    "@mozilla/readability": "0.6.0"
+  },
+  "devDependencies": {
+    "@playwright/cli": "^0.1.22",
+    "jsdom": "26.1.0"
+  }
+}

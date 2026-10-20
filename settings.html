@@ -87,6 +87,16 @@
           </div>
         </section>
 
+        <section class="settings-group" id="ai">
+          <h2 data-ai="ai">AI 功能</h2>
+          <div class="setting-row">
+            <div class="setting-label"><strong data-ai="enable"></strong><span data-ai="enableHint"></span></div>
+            <label class="switch"><input id="aiEnabled" type="checkbox" aria-label="AI" /><span class="slider"></span></label>
+          </div>
+          <p class="setting-note"><span data-ai="modelLinkBefore"></span><a href="models.html" class="ai-model-link" data-ai="models">模型</a><span data-ai="modelLinkAfter"></span> <span id="aiSettingsState" role="status" hidden></span></p>
+          <ul id="aiMissingNotes" hidden></ul>
+        </section>
+
         <section class="settings-group">
           <h2 data-i18n="shortcuts">快捷键</h2>
           <p class="setting-note" data-i18n="shortcutsNote">这些是全局快捷键，用于在任意网页上添加或翻译。Chrome 不允许扩展在内部修改快捷键，请在 Chrome 的快捷键页面设置。</p>
@@ -154,6 +164,8 @@
         </section>
       </main>
     </div>
+    <script src="data-client.js"></script>
     <script src="settings.js"></script>
+    <script src="ai-text.js"></script><script src="ai-settings.js"></script>
   </body>
 </html>

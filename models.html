@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LaterOn · 模型</title><link rel="icon" href="icon128.png">
+  <link rel="stylesheet" href="theme-vars.css"><link rel="stylesheet" href="models.css"><link rel="stylesheet" href="ai-records.css">
+  <script src="theme.js"></script><script src="i18n.js"></script><script src="ai-core.js"></script><script src="ai-text.js"></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="library.html"><img src="icon128.png" alt=""><span>LaterOn</span></a><div class="header-actions"><button class="btn ghost theme" id="themeToggle" type="button"></button><a class="back-link" id="back" href="library.html" data-ai="back"></a></div></header>
+  <main id="main">
+    <h1 data-ai="models"></h1><p class="intro" id="intro"></p>
+    <section class="panel runtime" aria-labelledby="runtimeTitle">
+      <div class="section-top"><h2 id="runtimeTitle"></h2><span id="aiState" class="status" role="status"></span></div>
+      <div class="gate"><p id="setupGuidance"></p><a id="statusSettings" href="settings.html#ai" data-ai="settings" hidden></a><ul id="missingNotes"></ul></div>
+      <fieldset id="runtimeControls" class="runtime-controls" disabled><div id="route" class="route"></div><p class="runtime-note" id="runtimeNote"></p><div id="applyRow" class="apply-row" hidden></div></fieldset>
+      <p id="actionResult" class="runtime-error" role="status" hidden></p>
+    </section>
+    <fieldset id="modelControls" disabled>
+      <section class="panel manager" aria-labelledby="managerTitle">
+        <div class="manager-heading"><div><h2 id="managerTitle"></h2><p id="managerHint"></p></div><button class="btn primary" data-action="add" type="button"></button></div>
+        <div class="workspace"><nav id="channels" class="channels"></nav><div id="editor" class="editor"></div></div>
+      </section>
+    </fieldset>
+    <div class="lower">
+      <details id="organizationRules">
+        <summary class="lower-heading"><span><span class="lower-title" data-ai="organizationRules"></span><span class="lower-description" data-ai="organizationHint"></span></span></summary>
+        <p data-ai="organizationScope"></p><p data-ai="organizationFailure"></p><p data-ai="organizationPrivacy"></p>
+        <p class="fallback-row"><label class="check"><input type="checkbox" id="fallback" disabled><span data-ai="fallback"></span></label></p>
+      </details>
+      <details id="recentSection" open>
+        <summary class="lower-heading"><span><span class="lower-title" data-ai="recent"></span><span class="lower-description" id="recentHint"></span></span></summary>
+        <div id="recentResults" class="ai-records"></div>
+        <div class="history-footer" id="historyFooter" hidden><a id="viewHistory" class="history-link" href="ai-history.html" hidden><span data-ai="viewHistory"></span><span aria-hidden="true"> →</span></a></div>
+      </details>
+    </div>
+  </main>
+  <div id="picker" class="popover" hidden></div><div id="toast" class="toast" role="status" hidden></div>
+  <dialog id="confirm" aria-labelledby="confirmTitle" aria-describedby="confirmText"><h2 id="confirmTitle"></h2><p id="confirmText"></p><div class="button-group"><button class="btn ghost" id="confirmCancel" type="button"></button><button class="btn primary" id="confirmOK" type="button"></button></div></dialog>
+  <script src="ai-records.js"></script><script src="models.js"></script>
+</body>
+</html>

@@ -96,6 +96,7 @@ window.Element.prototype.getBoundingClientRect = function () {
 window.eval(i18nSource);
 window.eval(dialogSource);
 require('./helpers/item-mutation')(window);
+require("./helpers/data-mutation")(window);
 window.eval(librarySource);
 
 let failures = 0;

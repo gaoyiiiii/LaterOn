@@ -1241,7 +1241,7 @@ async function migrateLegacyCovers(rawItems) {
     const stored = await chrome.storage.local.get(COVERS_KEY);
     const merged = { ...(stored[COVERS_KEY] || {}), ...moved };
     covers = merged;
-    await chrome.storage.local.set({ [STORAGE_KEY]: next, [COVERS_KEY]: merged });
+    await window.LaterOnData("migrate-items", { items: next, covers: merged });
   } catch { /* 搬不动就先用老数据，不影响显示 */ }
   return next;
 }

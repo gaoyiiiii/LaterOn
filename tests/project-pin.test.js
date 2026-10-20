@@ -151,6 +151,7 @@ const midOf = (index) => topOf(index) + ROW_HEIGHT / 2;
 window.eval(fs.readFileSync(`${ROOT}/i18n.js`, "utf8"));
 window.eval(dialogSource);
 require('./helpers/item-mutation')(window);
+require("./helpers/data-mutation")(window);
 window.eval(librarySource);
 
 (async () => {

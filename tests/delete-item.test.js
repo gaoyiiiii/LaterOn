@@ -85,6 +85,7 @@ const pressKey = (el, key) => el.dispatchEvent(new window.KeyboardEvent("keydown
 window.eval(i18nSource);
 window.eval(dialogSource);
 require('./helpers/item-mutation')(window);
+require("./helpers/data-mutation")(window);
 window.eval(librarySource);
 
 const cardOf = (id) => document.querySelector(`.card[data-id="${id}"]`);

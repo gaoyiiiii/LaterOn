@@ -170,24 +170,9 @@ async function init() {
     try {
       const parsed = JSON.parse(await file.text());
       if (!parsed || !Array.isArray(parsed.items)) throw new Error(t("importBadFile"));
-      const existing = await chrome.storage.local.get(["laterOnItems", "laterOnProjects", "laterOnCovers", "laterOnOrder"]);
-      const byUrl = new Map((existing.laterOnItems || []).map((it) => [normalizeUrl(it.url), it]));
-      let skipped = 0;
-      for (const it of parsed.items) {
-        // 备份文件可以被手工修改，不能把任意协议塞进收藏链接。
-        if (!isImportableItem(it)) { skipped += 1; continue; }
-        const key = normalizeUrl(it.url);
-        if (!byUrl.has(key)) byUrl.set(key, it);
-      }
-      const mergedItems = [...byUrl.values()];
-      const projById = new Map((existing.laterOnProjects || []).map((p) => [p.id, p]));
-      (parsed.projects || []).forEach((p) => { if (!projById.has(p.id)) projById.set(p.id, p); });
-      await chrome.storage.local.set({
-        laterOnItems: mergedItems,
-        laterOnProjects: [...projById.values()],
-        laterOnCovers: { ...(existing.laterOnCovers || {}), ...(parsed.covers || {}) },
-        laterOnOrder: { ...(existing.laterOnOrder || {}), ...(parsed.order || {}) }
-      });
+      const imported = await window.LaterOnData("import", { payload: parsed });
+      const mergedItems = imported.items;
+      const skipped = imported.skipped;
       await LaterOnDialog.alert({
         tone: "success",
         title: t("importDoneTitle"),
@@ -213,8 +198,7 @@ async function init() {
       confirmText: t("wipeConfirmBtn")
     });
     if (!confirmed) return;
-    await chrome.storage.local.remove(["laterOnCovers", "laterOnOrder", "laterOnCurrentItem", "laterOnReadingPositions"]);
-    await chrome.storage.local.set({ laterOnItems: [] });
+    await window.LaterOnData("wipe");
     try { localStorage.removeItem("laterOnPanelCache"); } catch { /* 清缓存失败不影响清空收藏 */ }
     await LaterOnDialog.alert({
       tone: "success",
@@ -387,30 +371,6 @@ async function renderDiag() {
       const extra = diag.lastCoverTitle ? (isEn() ? ` (${diag.lastCoverTitle})` : `（${diag.lastCoverTitle}）`) : "";
       coverEl.textContent = [relativeTime(diag.lastCoverAt), t("coverLine", { title: titleLabel, cover: coverLabel }) + extra].join(" · ");
     }
-  }
-}
-
-function normalizeUrl(url) {
-  try {
-    const u = new URL(url);
-    u.hash = "";
-    for (const param of ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]) {
-      u.searchParams.delete(param);
-    }
-    u.host = u.host.replace(/^www\./, "");
-    return u.toString().replace(/\/$/, "");
-  } catch {
-    return url;
-  }
-}
-
-function isImportableItem(item) {
-  if (!item || typeof item !== "object" || typeof item.id !== "string" || !item.id) return false;
-  try {
-    const url = new URL(item.url);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
   }
 }
 

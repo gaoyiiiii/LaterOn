@@ -109,6 +109,7 @@ const PAGES = [
   const typeNew = (shadowRoot, name) => {
     const field = shadowRoot.querySelector(".lon-new-input");
     field.value = name;
+    shadowRoot.querySelector(".lon-new-note").value = "临时收藏的内容与用途说明";
     field.dispatchEvent(new window.Event("input", { bubbles: true, composed: true }));
     return field;
   };

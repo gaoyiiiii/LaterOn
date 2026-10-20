@@ -344,6 +344,7 @@ async function partLibrary() {
   window.eval(I18N_SOURCE);
   window.eval(DIALOG_SOURCE);
   require('./helpers/item-mutation')(window);
+  require("./helpers/data-mutation")(window);
   window.eval(LIBRARY_SOURCE);
 
   const tick = (ms = 20) => new Promise((resolve) => window.setTimeout(resolve, ms));
