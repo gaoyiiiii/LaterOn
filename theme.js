@@ -7,8 +7,8 @@
     defaultSort: "newest",     // newest | oldest | source
     autoMarkRead: true,
     askFolderOnBatch: true,    // 一键收藏所有标签前，先弹窗选项目
-    askFolderOnSingle: false,  // 收藏当前这一篇前，是否先弹窗选项目（默认关；主动打开才先选项目）
-    askFolderOnSingleOptIn: false, // 迁移标记：旧版默认 true 不算用户主动开启
+    askFolderOnSingle: true,   // 收藏当前这一篇前，默认先弹窗选项目
+    askFolderOnSingleOptIn: false, // 主动设置标记：兼容旧键名，true 时尊重用户开关选择
     autoCleanDays: 30          // 标为已读后多少天自动清除（30–180 天）
     ,language: "zh-CN"         // zh-CN | en
   };
@@ -25,12 +25,15 @@
     document.documentElement.dataset.theme = resolveTheme(rawTheme || "light");
   }
 
+  function resolveSettings(stored = {}) {
+    const merged = { ...DEFAULTS, ...stored };
+    merged.askFolderOnSingle = !(stored.askFolderOnSingle === false && stored.askFolderOnSingleOptIn === true);
+    return merged;
+  }
+
   async function get() {
     const result = await chrome.storage.local.get(KEY);
-    const stored = result[KEY] || {};
-    const merged = { ...DEFAULTS, ...stored };
-    if (stored.askFolderOnSingleOptIn !== true) merged.askFolderOnSingle = false;
-    return merged;
+    return resolveSettings(result[KEY] || {});
   }
 
   function set(patch) {
@@ -48,7 +51,7 @@
   function watch(callback) {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area === "local" && changes[KEY]) {
-        callback({ ...DEFAULTS, ...(changes[KEY].newValue || {}) }, changes[KEY].oldValue);
+        callback(resolveSettings(changes[KEY].newValue || {}), changes[KEY].oldValue);
       }
     });
   }

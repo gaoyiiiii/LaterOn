@@ -1,6 +1,6 @@
 // 模拟验证：收藏「单篇」时的两种行为（由设置里的「收藏当前网页前，先选项目」控制）。
 // 用假的 chrome API 把 background.js 跑起来，检查：
-//  1) 尚未存过设置时默认关闭：直接收藏到「等待整理」
+//  1) 尚未存过设置时默认弹窗，预选「等待整理」，确认前不写入
 //  2) 用户明确关闭时：一键直接收藏，收进「等待整理」，不弹任何浮层
 //  3) 开关打开时：先在当前网页里弹出「选项目」浮层，此刻还没有真正收藏
 //  3) 浮层里选好项目并确认 → 这一篇带上所选项目，且只弹一条结果提示（不再多出「开始/总结」）
@@ -173,18 +173,37 @@ const check = (label, ok, extra = "") => {
 };
 
 (async () => {
-  // ── 第 0 步：没有存过该字段 → 默认关闭并直接收藏 ────────────
-  console.log("── 第 0 步：首次使用默认关闭 ──");
-  const defaultResult = await sandbox.quickSave(tab, "shortcut");
-  check("没有设置记录时不弹项目选择", !defaultResult?.pending && overlays.length === 0, JSON.stringify(defaultResult));
-  check("默认直接收藏进等待整理", store.laterOnItems.some((i) => i.url === PAGE_URL && !i.projectId));
+  // ── 第 0 步：首次使用，快捷键默认先选项目 ────────────────────
+  console.log("── 第 0 步：首次使用默认选组 ──");
+  await sandbox.handleCommand("quick-save", tab);
+  check("快捷键默认弹项目选择", overlays.length === 1 && !!session[PENDING_KEY]);
+  check("默认选中等待整理而非上次项目", overlays.at(-1)?.payload?.selected === "");
+  check("确认前没有保存网页", !store.laterOnItems.some((i) => i.url === PAGE_URL));
+  await sendFromPage({ type: "CONFIRM_BATCH_SAVE", projectId: "" });
+  await waitForDone();
+  check("直接确认会收藏进等待整理", store.laterOnItems.some((i) => i.url === PAGE_URL && !i.projectId));
   store.laterOnItems = store.laterOnItems.filter((i) => i.url !== PAGE_URL);
   pills.length = 0;
   overlays.length = 0;
 
+  for (const legacy of [
+    { askFolderOnSingle: false },
+    { askFolderOnSingle: false, askFolderOnSingleOptIn: false },
+    { askFolderOnSingle: true }
+  ]) {
+    store.laterOnSettings = legacy;
+    const result = await sandbox.quickSave(tab, "shortcut");
+    check(`旧版未明确设置时默认弹窗 ${JSON.stringify(legacy)}`, result?.pending === true);
+    check("旧设置也预选等待整理", overlays.at(-1)?.payload?.selected === "");
+    check("旧设置迁移时不会提前保存", !store.laterOnItems.some((i) => i.url === PAGE_URL));
+    await sendFromPage({ type: "CANCEL_BATCH_SAVE" });
+  }
+  overlays.length = 0;
+  pills.length = 0;
+
   // ── 第 1 步：用户明确关闭 → 直接收藏，不弹浮层 ────────────────
   console.log("── 第 1 步：用户明确关闭开关 ──");
-  store.laterOnSettings = { askFolderOnSingle: false };
+  store.laterOnSettings = { askFolderOnSingle: false, askFolderOnSingleOptIn: true };
   await sandbox.quickSave(tab, "shortcut");
   check("没有弹任何浮层、也没开窗口", overlays.length === 0 && windowsCreated.length === 0, `浮层 ${overlays.length} / 窗口 ${windowsCreated.length}`);
   const saved = store.laterOnItems.find((i) => i.url === PAGE_URL);
@@ -202,7 +221,7 @@ const check = (label, ok, extra = "") => {
   check("在当前网页里弹出浮层（没新开窗口）", overlays.length === 1 && windowsCreated.length === 0, `浮层 ${overlays.length} / 窗口 ${windowsCreated.length}`);
   check("此刻还没有真正收藏", !store.laterOnItems.some((i) => i.url === PAGE_URL), `${store.laterOnItems.length} 条`);
   check("浮层里只有这一篇", overlays[0]?.payload?.pages?.length === 1 && overlays[0].payload.pages[0].url === PAGE_URL, `${overlays[0]?.payload?.pages?.length} 个页面`);
-  check("浮层默认选中上次用过的项目", overlays[0]?.payload?.selected === FOLDER_ID, overlays[0]?.payload?.selected);
+  check("单篇浮层默认选中等待整理", overlays[0]?.payload?.selected === "", overlays[0]?.payload?.selected);
   check("浮层里列出了已有项目和「等待整理」", (overlays[0]?.payload?.folders?.length || 0) === 2, (overlays[0]?.payload?.folders || []).map((f) => f.name).join(" / "));
   check("这一篇没收藏过，浮层不提示「已收藏过」", overlays[0]?.payload?.savedCount === 0, `savedCount=${overlays[0]?.payload?.savedCount}`);
   check("这一篇被暂存下来了", session[PENDING_KEY]?.tabs?.length === 1, `${session[PENDING_KEY]?.tabs?.length} 个`);
@@ -244,7 +263,7 @@ const check = (label, ok, extra = "") => {
 
   // ── 第 6 步：再关掉开关 → 回到「直接收藏」───────────────────
   console.log("\n── 第 6 步：关掉开关 ──");
-  store.laterOnSettings = { askFolderOnSingle: false };
+  store.laterOnSettings = { askFolderOnSingle: false, askFolderOnSingleOptIn: true };
   const overlayBefore = overlays.length;
   await sandbox.quickSave(tab, "shortcut");
   check("不再弹浮层", overlays.length === overlayBefore, `浮层 +${overlays.length - overlayBefore}`);
@@ -255,15 +274,16 @@ const check = (label, ok, extra = "") => {
   // 这两个入口以前各自直接写库，会绕过开关；现在统一走后台的 QUICK_SAVE_TAB。
   console.log("\n── 第 7 步：面板里的收藏按钮 ──");
   store.laterOnItems = [];
-  store.laterOnSettings = { askFolderOnSingle: true, askFolderOnSingleOptIn: true };
+  store.laterOnSettings = {};
   const overlaysBeforePanel = overlays.length;
   const panelPending = await sendFromPage({ type: "QUICK_SAVE_TAB", source: "panel" });
-  check("开关打开时，点按钮同样先弹浮层（不直接收藏）", panelPending?.ok === true && panelPending?.pending === true, JSON.stringify(panelPending));
+  check("默认点侧栏按钮同样先弹浮层（不直接收藏）", panelPending?.ok === true && panelPending?.pending === true, JSON.stringify(panelPending));
+  check("侧栏按钮的弹窗也默认选等待整理", overlays.at(-1)?.payload?.selected === "");
   check("浮层确实弹出来了", overlays.length === overlaysBeforePanel + 1, `浮层 +${overlays.length - overlaysBeforePanel}`);
   check("此刻还没真正收藏", store.laterOnItems.length === 0, `${store.laterOnItems.length} 条`);
   await sendFromPage({ type: "CANCEL_BATCH_SAVE" });
 
-  store.laterOnSettings = { askFolderOnSingle: false };
+  store.laterOnSettings = { askFolderOnSingle: false, askFolderOnSingleOptIn: true };
   const overlaysBeforeDirect = overlays.length;
   const panelDirect = await sendFromPage({ type: "QUICK_SAVE_TAB", source: "panel" });
   check("开关关闭时，点按钮直接收藏", panelDirect?.ok === true && panelDirect?.pending !== true, JSON.stringify(panelDirect));
@@ -272,6 +292,14 @@ const check = (label, ok, extra = "") => {
   const fromPanel = store.laterOnItems.find((i) => i.url === PAGE_URL);
   check("这一篇被收进「等待整理」", !!fromPanel && (fromPanel.projectId || null) === null, `projectId=${JSON.stringify(fromPanel?.projectId)}`);
   check("诊断里记下这次来自面板按钮", store.laterOnDiag?.lastTrigger === "panel", store.laterOnDiag?.lastTrigger);
+
+  // 整窗入口即使只有一个可添加网页，也继续使用上次项目。
+  store.laterOnSettings = {};
+  store[LAST_PROJECT_KEY] = FOLDER_ID;
+  const batchPending = await sandbox.saveAllTabsInWindow("shortcut");
+  check("整窗仅剩一篇时仍然弹窗", batchPending?.pending === true);
+  check("整窗入口仍默认上次项目", overlays.at(-1)?.payload?.selected === FOLDER_ID);
+  await sendFromPage({ type: "CANCEL_BATCH_SAVE" });
 
   const badPage = await sendFromPage({ type: "QUICK_SAVE_TAB", source: "panel", tabId: 404 });
   check("页面无法收藏时按钮收到明确的失败原因", badPage?.ok === false && !!badPage?.error, JSON.stringify(badPage));

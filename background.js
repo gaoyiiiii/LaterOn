@@ -65,7 +65,7 @@ const ORDER_KEY = "laterOnOrder";
 const COVERS_KEY = "laterOnCovers";
 // 「一键收藏」待处理的那一批标签页：临时存在 session 里（关掉浏览器就没了，不占磁盘）。
 const PENDING_KEY = "laterOnPendingBatch";
-// 上次用过的项目：下次弹窗时默认选中它。
+// 上次用过的项目：整窗添加的弹窗默认选中它，单篇添加默认「等待整理」。
 const LAST_PROJECT_KEY = "laterOnLastProjectId";
 
 // translation.css 只需给每个标签页注入一次，避免反复收藏时堆叠重复样式表。
@@ -513,7 +513,7 @@ async function handleCommand(command, commandTab) {
 
 async function quickSave(tab, source = "shortcut") {
   const en = await usesEnglish();
-  // 设置里打开了「收藏单篇前先选项目」：跟整窗收藏走同一套流程——
+  // 默认先选项目；用户在设置里明确关闭后才直接收藏。跟整窗收藏走同一套流程——
   // 只在当前网页里弹出选项目浮层，用户选好之后再真正开始收藏。
   if (await shouldAskFolderForSingle()) {
     const storedItems = (await chrome.storage.local.get(STORAGE_KEY))[STORAGE_KEY] || [];
@@ -526,7 +526,7 @@ async function quickSave(tab, source = "shortcut") {
       lastRunAt: Date.now(),
       lastTabCount: 1
     });
-    return askFolderThenSave({ tabs: [tab], source, activeTab: tab, savedCount });
+    return askFolderThenSave({ tabs: [tab], source, activeTab: tab, savedCount, remembered: { id: "", name: "" } });
   }
 
   // 统一走 extractTabMetadata：它会在抓取前处理抖音「站内切换视频」的滞后问题，
@@ -886,10 +886,11 @@ async function saveAllTabsInWindow(source = "shortcut") {
 }
 
 // 设置里「收藏单篇前先选项目」有没有打开。
-// 默认关：旧设置里没有主动开启标记时直接收进「等待整理」。
+// 默认开启；只有用户明确操作过开关且设为 false 时才跳过。
+// 旧版自动写入、没有主动设置标记的 false 不当作用户选择。
 async function shouldAskFolderForSingle() {
   const settings = (await chrome.storage.local.get(SETTINGS_KEY))[SETTINGS_KEY] || {};
-  return settings.askFolderOnSingle === true && settings.askFolderOnSingleOptIn === true;
+  return !(settings.askFolderOnSingle === false && settings.askFolderOnSingleOptIn === true);
 }
 
 // 把这一批标签页暂存起来，弹出「选项目」浮层，等用户选好再真正收藏。
@@ -1177,7 +1178,7 @@ async function showPickerOverlay(tab, payload) {
       ...projects.filter((project) => !project.archived).map((project) => ({ id: project.id, name: project.name, count: counts.get(project.id) || 0, cover: coverFor(project.id) }))
     ];
 
-    // 默认选中上次用过的项目；它如果已被删掉就退回「待整理」。
+    // 使用入口指定的默认项目；不存在时退回「等待整理」。
     let selected = payload?.projectId || "";
     if (selected && !folders.some((folder) => folder.id === selected)) selected = "";
 
