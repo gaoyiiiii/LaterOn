@@ -1418,6 +1418,7 @@ function createCard(item) {
   readToggle.textContent = readToggleLabel(item.status);
   readToggle.setAttribute("aria-label", readToggleLabel(item.status));
   fillProjectSelect(projectSelect, item.projectId || "");
+  projectSelect.value = item.projectId || "";
   card.classList.toggle("selected", selectedIds.has(item.id));
   const check = card.querySelector(".select-check");
   if (check) check.checked = selectedIds.has(item.id);
